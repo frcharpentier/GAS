@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style type="text/css" media="screen">
+    html, body { width: 100%; height: 100%;}
+	div.encadre {
+		margin: 30px;
+		border: 3px solid blue;
+	}
+	.droite{
+		float:right;
+	}
+</style>
+</head>
+<body>
+<h1>Visualisation d’AMR</h1>
+<div id="affichages">
+</div>
+<div>
+<textarea id="texteSaisie" cols="40" rows="10"></textarea>
+<br/>
+<input type="checkbox" id="CBvars" name="CBvars"/>
+<label for="CBvars">Voir variables</label>
+<input type="checkbox" id="CBrac" name="CBrac"/>
+<label for="CBrac">Voir racine</label>
+<input type="checkbox" id="CBrels" name="CBrels"/>
+<label for="CBrels">Redresser rôles</label>
+<br/>
+<button id="voirAMR">Voir AMR</button>
+<br/>
+<textarea id="numSaisie" cols="8" rows="1"></textarea><br/>
+<button id="voirJAMR">JAMR</button>
+<button id="voirCAMR">CAMR</button>
+<button id="voirEAGR">EAGR</button>
+<button id="voirBART">BART</button>
+<!--
+<button id="voirAMR2">Voir AMR (vars)</button>
+-->
+</div>
+<script>
+let bouton = document.getElementById("voirAMR");
+let bJAMR = document.getElementById("voirJAMR");
+let bCAMR = document.getElementById("voirCAMR");
+let bEAGR = document.getElementById("voirEAGR");
+let bBART = document.getElementById("voirBART");
+
+//let bouton2 = document.getElementById("voirAMR2");
+let affichages = document.getElementById("affichages");
+let CBvars = document.getElementById("CBvars");
+let CBrac = document.getElementById("CBrac")
+let CBrels = document.getElementById("CBrels");
+
+let fermerDiv = function(evt){
+	let aFermer = evt.srcElement.parentNode;
+	aFermer.remove();
+}
+
+//let VERT = ["#12E193", "#C3FDB8", "#12E193"]
+let VERT = ["#08A04B", "#A0D6B4", "#08A04B"]
+let ROUGE = ["red", "MistyRose", "red"]
+
+let envoi2 = function(tAMR){
+	let iden = document.getElementById("numSaisie").value;
+	//console.log(texte);
+	let XOvars = CBvars.checked;
+	let XOrac = CBrac.checked;
+	let XOrels = CBrels.checked;
+	let xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = function(){
+		if(this.readyState == 4 && this.status == 200)
+		{
+			let codesvg = this.responseText;
+			let nouveauDiv = document.createElement("div");
+			let Croix = document.createElement("button");
+			Croix.setAttribute("class", "droite");
+			Croix.setAttribute("onclick", "fermerDiv(event)");
+			Croix.innerHTML = "X";
+			nouveauDiv.setAttribute("class", "encadre");
+			nouveauDiv.appendChild(Croix);
+			let frag = document.createDocumentFragment();
+			let fragdiv = document.createElement("div");
+			frag.appendChild(fragdiv);
+			fragdiv.innerHTML = codesvg;
+			let svg_aretes;
+			let dico_aretes = [{}, {}];
+			while(fragdiv.firstChild.childNodes.length > 0)
+			{
+				let noeud = fragdiv.firstChild.firstChild
+				if ((noeud.nodeType == 4) || (noeud.nodeType == 8))
+				{
+					texte = noeud.textContent;
+					if (texte.startsWith("[CDATA[") && texte.endsWith("]]"))
+					{
+						texte = texte.slice(7, -2);
+					}
+					svg_aretes = JSON.parse(texte);
+					noeud.remove();
+				}
+				else
+				{
+					nouveauDiv.appendChild(noeud);
+				}
+			}
+			affichages.appendChild(nouveauDiv);
+			for(let grph of svg_aretes)
+			{
+				for(let art of grph)
+				{
+					for(let elt of art)
+					{
+						colore_element(elt, VERT);
+					}
+				}
+			}
+			for(let j=0; j<1; j+=1)
+			{
+				let dico = dico_aretes[j];
+				let arts = svg_aretes[j]
+				for(let i=0; i<arts.length; i+=1)
+				{
+					for(let elt of arts[i])
+					{
+						if(elt in dico)
+							dico[elt].push(i)
+						else
+							dico[elt] = [i];
+					}
+				}
+			}
+			/*
+			let composantes = comp_connexes(dico_aretes[0], svg_aretes[0]);
+			placer_connexes(composantes);
+			*/
+			comp_connexes(dico_aretes, svg_aretes);
+		}
+	};
+	// /Le_petit_prince/JAMR_125_XOO.html
+	if(XOvars)
+		chemin = "X"
+	else
+		chemin = "O"
+	if(XOrac)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOrels)
+		chemin += "X"
+	else
+		chemin += "O"
+	chemin = "/Le_petit_prince/" + tAMR + "_" + iden + "_" + chemin + ".html"
+	xhttp.open("GET", chemin);
+	//xhttp.setRequestHeader("Content-Length", texte.lentgh);
+	xhttp.send();
+};
+
+let envoi = function(){
+	let texte = document.getElementById("texteSaisie").value;
+	//console.log(texte);
+	let XOvars = CBvars.checked;
+	let XOrac = CBrac.checked;
+	let XOrels = CBrels.checked;
+	let xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = function(){
+		if(this.readyState == 4 && this.status == 200)
+		{
+			let codesvg = this.responseText;
+			let nouveauDiv = document.createElement("div");
+			let Croix = document.createElement("button");
+			Croix.setAttribute("class", "droite");
+			Croix.setAttribute("onclick", "fermerDiv(event)");
+			Croix.innerHTML = "X";
+			nouveauDiv.setAttribute("class", "encadre");
+			nouveauDiv.appendChild(Croix);
+			let frag = document.createDocumentFragment();
+			let fragdiv = document.createElement("div");
+			frag.appendChild(fragdiv);
+			fragdiv.innerHTML = codesvg;
+			while(fragdiv.firstChild.childNodes.length > 0)
+			{
+				nouveauDiv.appendChild(fragdiv.firstChild.firstChild);
+			}
+			affichages.appendChild(nouveauDiv);
+		}
+	};
+	if(XOvars)
+		chemin = "X"
+	else
+		chemin = "O"
+	if(XOrac)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOrels)
+		chemin += "X"
+	else
+		chemin += "O"
+	chemin = "/" + chemin + ".html"
+	xhttp.open("POST", chemin);
+	xhttp.setRequestHeader("Content-Length", texte.lentgh);
+	xhttp.send(texte);
+};
+//let envoi1 = function(){ envoi("/direct.html");};
+//let envoi2 = function(){ envoi("/voir_variables.html");};
+//bouton.addEventListener("click", envoi1);
+bouton.addEventListener("click", envoi);
+//bouton2.addEventListener("click", envoi2);
+
+bJAMR.addEventListener("click", () => {envoi2("JAMR");});
+bCAMR.addEventListener("click", () => {envoi2("CAMR");});
+bEAGR.addEventListener("click", () => {envoi2("EAGR");});
+bBART.addEventListener("click", () => {envoi2("BART");});
+
+let colore_element = function(idElt, couleur){
+	groupe = document.getElementById(idElt);
+	if(groupe === null)
+	{
+		return;
+	}
+	ellipses = groupe.getElementsByTagName("ellipse");
+	for (let i=0; i<ellipses.length; i++)
+	{
+		el = ellipses[i];
+		el.setAttribute("stroke", couleur[0]);
+		el.setAttribute("fill", couleur[1]);
+	}
+	textes = groupe.getElementsByTagName("text");
+	for (let i=0; i<textes.length; i++)
+	{
+		txt = textes[i];
+		txt.setAttribute("fill", couleur[2]);
+	}
+	chemins = groupe.getElementsByTagName("path");
+	for (let i=0; i<chemins.length; i++)
+	{
+		ch = chemins[i];
+		ch.setAttribute("stroke", couleur[0]);
+	}
+	polygones = groupe.getElementsByTagName("polygon");
+	for (let i=0; i<polygones.length; i++)
+	{
+		pol = polygones[i];
+		pol.setAttribute("stroke", couleur[0]);
+		pol.setAttribute("fill", couleur[1]);
+	}
+};
+
+let cocher_arete_0 = function(A, N, dico_aretes, svg_aretes, vus, cnx){
+	for(let elt of A)
+	{
+		if(vus[elt] == false)
+		{
+			vus[elt] = true;
+			N = N-1;
+			cnx.push(elt);
+			for(let AA of dico_aretes[elt])
+			{
+				let AAA = svg_aretes[AA];
+				N = cocher_arete(AAA, N, dico_aretes, svg_aretes, vus, cnx);
+			}
+		}
+	}
+	return N;
+};
+
+let cocher_arete = function(a, N, dico_aretes, svg_aretes, vus, cnx)
+{
+	N = N-1;
+	vus[a] = true;
+	cnx.push(a);
+	for(let elt of svg_aretes[a])
+	{
+		for(let aa of dico_aretes[elt])
+		{
+			if(vus[aa] == false)
+			{
+				N = cocher_arete(aa, N, dico_aretes, svg_aretes, vus, cnx);
+			}
+		}
+	}
+	return N;
+};
+
+let comp_connexes = function(dico_aretes, svg_aretes)
+{
+	let vus = [];
+	for(A of svg_aretes[0])
+	{
+		vus.push(false);
+	}
+	let N = svg_aretes[0].length;
+	let composantes = []
+	while(N > 0)
+	{
+		for(let a=0; a<vus.length; a+=1)
+		{
+			if(vus[a] == false)
+			{
+				let cnx = [];
+				N = cocher_arete(a, N, dico_aretes[0], svg_aretes[0], vus, cnx);
+				composantes.push(cnx);
+				break;
+			}
+		}
+	}
+	for(let cnx of composantes)
+	{
+		let elts_s = {};
+		for(let art of cnx)
+		{
+			for(let elt of svg_aretes[0][art])
+			{
+				elts_s[elt]=true;
+			}
+			for(let elt of svg_aretes[1][art])
+			{
+				elts_s[elt]=true;
+			}
+		}
+		let elts = [];
+		for(let elt in elts_s)
+		{
+			elts.push(elt)
+		}
+		let Fin = function(){ colore_connexe(elts, ROUGE);};
+		let Fout = function(){ colore_connexe(elts, VERT);};
+		for(let elt of elts)
+		{
+			let S = document.getElementById(elt);
+			S.addEventListener("mouseover", Fin);
+			S.addEventListener("mouseout", Fout);
+		}
+	}
+}
+
+let comp_connexes_0 = function(dico_aretes, svg_aretes){
+	let vus = {};
+	let N = 0;
+	for(let elt in dico_aretes)
+	{
+		N += 1;
+		vus[elt] = false;
+	}
+	let composantes = [];
+	while(N > 0)
+	{
+		for(let elt in vus)
+		{
+			if(vus[elt] == false)
+			{
+				let cnx = [];
+				for(let A of dico_aretes[elt])
+				{
+					let AA = svg_aretes[A];
+					N = cocher_arete(AA, N, dico_aretes, svg_aretes, vus, cnx);
+				}
+				composantes.push(cnx);
+				break;
+			}
+		}
+	}
+	return composantes;
+};
+
+let colore_noeud = function(idNoeud, couleur){
+	groupe = document.getElementById(idNoeud);
+	if(groupe === null)
+	{
+		return;
+	}
+	ellipses = groupe.getElementsByTagName("ellipse");
+	for (let i=0; i<ellipses.length; i++)
+	{
+		el = ellipses[i];
+		el.setAttribute("stroke", couleur);
+	}
+	textes = groupe.getElementsByTagName("text");
+	for (let i=0; i<textes.length; i++)
+	{
+		txt = textes[i];
+		txt.setAttribute("fill", couleur);
+	}
+};
+let colore_arete = function(idArete, couleur){
+	groupe = document.getElementById(idArete);
+	if(groupe === null)
+	{
+		return;
+	}
+	chemins = groupe.getElementsByTagName("path");
+	for (let i=0; i<chemins.length; i++)
+	{
+		ch = chemins[i];
+		ch.setAttribute("stroke", couleur);
+	}
+	textes = groupe.getElementsByTagName("text");
+	for (let i=0; i<textes.length; i++)
+	{
+		txt = textes[i];
+		txt.setAttribute("fill", couleur);
+	}
+	polygones = groupe.getElementsByTagName("polygon");
+	for (let i=0; i<polygones.length; i++)
+	{
+		pol = polygones[i];
+		pol.setAttribute("stroke", couleur);
+		pol.setAttribute("fill", couleur);
+	}
+};
+let colore_ss_graphe = function(idNoeuds, couleur){
+	let N = idNoeuds.length;
+	for(let i=0; i<N; i++)
+	{
+		colore_noeud(idNoeuds[i], couleur)
+		for(let j=i; j<N; j++)
+		{
+			colore_arete(idNoeuds[i] + "→" + idNoeuds[j], couleur);
+			colore_arete(idNoeuds[j] + "→" + idNoeuds[i], couleur);
+		}
+	}
+};
+
+let repartir_ss_graphes = function(repart)
+{
+	for(let groupe of repart)
+	{
+		let Fin  = function(){colore_ss_graphe(groupe, "red");};
+		let Fout = function(){colore_ss_graphe(groupe, "black");};
+		for(let s of groupe)
+		{
+			let S = document.getElementById(s);
+			S.getElementsByTagName("ellipse")[0].setAttribute("fill", "white");
+			S.addEventListener("mouseover", Fin);
+			S.addEventListener("mouseout", Fout);
+		}
+	}
+};
+
+let colore_connexe = function(elts, couleur){
+	for(let elt of elts)
+	{
+		colore_element(elt, couleur);
+	}
+};
+
+let placer_connexes = function(comp_cnx)
+{
+	for(let cnx of comp_cnx)
+	{
+		let Fin = function(){ colore_connexe(cnx, ROUGE);};
+		let Fout = function(){ colore_connexe(cnx, VERT);};
+		for(let elt of cnx)
+		{
+			let S = document.getElementById(elt);
+			S.addEventListener("mouseover", Fin);
+			S.addEventListener("mouseout", Fout);
+		}
+	}
+};
+
+</script>
+</body>

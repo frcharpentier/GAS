@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="vivagraph.min.js"></script>
+<script src="vivagraph_factory.js"></script>
+<style type="text/css" media="screen">
+    html, body { width: 100%; height: 100%;}
+	div.encadre {
+		margin: 30px;
+		border: 3px solid blue;
+	}
+	.droite{
+		float:right;
+	}
+	span.select{
+		background-color: #A0D6B4;
+		color: #08A04B;
+	}
+	table, th, td {
+		border: 1px solid;
+	}
+</style>
+</head>
+<body>
+<h1>Visualisation d’AMR</h1>
+<div>
+<!-- <textarea id="texteSaisie" cols="40" rows="10"></textarea>
+<br/>  -->
+<input type="checkbox" id="CBvars" name="CBvars"/>
+<label for="CBvars">Voir variables</label>
+<input type="checkbox" id="CBrac" name="CBrac"/>
+<label for="CBrac">Voir racine</label>
+<input type="checkbox" id="CBrels" name="CBrels"/>
+<label for="CBrels">Redresser rôles</label>
+<br/>
+<button id="voirAMR">Voir un AMR au hasard</button>
+</div>
+<div id="affichages">
+</div>
+<button id="voirGrapheAdjoint" disabled="true">Voir graphe adjoint</button>
+<script>
+let GraphFactory = new Factory();
+let LgraphFactory = new Factory();
+
+
+let bouton = document.getElementById("voirAMR");
+let btnAdj = document.getElementById("voirGrapheAdjoint");
+
+
+
+let affichages = document.getElementById("affichages");
+let CBvars = document.getElementById("CBvars");
+let CBrac = document.getElementById("CBrac")
+let CBrels = document.getElementById("CBrels");
+
+let fermerDiv = function(evt){
+	let aFermer = evt.srcElement.parentNode;
+	aFermer.remove();
+}
+
+//let VERT = ["#12E193", "#C3FDB8", "#12E193"]
+let VERT = ["#08A04B", "#A0D6B4", "#08A04B"]
+let BLANC = ["black", "white", "black"]
+let ROUGE = ["red", "MistyRose", "red"]
+
+
+
+let envoi = function(){
+	let XOvars = CBvars.checked;
+	let XOrac = CBrac.checked;
+	let XOrels = CBrels.checked;
+	let xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = function(){
+		if(this.readyState == 4 && this.status == 200)
+		{
+			let codesvg = this.responseText;
+			GraphFactory.effacerGraphe();
+			LgraphFactory.effacerGraphe();
+			affichages.textContent = '';
+			let cont_G1 = document.createElement("td");
+			
+			let frag = document.createDocumentFragment();
+			let fragdiv = document.createElement("div");
+			frag.appendChild(fragdiv);
+			fragdiv.innerHTML = codesvg;
+			let infos_jsn;
+			let dico_aretes = [{}, {}];
+			while(fragdiv.firstChild.childNodes.length > 0)
+			{
+				let noeud = fragdiv.firstChild.firstChild
+				if ((noeud.nodeType == 4) || (noeud.nodeType == 8))
+				{
+					texte = noeud.textContent;
+					if (texte.startsWith("[CDATA[") && texte.endsWith("]]"))
+					{
+						texte = texte.slice(7, -2);
+						//console.log(texte);
+					}
+					infos_jsn = JSON.parse(texte);
+					noeud.remove();
+				}
+				else
+				{
+					cont_G1.appendChild(noeud);
+				}
+			}
+			let tableau = document.createElement("table");
+			let rangee = document.createElement("tr");
+			tableau.appendChild(rangee);
+			rangee.appendChild(cont_G1)
+			affichages.appendChild(tableau);
+			GraphFactory.setContainer(rangee);
+			
+			repr1 = alignements(infos_jsn.prefixe, infos_jsn.tokens, infos_jsn.sommets, infos_jsn.dicTokens, infos_jsn.aretes, infos_jsn.triplets);
+			btnAdj.removeAttribute("disabled");
+			
+			let fadj = function()
+			{
+				let rangee2 = document.createElement("tr");
+				tableau.appendChild(rangee2);
+				LgraphFactory.setContainer(rangee2);
+				LgraphFactory.container.setAttribute("colspan", "2");
+				
+				repr2 = faire_graphe_adjoint(infos_jsn.prefixe, infos_jsn.tokens.length, infos_jsn.sommets, infos_jsn.aretes);
+				// remplaçons les identifiants par les véritables éléments DOM.
+				for(let l in repr2)
+				{
+					repr2[l] = repr2[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+					if(l in repr1)
+						repr1[l].push(...repr2[l]);
+				}
+				btnAdj.onclick = function(){effacerGrapheAdjoint(infos_jsn.prefixe, repr2); btnAdj.onclick = fadj;};
+			};
+			btnAdj.onclick = fadj;
+		}
+	};
+	if(XOvars)
+		chemin = "X"
+	else
+		chemin = "O"
+	if(XOrac)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOrels)
+		chemin += "X"
+	else
+		chemin += "O"
+	chemin = "/LDC_2020_T02/alea_" + chemin + ".html"
+	//chemin = "/LDC_2020_T02/bolt12_12120_6301.8_" + chemin + ".html"
+	xhttp.open("GET", chemin);
+	xhttp.send();
+};
+
+let effacerGrapheAdjoint = function(prefixe, repr2)
+{
+	for(let k in repr2)
+	{
+		let lis = repr2[k];
+		let i = 0;
+		while(i < lis.length)
+		{
+			if(lis[i].hasAttribute("id"))
+			{
+				let iden = lis[i].getAttribute("id");
+				if(iden.startsWith(prefixe + "_adj_"))
+					lis.splice(i,1);
+				else
+					i++;
+			}
+			else
+				i++;
+		}
+	}
+	LgraphFactory.effacerGraphe();
+	LgraphFactory.container.parentNode.remove();
+};
+
+bouton.addEventListener("click", envoi);
+
+let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
+{
+	let dicTokad = {};
+	let Gsommets = {};
+	let Garetes = [];
+	let repr2 = {};
+	for(let art of aretes)
+	{
+		let s, r, c;
+		let tokad;
+		
+		s = tk_utiles[art[0]];
+		r = art[1];
+		c = tk_utiles[art[2]];
+		if(s < c)
+			tokad = "adj_" + s + "_" + c;
+		else
+			tokad = "adj_" + c + "_" + s;
+		dicTokad[tokad] = ["tk_" + s + "→tk_" + c, r];
+	}
+	for(let i=0; i<ntokens; i++)
+	{
+		for(let j=i+1; j<ntokens; j++)
+		{
+			let tokad = "adj_" + i + "_" + j;
+			let idtokad = prefixe + "_" + tokad;
+			let r;
+			let idorig;
+			let dataTad;
+			let truc = dicTokad[tokad];
+			if(truc)
+			{
+				[idorig, r] = truc;
+				if(r == "{groupe}")
+					dataTad = {"r": 5, "fill": "white", "stroke": "blue", "svg": "circle"};
+				else if(r == "{idem}")
+					dataTad = {"r": 5, "fill": "white", "stroke": "red", "svg": "circle"};
+				else
+				{
+					dataTad = {"r": 5, "fill": "white", "stroke": "black", "svg": "circle"};
+					repr2[idorig] = [idtokad];
+				}
+			}
+			else
+				dataTad = {"r": 3, "fill": "grey", "stroke": "grey", "svg": "circle"};
+				
+			dataTad["id"] = idtokad;
+			Gsommets[tokad] = dataTad;
+		}
+	}
+	
+	for(let i=0; i < ntokens; i++)
+	{
+		repr2["tk_" + i] = [];
+	}
+	for(let i=0; i<ntokens; i++)
+	{
+		for(let j=i+1; j<ntokens; j++)
+		{
+			let tokad1 = "adj_" + i + "_" + j;
+			for(let jj=j+1; jj<ntokens; jj++)
+			{
+				if((i != jj)&&(j != jj))
+				{
+					let tokad2 = "adj_" + i + "_" + jj;
+					let idtk = prefixe = "_adj_" + i + "_" + j + "_" + i + "_" + jj;
+					let datarete = {"stroke": "gray", "bidir": true, "class":"inv", "visibility": "hidden", "id": idtk};
+					Garetes.push([tokad1, tokad2, datarete]);
+					repr2["tk_" + i].push(idtk);
+					if(tokad1 in dicTokad)
+					{
+						let idorig, r;
+						[idorig, r] = dicTokad[tokad1];
+						if(idorig in repr2)
+							repr2[idorig].push(idtk);
+						else
+							repr2[idorig] = [idtk];
+					}
+					if(tokad2 in dicTokad)
+					{
+						let idorig, r;
+						[idorig, r] = dicTokad[tokad2];
+						if(idorig in repr2)
+							repr2[idorig].push(idtk);
+						else
+							repr2[idorig] = [idtk];
+					}
+				}
+			}
+			for(let ii=i+1; ii<ntokens; ii++)
+			{
+				if((i != ii)&&(j != ii))
+				{
+					let tokad2;
+					let idtk;
+					if(j < ii)
+					{
+						tokad2 = "adj_" + j + "_" + ii;
+						idtk = prefixe + "_adj_" + i + "_" + j + "_" + j + "_" + ii; 
+					}
+					else
+					{
+						tokad2 = "adj_" + ii + "_" + j;
+						idtk = prefixe + "_adj_" + i + "_" + j + "_" + ii + "_" + j; 
+					}
+					let datarete = {"stroke": "gray", "bidir": true, "class":"inv", "visibility": "hidden", "id": idtk};
+					Garetes.push([tokad1, tokad2, datarete]);
+					repr2["tk_" + j].push(idtk);
+					if(tokad1 in dicTokad)
+					{
+						let idorig, r;
+						[idorig, r] = dicTokad[tokad1];
+						if(idorig in repr2)
+							repr2[idorig].push(idtk);
+						else
+							repr2[idorig] = [idtk];
+					}
+					if(tokad2 in dicTokad)
+					{
+						let idorig, r;
+						[idorig, r] = dicTokad[tokad2];
+						if(idorig in repr2)
+							repr2[idorig].push(idtk);
+						else
+							repr2[idorig] = [idtk];
+					}
+				}
+			}
+		}
+	}
+	LgraphFactory.dessinerGraphe({
+		"sommets" : Gsommets,
+		"aretes" : Garetes
+	}, -1, 500);
+	return repr2;
+}
+
+let colore_liste_elts = function(liste, couleur){
+	for(let ielt=0; ielt<liste.length; ielt++)
+	{
+		let elt = liste[ielt];
+		if(! elt.tagName)
+			continue;
+		if(elt.tagName.toUpperCase() == "G")
+		{
+			let sselts;
+			sselts = elt.getElementsByTagName("ellipse");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("text");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("path");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("polygon");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("rect");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			continue;
+		}
+		if(elt.tagName.toUpperCase() == "SPAN")
+		{
+			if (couleur[2] == VERT[2])
+				elt.setAttribute("class", "select");
+			else
+				elt.setAttribute("class", "")
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "PATH")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			if(elt.hasAttribute("class") && elt.getAttribute("class") == "inv")
+			{
+				if(couleur[0] == VERT[0])
+				{
+					elt.setAttribute("visibility", "visible");
+				}
+				else
+				{
+					elt.setAttribute("visibility", "hidden");
+				}
+			}
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "ELLIPSE")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "CIRCLE")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "TEXT")
+		{
+			elt.setAttribute("fill", couleur[2]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "POLYGON")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "RECT")
+		{
+			elt.setAttribute("style", "fill:" + couleur[1] + ";stroke-width:1;stroke:" + couleur[0]);
+			continue;
+		}
+	}
+}
+
+
+
+
+
+
+/*
+On a des tokens, (numérotés)
+des aretes entre tokens (identifiés par une chaine "art_i_j")
+des sommets AMR (identifiés par une chaine du type "1.2.3")
+des relations entre sommets AMR. (identifiés par une chaine du type "1.2.3->1.2.3.1")
+
+À chaque token correspond : plusieurs autres tokens, plusieurs sommets AMR (dans une liste liesATokens).
+À chaque sommet AMR correspond : plusieurs autres sommets AMR, plusieurs tokens (dans un dictionnaire liesASommets).
+À chaque relation entre sommets AMR correspond : plusieurs arêtes entre tokens. (dans un dictionnaire liesARelations).
+
+Chaque élément (token, arete entre tokens, sommet AMR ou relation entre sommet) est représenté par une liste d’éléments SVG : Representants
+*/
+
+let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triplets)
+{
+	let frag = document.createDocumentFragment();
+	let liesATokens = [];
+	let liesASommets = {};
+	let liesARelations = {};
+	/*let lisReprTok = tokens.map((e) => []);
+	let dicReprSom = {};
+	let dicReprRelat = {};
+	let dicReprArt = [];
+	*/
+	let representants = {};
+	let classe = 0;
+	let Gsommets = [];
+	let Garetes = [];
+	for(let iii=0; iii<tokens.length; iii+=1)
+	{
+		representants["tk_" + iii] = [];
+		let i = tk_utiles.indexOf(iii);
+		if(i >= 0)
+		{
+			let span = document.createElement("span");
+			span.appendChild(document.createTextNode(tokens[iii] + " "));
+			let iden = prefixe + "_span_" + i;
+			span.setAttribute("id", iden);
+			frag.appendChild(span);
+			//lisReprTok[iii].push(span);
+			representants["tk_" + iii].push(span);
+			let classeCourante;
+			let nouveauBloc = false;
+			for(let idNd of dicTokens[i])
+			{
+				if(idNd in liesASommets)
+				{
+					classeCourante = liesASommets[idNd];
+					break;
+				}
+				else
+				{
+					liesASommets[idNd] = classe;
+					classeCourante = classe;
+					nouveauBloc = true;
+				}
+			}
+			liesATokens.push(classeCourante);
+			if(nouveauBloc)
+				classe += 1;
+		}
+		else
+		{
+			let span = document.createElement("span");
+			span.appendChild(document.createTextNode(tokens[iii] + " "));
+			span.setAttribute("style", "color: lightGray");
+			frag.appendChild(span);
+			liesATokens.push([[],[]]);
+		}
+	}
+	let h3 = document.createElement("h3");
+	h3.appendChild(frag);
+	affichages.prepend(h3);
+	
+	let nbClasses = classe;
+	for(let n=0; n<nbClasses; n+=1)
+	{
+		let lt_ls = [[],[]];
+		for (let i=0; i<tokens.length; i +=1)
+		{
+			let cl = liesATokens[i];
+			if(cl == n)
+			{
+				lt_ls[0].push(i);
+			}
+		}
+		for(let s in liesASommets)
+		{
+			representants[s] = [prefixe + s];
+			let cl = liesASommets[s];
+			if(cl == n)
+			{
+				lt_ls[1].push(s);
+			}
+		}
+		for(let i of lt_ls[0])
+		{
+			liesATokens[i] = lt_ls;
+		}
+		for(let s of lt_ls[1])
+		{
+			liesASommets[s] = lt_ls;
+		}
+	}
+	tk_utiles.forEach((s, i) => {Gsommets.push([tokens[s], prefixe + "_tk_" + s]); representants["tk_" + s].push(prefixe + "_tk_" + s);});
+	for(let art of aretes)
+	{
+		let s, r, c;
+		s = art[0];
+		r = art[1];
+		c = art[2];
+		let ident = prefixe + "_tk_" + tk_utiles[s] + "_tk_" + tk_utiles[c];
+		if(r == "{groupe}")
+		{
+			if(s < c)
+			{
+				Garetes.push([s,c, {"stroke":"blue", "bidir":true, "stroke-dasharray":"5,5", "id": ident}])
+			}
+		}
+		else if(r == "{idem}")
+		{
+			if(s < c)
+			{
+				Garetes.push([s,c, {"stroke":"red", "bidir":true, "stroke-dasharray":"5,5", "id": ident}])
+			}
+		}
+		else
+		{
+			let idt = "tk_" + tk_utiles[s] + "→tk_" + tk_utiles[c];
+			Garetes.push([s,c, {"id": ident}]);
+			representants[idt] = [ident, prefixe+ "_tk_" + tk_utiles[s], prefixe+ "_tk_" + tk_utiles[c]];
+		}
+	}
+	//Relations dans l’AMR.
+	for(let trp of triplets)
+	{
+		let S1 = trp[0];
+		let S2 = trp[1];
+		let ident = S1 + "→" + S2;
+		let Lies1 = liesASommets[S1];
+		let Lies2 = liesASommets[S2];
+		if ((Lies1[1].indexOf(S2) >= 0)||(Lies2[1].indexOf(S1) >= 0))
+		{
+			liesARelations[ident] = [];
+			continue;
+		}
+		representants[ident] = [prefixe + S1 + "→" + prefixe + S2];// , prefixe+S1, prefixe+S2];
+		liesARelations[ident] = [ident];
+		let toks1 = Lies1[0];
+		let toks2 = Lies2[0];
+		for(let t1 of toks1)
+		{
+			for(let t2 of toks2)
+			{
+				let idta = "tk_" + t1 + "→tk_" + t2;
+				if(idta in representants)
+					liesARelations[ident].push(idta);
+				idta = "tk_" + t2 + "→tk_" + t1;
+				if(idta in representants)
+					liesARelations[ident].push(idta);
+			}
+		}
+	}
+	
+	GraphFactory.dessinerGraphe({
+		"sommets" : Gsommets,
+		"aretes" : Garetes
+	}, 800, -1);
+	
+	// remplaçons les identifiants par les véritables éléments DOM.
+	for(let l in representants)
+	{
+		representants[l] = representants[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+	}
+	
+	//réactivité des éléments SVG:
+	for(let tk of tk_utiles)
+	{
+		let lies = liesATokens[tk];
+		let tkLies = lies[0];
+		let somLies = lies[1];
+		if((tkLies.length == 0)&&(somLies.length == 0))
+			continue;
+		let f = function(C){
+			for(let t of tkLies)
+			{
+				colore_liste_elts(representants["tk_"+t], C);
+			}
+			for(let som of somLies)
+			{
+				colore_liste_elts(representants[som], C);
+			}
+		};
+		for(let selt of representants["tk_" + tk])
+		{
+			selt.addEventListener("mouseover", () => f(VERT));
+			selt.addEventListener("mouseout", () => f(BLANC));
+		}
+	}
+	for(let samr in liesASommets)
+	{
+		let lies = liesASommets[samr];
+		let tkLies = lies[0];
+		let somLies = lies[1];
+		if((tkLies.length == 0)&&(somLies.length == 0))
+			continue;
+		let f = function(C){
+			for(let t of tkLies)
+			{
+				colore_liste_elts(representants["tk_"+t], C);
+			}
+			for(let som of somLies)
+			{
+				colore_liste_elts(representants[som], C);
+			}
+		};
+		for(let selt of representants[samr])
+		{
+			selt.addEventListener("mouseover", () => f(VERT));
+			selt.addEventListener("mouseout", () => f(BLANC));
+		}
+	}
+	for(let rel in liesARelations)
+	{
+		let lies = liesARelations[rel];
+		if(lies.length == 0)
+			continue;
+		let flh = rel.indexOf("→");
+		let S1 = document.getElementById(prefixe + rel.substr(0,flh));
+		let S2 = document.getElementById(prefixe + rel.substr(1+flh));
+		let f = function(C){
+			for(let r of lies)
+			{
+				colore_liste_elts(representants[r], C);
+			}
+			colore_liste_elts([S1, S2], C);
+		}
+		for(let selt of representants[rel])
+		{
+			selt.addEventListener("mouseover", () => f(VERT));
+			selt.addEventListener("mouseout", () => f(BLANC));
+		}
+	}
+	return representants;
+}
+
+
+
+
+
+</script>
+</body>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="vivagraph.min.js"></script>
+<style type="text/css" media="screen">
+    html, body, div, svg { width: 100%; height: 100%;}
+</style>
+</head>
+<body>
+<h1>Un graphe</h1>
+<div id="lediv"></div>
+<script>
+var graph = Viva.Graph.graph();
+
+
+var graphics =  Viva.Graph.View.svgGraphics()
+
+function faireNoeud(data)
+{
+	let noeud = Viva.Graph.svg(data.svg);
+	for(let key in data)
+	{
+		if (key == "svg")
+		{
+		}
+		else if(key == "contenu")
+		{
+			let valeur = data[key];
+			if(typeof valeur === 'string')
+				noeud.text(valeur);
+			else
+				noeud.append(faireNoeud(valeur));
+		}
+		else
+		{
+			noeud.attr(key, data[key]);
+		}
+	}
+	return noeud;
+}
+
+graphics.node(function (node) {
+		if(node.data)
+		{
+			noeud = faireNoeud(node.data);
+		}
+		else
+		{
+			noeud = Viva.Graph.svg("circle")
+				.attr("r", 5)
+				.attr("stroke", "black")
+				.attr("fill", "lightblue");
+		}
+		node.svgn = noeud;
+		return noeud;
+	}).placeNode(function(nodeUI, pos){
+		if(nodeUI.tagName == "circle")
+			nodeUI.attr("cx", pos.x).attr("cy", pos.y);
+		else// if(nodeUI.tagName == "text")
+			nodeUI.attr("x", pos.x).attr("y", pos.y);
+	});
+		
+let createMarker = function(id) {
+	return Viva.Graph.svg('marker')
+	   .attr('id', id)
+	   .attr('viewBox', "0 0 15 15")
+	   .attr('refX', "15")
+	   .attr('refY', "7.5")
+	   .attr('markerUnits', "strokeWidth")
+	   .attr('markerWidth', "15")
+	   .attr('markerHeight', "7.5")
+	   .attr('orient', "auto");
+};
+
+let marker = createMarker('Fleche');
+marker.append('path').attr('d', 'M 0 0 L 15 7.5 L 0 15 z');
+// Marker should be defined only once in <defs> child element of root <svg> element:
+let defs = graphics.getSvgRoot().append('defs');
+defs.append(marker);
+
+let geom = Viva.Graph.geom();
+
+graphics.link(function(link){
+		// L'attribut "marker-end" sert à terminer le trait par une flèche.
+		let ligne =  Viva.Graph.svg('path')
+				   .attr('stroke', 'gray');
+		if(link.data)
+		{
+			ligne.attr('marker-end', 'url(#Fleche)');
+		}
+		return ligne
+	}).placeLink(function(linkUI, pos1, pos2){
+	let rayon = 5;
+		let from = geom.intersectRect(
+                        // rectangle:
+                                pos1.x - rayon, // left
+                                pos1.y - rayon, // top
+                                pos1.x + rayon, // right
+                                pos1.y + rayon, // bottom
+                        // segment:
+                                pos1.x, pos1.y, pos2.x, pos2.y)
+                           || fromPos; // if no intersection found - return center of the node
+		let to = geom.intersectRect(
+                        // rectangle:
+                                pos2.x - rayon, // left
+                                pos2.y - rayon, // top
+                                pos2.x + rayon, // right
+                                pos2.y + rayon, // bottom
+                        // segment:
+                                pos2.x, pos2.y, pos1.x, pos1.y)
+                            || pos2; // if no intersection found - return center of the node
+		let data = 'M' + from.x + ',' + from.y +
+                           ' L' + to.x + ',' + to.y;
+
+                linkUI.attr("d", data);
+	});
+
+
+
+let renderer = Viva.Graph.View.renderer(graph, {container: document.getElementById('lediv'), graphics:graphics});
+
+
+graph.addNode("A",{"r": 10, "fill": "red", "stroke": "black", "svg": "circle"});
+graph.addNode("B",{"r": 5, "fill": "orange", "stroke": "black", "svg": "circle"});
+graph.addLink("A","B", true);
+
+graph.addNode("C",{"r": 5, "fill": "blue", "stroke": "black", "svg": "circle"});
+graph.addLink("A","C", true);
+
+
+
+renderer.run();
+</script>
+</body>
+</html>
