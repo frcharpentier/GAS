@@ -82,6 +82,9 @@ class RELATION:
         resu = RELATION(*self.sort)
         resu.table = [NUPLET(resu, t) for t in ens]
         return resu
+    
+    def __mul__(self, rel2):
+        return self.join(rel2)
 
     def proj(self, *sort):
         assert all(s in self.sort for s in sort)
@@ -91,11 +94,17 @@ class RELATION:
         resu.table = table
         return resu
     
+    def p(self, *sort):
+        return self.proj(*sort)
+    
     def select(self, f):
         resu = RELATION(*self.sort)
         table = [NUPLET(resu, t) for t in self.table if f(t)]
         resu.table = table
         return resu
+    
+    def s(self, f):
+        return self.select(f)
     
     def join(self, rel2):
         sort2 = rel2.sort

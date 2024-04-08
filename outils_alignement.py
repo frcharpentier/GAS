@@ -336,6 +336,93 @@ class DICO_ENUM:
             
 #DICO_rel = DICO_ENUM(["{nihil}", "{solidus}", "{quaedam}", "{idem}"])
 
+class GRAPHE_PHRASE_2:
+    def __init__(self, amr):
+        self.amr = amr
+        self.id = amr.id
+        self.mots = amr.tokens #À changer ultérieurement
+        self.tokens = amr.tokens #À changer ultérieurement
+        self.setSommets = set()
+        self.setTokens = set()
+
+        self.SG_mg = None
+        self.SG_sg = None
+        self.DSG_mg = None
+        self.DSG_sg = None
+        self.REN_mg = None
+        self.REN_ag = None
+        
+        self.N = len(self.tokens)
+        #self.aretes = dict()
+
+    def ajouter_alig_sous_graphe(self, rel_tok_grp, rel_sg_grp):
+        assert rel_tok_grp.sort == ("mot", "groupe")
+        assert rel_sg_grp.sort == ("sommet", "groupe")
+
+        for (m, _) in rel_tok_grp.enum():
+            self.setTokens.add(m)
+
+        for (s, _) in rel_sg_grp.enum():
+            self.setSommets.add(s)
+
+        if self.SG_mg:
+            self.SG_mg = self.SG_mg + rel_tok_grp
+        else:
+            self.SG_mg = rel_tok_grp
+
+        if self.SG_sg:
+            self.SG_sg = self.SG_sg + rel_sg_grp
+        else:
+            self.SG_sg = rel_sg_grp
+
+    def ajouter_alig_reent(self, rel_tok_grp, rel_arc_grp):
+        if self.REN_mg:
+            self.REN_mg = self.REN_mg + rel_tok_grp
+        else:
+            self.REN_mg = rel_tok_grp
+        if self.REN_ag:
+            self.REN_ag = self.REN_ag + rel_arc_grp
+        else:
+            self.REN_ag = rel_arc_grp
+
+    def calculer_graphe_toks(self):
+        #calcul des relations {groupe}
+        rel_tok_grp = self.SG_mg + self.REN_mg.p("mot", "groupe")
+        groupes = (rel_tok_grp.ren("mot_s", "groupe") * (rel_tok_grp.ren("mot_c", "groupe"))).p("mot_s", "mot_c")
+        groupes = groupes.s(lambda x: x.mot_s != x.mot_c)
+        groupes = groupes * (RELATION("rel_redir").add("{groupe}"))
+        
+        #calcul des relations {idem}
+        rel
+
+    def hasToken(self, tok):
+        return tok in self.setTokens
+    
+    def hasAnyToken(self, toks):
+        if type(toks) is int:
+            return self.hasToken(toks)
+        return any(t in self.setTokens for t in toks)
+    
+    def hasAllTokens(self, toks):
+        if type(toks) is int:
+            return self.hasToken(toks)
+        return all(t in self.setTokens for t in toks)
+    
+    def hasNode(self, nd):
+        nd = self.amr.isi_node_mapping[nd]
+        return nd in self.setSommets
+    
+    def hasAnyNode(self, nds):
+        if type(nds) is str:
+            return self.hasNode(nds)
+        return any(self.amr.isi_node_mapping[nd] in self.setSommets for nd in nds)
+    
+    def hasAllNodes(self, nds):
+        if type(nds) is str:
+            return self.hasNode(nds)
+        return all(self.amr.isi_node_mapping[nd] in self.setSommets for nd in nds)
+
+
 class GRAPHE_PHRASE:
     def __init__(self, amr):
         self.amr = amr
@@ -600,7 +687,7 @@ def traiter_reentrances_REL(graphe, REN_mg, REN_ag):
 
     #primaires = REL_ren.select(lambda x: x.type == "reentrancy:primary")
     anaphores_mg = REN_mg.select(lambda x: (x.type in autorises)).rmdup()
-    #anaphores_ag = REN_ag.select(lambda x: (x.type in autorises)).proj("cible", "type", "group").rmdup()
+    anaphores_ag = REN_ag.select(lambda x: (x.type in autorises)).proj("cible", "type", "groupe").rmdup()
     mots = anaphores_mg.proj("mot").rmdup()
     if len(mots) == 0:
         return REN_mg, REN_ag
@@ -621,6 +708,9 @@ def traiter_reentrances_REL(graphe, REN_mg, REN_ag):
 
     idG = 0
     for (g,) in groupes.enum():
+        sommets = anaphores_ag.select(lambda x: x.groupe == g).proj("cible")
+        assert len(sommets) == 1
+        som = list(s for (s,) in sommets.enum())[0]
         t_t = [t for (t,_,_) in anaphores_mg.select(lambda x: (x.groupe == g)).enum()]
         t_t.sort()
         assert all(s == 1+t_t[i] for i, s in enumerate(t_t[1:]))
@@ -635,7 +725,7 @@ def traiter_reentrances_REL(graphe, REN_mg, REN_ag):
             print("snt %s\nRépétition ou anaphore supplémentaire trouvée ! (%s)\n"%(graphe.id,ph))
             for t  in mtch:
                 ajout_mg.add(*[(t+k, "reentrancy:ajout", "Gaj%d"%idG) for k in range(ntt)])
-                ajout_ag.add(("_", "_", "_", "reentrancy:ajout", "Gaj%d"%idG))
+                ajout_ag.add(("_", "%s"%som, "_", "reentrancy:ajout", "Gaj%d"%idG))
 
                 idG += 1
 
@@ -824,43 +914,24 @@ def construire_graphes():
                 ntoks = len(toks)
                 snt = amr.metadata["snt"]
 
-                graphe = GRAPHE_PHRASE(amr)
+                #graphe = GRAPHE_PHRASE(amr)
+                graphe = GRAPHE_PHRASE_2(amr)
                 #noeuds_dup = set()
 
                 SG_mg, SG_sg, DSG_mg, DSG_sg, REL_mg, REL_ag, REN_mg, REN_ag = transfo_aligs(listAlig, amr)
 
-                aligs_sg = [a for a in listAlig if a.type == "subgraph"]
-                aligs_dsg = [a for a in listAlig if a.type == "dupl-subgraph"]
-                aligs_rel = [a for a in listAlig if a.type == "relation"]
-                aligs_ren = [a for a in listAlig if a.type.startswith("reentrancy")]
-                
-                #if len(aligs_dsg) > 0:
                 if len(DSG_sg) > 0:
                     nb_amr_ssgrphes_dedoubles += 1
                     continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
 
-                if False:
-                    aligs_ren_dict = dict()
-                    for a in aligs_ren:
-                        nd = a.nodes
-                        ed = a.edges
-                        if len(ed) > 1:
-                            print("PAS NORMAL ! il y a %d arêtes"%len(ed))
-                        nd = ed[0][2]
-                        nd = amr.isi_node_mapping[nd]
-                        if nd in aligs_ren_dict:
-                            aligs_ren_dict[nd].append(a)
-                        else:
-                            aligs_ren_dict[nd] = [a]
-
+                      
+                #for a in aligs_sg:
+                #    graphe.grouper(a.tokens, a.nodes)
+                graphe.ajouter_alig_sous_graphe(SG_mg, SG_sg)
                 
-                for a in aligs_sg:
-                    graphe.grouper(a.tokens, a.nodes)
-                
-                if len(aligs_ren) > 0:
+                if len(DSG_mg) > 0:
                     nb_amr_reentrance += 1
 
-                #if any(comparer_reentrances(amr, nd, [a.edges[0] for a in l_alg]) == False for nd, l_alg in aligs_ren_dict.items()):
                 if any(comparer_reentrances_REL(amr_dic_rel["arcs"], nd, REN_ag) == False for (nd,) in REN_ag.proj("cible").rmdup().enum()):
                     nb_amr_erreurs_reentrances += 1
                     #Éliminons ces AMR problématiques
@@ -874,30 +945,18 @@ def construire_graphes():
                 if len(mentions) > 0:
                     nb_amr_anaphore += 1
                 
-                #anaphore = False
-                #for nd, l_alg in aligs_ren_dict.items():
-                #    mentions = [a for a in l_alg if a.type in autorises]
-                #    if len(mentions) > 0:
-                #        anaphore = True
+                REN_mg, REN_ag = traiter_reentrances_REL(graphe, REN_mg, REN_ag)
 
-                #if anaphore:
-                #    nb_amr_anaphore += 1
-                    
-                #traiter_reentrances(graphe, amr, aligs_ren_dict)
-                traiter_reentrances_REL(graphe, REN_mg, REN_ag)
+                graphe.ajouter_alig_reent(REN_mg, REN_ag)
                 
-                pbrel = False
-                for s,r,t in amr.edges_redir():
-                    fautes = graphe.relation(s,r,t)
-                    if fautes > 0:
-                        nb_pbs_relations += 1
-                        pbrel = True
-                        break
-                if pbrel:
+                gr_toks = graphe.calculer_graphe_toks()
+                if not gr_toks:
+                    nb_pbs_relations += 1
                     continue
                     
                 #Enregistrement du graphe dans le dico final
-                graphes_phrases.append(graphe)
+                #graphes_phrases.append(graphe)
+                graphes_phrases.append(gr_toks)
             except Exception as e:
                 print("Exception !")
                 print(e)
@@ -912,7 +971,7 @@ def construire_graphes():
     print()
     print("Nb d’AMR restants : %d"%len(graphes_phrases))
     print("Écriture dans le fichier...")
-    #ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases.txt")
+    #ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases_2.txt")
     print("TERMINÉ.")
             
 AMR_problematique = """
