@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
 from amr_utils.alignments import AMR_Alignment
-from algebre_relationnelle import RELATION
+from algebre_relationnelle import RELATION, transfo_AMR
 import os
 import sys
 import json
@@ -135,7 +135,8 @@ class ALIGNEUR:
         # Les tokens et les mots seront représentés par leur numéro d’ordre.
         resu = RELATION(("token", "mot"))
         
-        resu.add_1((0, -1)) #Le token [CLS] ne correspond à aucun mot
+        #resu.add_1((0, -1)) #Le token [CLS] ne correspond à aucun mot
+
         i = 1 #Numéro de token
         j = 0 #Numéro de mot
         cumulH = 0
@@ -181,7 +182,8 @@ class ALIGNEUR:
             j += cumulH
             cumulH = 0
             cumulV = 0
-        resu.add_1((i, -1)) #Le dernier token [SEP] ne correspond à aucun mot.
+
+        #resu.add_1((i, -1)) #Le dernier token [SEP] ne correspond à aucun mot.
 
         toksV = (self.tok1,) + tuple(toksV) + (self.tokn,)
         return resu, list(toksV)
@@ -337,6 +339,7 @@ class DICO_ENUM:
 class GRAPHE_PHRASE:
     def __init__(self, amr):
         self.amr = amr
+        self.id = amr.id
         self.mots = amr.tokens #À changer ultérieurement
         self.tokens = amr.tokens #À changer ultérieurement
         self.dicNoeuds = dict()
@@ -555,6 +558,9 @@ def comparer_reentrances(amr, nd, edges):
     edges = [(amr.isi_node_mapping[s], r, amr.isi_node_mapping[t]) for s,r,t in edges]
     nd = amr.isi_node_mapping[nd]
     edgesR = [(amr.isi_node_mapping[s], r, nd) for s, r, t in amr.edges if amr.isi_node_mapping[t]==nd]
+    # edgesR contient tous les arcs de l’AMR dont la cible est nd.
+    # La fonction vérifie que cet ensemble d’arcs est bien celui passé en paramète.
+    # (Qui est l’ensemble des arcs de réentrance.)
     if not len(edgesR) == len(edges):
         return False
     if any(not e in edges for e in edgesR):
@@ -563,6 +569,17 @@ def comparer_reentrances(amr, nd, edges):
         return False
     return True
 
+def comparer_reentrances_REL(arcs_amr, nd, reentrances):
+    # le schéma de arcs_amr est ("source", "cible", "relation")
+    # le schéma de reentrances est ("source", "cible", "relation", "type", "groupe")
+    arcs_nd = arcs_amr.select(lambda x: x.cible == nd).rmdup()
+    reen = reentrances.proj("source", "cible", "relation").rmdup()
+    if not len(reen.table) == len(arcs_nd.table):
+        return False
+    if any(not e in arcs_nd.table for e in reen.table):
+        return False
+    if any(not e in reen.table for e in arcs_nd.table):
+        return False
 
 def find_sub_list(liste, morceau, indice=0):
     matches = []
@@ -571,6 +588,61 @@ def find_sub_list(liste, morceau, indice=0):
         if liste[i] == morceau[0] and liste[i:i+n] == morceau:
             matches.append(i)
     return matches
+
+def traiter_reentrances_REL(graphe, REN_mg, REN_ag):
+    if len(REN_ag) == 0:
+        return REN_mg, REN_ag
+    toks = graphe.tokens
+    toks_libres = [not graphe.hasToken(t) for t in range(graphe.N)]
+    liste_toks_libres = [toks[i] if v else "" for i, v in enumerate(toks_libres)]
+    autorises = ["reentrancy:repetition", "reentrancy:coref"] #, "reentrancy:primary"]
+    libres2 = [True] * graphe.N
+
+    #primaires = REL_ren.select(lambda x: x.type == "reentrancy:primary")
+    anaphores_mg = REN_mg.select(lambda x: (x.type in autorises)).rmdup()
+    #anaphores_ag = REN_ag.select(lambda x: (x.type in autorises)).proj("cible", "type", "group").rmdup()
+    mots = anaphores_mg.proj("mot").rmdup()
+    if len(mots) == 0:
+        return REN_mg, REN_ag
+
+    for (t,) in mots.enum():
+        if not toks_libres[t]:
+            raise AssertionError("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
+        libres2[t] = False
+
+    for i, vf in enumerate(libres2):
+        if not vf:
+            toks_libres[i] = False
+            liste_toks_libres[i] = ""
+
+    groupes = anaphores_mg.proj("groupe").rmdup()
+    ajout_mg = RELATION(*(REN_mg.sort))
+    ajout_ag = RELATION(*(REN_ag.sort))
+
+    idG = 0
+    for (g,) in groupes.enum():
+        t_t = [t for (t,_,_) in anaphores_mg.select(lambda x: (x.groupe == g)).enum()]
+        t_t.sort()
+        assert all(s == 1+t_t[i] for i, s in enumerate(t_t[1:]))
+
+        tt = [toks[t] for t in t_t]
+        ph = " ".join(tt)
+        if ph in [",", "person"]:
+            continue
+        ntt = len(tt)
+        mtch = find_sub_list(liste_toks_libres, tt)
+        if len(mtch) > 0:
+            print("snt %s\nRépétition ou anaphore supplémentaire trouvée ! (%s)\n"%(graphe.id,ph))
+            for t  in mtch:
+                ajout_mg.add(*[(t+k, "reentrancy:ajout", "Gaj%d"%idG) for k in range(ntt)])
+                ajout_ag.add(("_", "_", "_", "reentrancy:ajout", "Gaj%d"%idG))
+
+                idG += 1
+
+    if len(ajout_ag) > 0: 
+        REN_mg = REN_mg + ajout_mg
+        REN_ag = REN_ag + ajout_ag
+    return REN_mg, REN_ag
 
 def traiter_reentrances(graphe, amr, aligs_ren_dict):
     toks = amr.tokens
@@ -600,6 +672,8 @@ def traiter_reentrances(graphe, amr, aligs_ren_dict):
         if not vf:
             toks_libres[i] = False
             liste_toks_libres[i] = ""
+
+
     for nd, l_alg in aligs_ren_dict.items():
         anaphores = [a for a in l_alg if a.type in autorises]
         toks_anaphores = set(tuple(a.tokens) for a in anaphores)
@@ -634,6 +708,42 @@ def ecrire_structure_dans_fichier(graphes, fichier):
             print(file=F)
 
 
+def transfo_aligs(listAlig, amr):
+    SG_mg = RELATION("mot", "groupe")
+    SG_sg = RELATION("sommet", "groupe")
+    DSG_mg = RELATION("mot", "groupe")
+    DSG_sg = RELATION("sommet", "groupe")
+    REL_mg = RELATION("mot", "groupe")
+    REL_ag = RELATION("source", "cible", "relation", "groupe")
+    REN_mg = RELATION("mot", "type", "groupe")
+    REN_ag = RELATION("source", "cible", "relation", "type", "groupe")
+
+    idSG = 0
+    idDSG = 0
+    idREL = 0
+    idREN = 0
+    for a in listAlig:
+        if a.type == "subgraph":
+            SG_mg.add(*[(mot, "G%d"%idSG) for mot in a.tokens])
+            SG_sg.add(*[(sommet, "G%d"%idSG) for sommet in a.nodes])
+            idSG += 1
+        elif a.type == "dupl-subgraph":
+            DSG_mg.add(*[(mot, "G%d"%idDSG) for mot in a.tokens])
+            DSG_sg.add(*[(sommet, "G%d"%idDSG) for sommet in a.nodes])
+            idDSG += 1
+        elif a.type == "relation":
+            REL_mg.add(*[(mot, "G%d"%idREL) for mot in a.tokens])
+            REL_ag.add(*[(amr.isi_node_mapping[s], amr.isi_node_mapping[c], r, "G%d"%idREL) for s,r,c in a.edges])
+            idREL += 1
+        elif a.type.startswith("reentrancy"):
+            REN_mg.add(*[(mot, a.type, "G%d"%idREN) for mot in a.tokens])
+            REN_ag.add(*[(amr.isi_node_mapping[s], amr.isi_node_mapping[c], r, a.type, "G%d"%idREN) for s,r,c in a.edges])
+            idREN += 1
+
+    return SG_mg, SG_sg, DSG_mg, DSG_sg, REL_mg, REL_ag, REN_mg, REN_ag
+
+
+
 def construire_graphes():
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
     fichier_sous_graphes = prefixe_alignements + "subgraph_alignments.json"
@@ -647,6 +757,7 @@ def construire_graphes():
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
 
     fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    fichiers_amr = fichiers_amr[0:1]
 
     reader = AMR_Reader()
     amr_liste = []
@@ -708,33 +819,39 @@ def construire_graphes():
         for idSNT, listAlig in alignements.items():
             try:
                 amr = listAlig[0].amr  #amr_dict[idSNT]
+                amr_dic_rel = transfo_AMR(amr)
                 toks = amr.tokens
                 ntoks = len(toks)
                 snt = amr.metadata["snt"]
 
                 graphe = GRAPHE_PHRASE(amr)
                 #noeuds_dup = set()
+
+                SG_mg, SG_sg, DSG_mg, DSG_sg, REL_mg, REL_ag, REN_mg, REN_ag = transfo_aligs(listAlig, amr)
+
                 aligs_sg = [a for a in listAlig if a.type == "subgraph"]
                 aligs_dsg = [a for a in listAlig if a.type == "dupl-subgraph"]
                 aligs_rel = [a for a in listAlig if a.type == "relation"]
                 aligs_ren = [a for a in listAlig if a.type.startswith("reentrancy")]
                 
-                if len(aligs_dsg) > 0:
+                #if len(aligs_dsg) > 0:
+                if len(DSG_sg) > 0:
                     nb_amr_ssgrphes_dedoubles += 1
                     continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
 
-                aligs_ren_dict = dict()
-                for a in aligs_ren:
-                    nd = a.nodes
-                    ed = a.edges
-                    if len(ed) > 1:
-                        print("PAS NORMAL ! il y a %d arêtes"%len(ed))
-                    nd = ed[0][2]
-                    nd = amr.isi_node_mapping[nd]
-                    if nd in aligs_ren_dict:
-                        aligs_ren_dict[nd].append(a)
-                    else:
-                        aligs_ren_dict[nd] = [a]
+                if False:
+                    aligs_ren_dict = dict()
+                    for a in aligs_ren:
+                        nd = a.nodes
+                        ed = a.edges
+                        if len(ed) > 1:
+                            print("PAS NORMAL ! il y a %d arêtes"%len(ed))
+                        nd = ed[0][2]
+                        nd = amr.isi_node_mapping[nd]
+                        if nd in aligs_ren_dict:
+                            aligs_ren_dict[nd].append(a)
+                        else:
+                            aligs_ren_dict[nd] = [a]
 
                 
                 for a in aligs_sg:
@@ -742,23 +859,32 @@ def construire_graphes():
                 
                 if len(aligs_ren) > 0:
                     nb_amr_reentrance += 1
-                if any(comparer_reentrances(amr, nd, [a.edges[0] for a in l_alg]) == False for nd, l_alg in aligs_ren_dict.items()):
+
+                #if any(comparer_reentrances(amr, nd, [a.edges[0] for a in l_alg]) == False for nd, l_alg in aligs_ren_dict.items()):
+                if any(comparer_reentrances_REL(amr_dic_rel["arcs"], nd, REN_ag) == False for (nd,) in REN_ag.proj("cible").rmdup().enum()):
                     nb_amr_erreurs_reentrances += 1
                     #Éliminons ces AMR problématiques
                     continue
 
-                autorises = ["reentrancy:repetition", "reentrancy:coref"] #"reentrancy:primary"]
-                anaphore = False
-                
-                for nd, l_alg in aligs_ren_dict.items():
-                    mentions = [a for a in l_alg if a.type in autorises]
-                    if len(mentions) > 0:
-                        anaphore = True
 
-                if anaphore:
+                autorises = ["reentrancy:repetition", "reentrancy:coref"] #"reentrancy:primary"]
+                
+                
+                mentions = REN_ag.select(lambda x: (x.type in autorises))
+                if len(mentions) > 0:
                     nb_amr_anaphore += 1
+                
+                #anaphore = False
+                #for nd, l_alg in aligs_ren_dict.items():
+                #    mentions = [a for a in l_alg if a.type in autorises]
+                #    if len(mentions) > 0:
+                #        anaphore = True
+
+                #if anaphore:
+                #    nb_amr_anaphore += 1
                     
-                traiter_reentrances(graphe, amr, aligs_ren_dict)
+                #traiter_reentrances(graphe, amr, aligs_ren_dict)
+                traiter_reentrances_REL(graphe, REN_mg, REN_ag)
                 
                 pbrel = False
                 for s,r,t in amr.edges_redir():
@@ -786,7 +912,7 @@ def construire_graphes():
     print()
     print("Nb d’AMR restants : %d"%len(graphes_phrases))
     print("Écriture dans le fichier...")
-    ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases.txt")
+    #ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases.txt")
     print("TERMINÉ.")
             
 AMR_problematique = """
