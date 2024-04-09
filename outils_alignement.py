@@ -336,7 +336,7 @@ class DICO_ENUM:
             
 #DICO_rel = DICO_ENUM(["{nihil}", "{solidus}", "{quaedam}", "{idem}"])
 
-class GRAPHE_PHRASE_2:
+class GRAPHE_PHRASE:
     def __init__(self, amr):
         self.amr = amr
         self.id = amr.id
@@ -415,15 +415,18 @@ class GRAPHE_PHRASE_2:
     def verifier_reentrance(self):
         # le schéma de self.amr_arcs est ("source", "cible", "relation")
         # le schéma de self.REN_ag est ("source", "cible", "relation", "type", "groupe")
-        for (nd,) in self.REN_ag.proj("cible").rmdup().enum():
-            arcs_nd = self.amr_arcs.select(lambda x: x.cible == nd).rmdup()
-            reen = self.REN_ag.proj("source", "cible", "relation").rmdup()
-            if not len(reen.table) == len(arcs_nd.table):
-                return False
-            if any(not e in arcs_nd.table for e in reen.table):
-                return False
-            if any(not e in reen.table for e in arcs_nd.table):
-                return False
+        reen = self.REN_ag.proj("source", "cible", "relation")
+        liste_ = [nd for (nd,) in reen.proj("cible").enum()]
+        
+        arcs_nd = self.amr_arcs.select(lambda x: x.cible in liste_)
+        
+        if not len(reen) == len(arcs_nd):
+            return False
+        if any(not e in arcs_nd.table for e in reen.table):
+            return False
+        if any(not e in reen.table for e in arcs_nd.table):
+            return False
+        
         return True
 
 
@@ -440,8 +443,8 @@ class GRAPHE_PHRASE_2:
         libres2 = [True] * self.N
 
         #primaires = REL_ren.select(lambda x: x.type == "reentrancy:primary")
-        self.anaphores_mg = self.REN_mg.select(lambda x: (x.type in autorises)).rmdup()
-        self.anaphores_ag = self.REN_ag.select(lambda x: (x.type in autorises)).proj("cible", "type", "groupe").rmdup()
+        self.anaphores_mg = self.REN_mg.select(lambda x: (x.type in autorises))
+        self.anaphores_ag = self.REN_ag.select(lambda x: (x.type in autorises))#.proj("cible", "type", "groupe").rmdup()
         mots = self.anaphores_mg.proj("mot").rmdup()
         if len(mots) == 0:
             return
@@ -562,189 +565,6 @@ class GRAPHE_PHRASE_2:
         jsn = json.dumps(jsn)
         return jsn
 
-
-
-class GRAPHE_PHRASE:
-    def __init__(self, amr):
-        self.amr = amr
-        self.id = amr.id
-        self.mots = amr.tokens #À changer ultérieurement
-        self.tokens = amr.tokens #À changer ultérieurement
-        self.dicNoeuds = dict()
-        self.dicTokens = dict()
-        
-        # dicNoeuds est un dico dont les clés sont des sommets de l’AMR et les valeurs
-        # sont des (numéro de mot, mot in extenso) dans la phrase.
-        # dicTokens est un dico dont les clés sont des numéros de tokens dans la phrase
-        # et les valeurs sont des numéros de sommets dans l’AMR.
-        self.N = len(self.tokens)
-        self.aretes = dict()
-
-    def grouper(self, tokens, ndsAMR):
-        # tokens est un entier ou une liste d’entier,
-        # ndsAMR est une chaine ou une liste de chaines
-        if type(tokens) is int:
-            tokens = [tokens]
-        if type(ndsAMR) is str:
-            ndsAMR = [ndsAMR]
-        ndsAMR = [self.amr.isi_node_mapping[n] for n in ndsAMR]
-        for i in tokens:
-            for j in tokens:
-                if j != i:
-                    if not (i,j) in self.aretes:
-                        self.aretes[(i,j)] = "{groupe}"
-            if not i in self.dicTokens:
-                self.dicTokens[i] = [n for n in ndsAMR]
-            else:
-                self.dicTokens[i].extend(ndsAMR)
-        for nd in ndsAMR:
-            if not nd in self.dicNoeuds:
-                self.dicNoeuds[nd] = [i for i in tokens]
-            else:
-                self.dicNoeuds[nd].extend(tokens)
-
-    def sous_graphe_aligne(self, N):
-        N = self.amr.isi_node_mapping[N]
-        assert N in self.dicNoeuds, "Noeud non aligné encore !"
-        tok = self.dicNoeuds[N][0]
-        return self.dicTokens[tok]
-
-
-    def idem(self, tokens, N2):
-        # tokens est un entier ou une liste d’entier,
-        # N2 est  un noeud AMR
-        if type(tokens) is int:
-            tokens = [tokens]
-        else:
-            assert type(tokens) in [list, tuple]
-        sgN2 = self.sous_graphe_aligne(N2)
-        self.grouper(tokens, sgN2)
-        for i in tokens:
-            for j in self.dicNoeuds[N2]:
-                if i != j:
-                    if not (i,j) in self.aretes:
-                        self.aretes[(i,j)] = "{idem}"
-                    if not (j,i) in self.aretes:
-                        self.aretes[(j,i)] = "{idem}"
-
-    def relation(self, S, rel, C):
-        fautes = 0
-        S = self.amr.isi_node_mapping[S]
-        C = self.amr.isi_node_mapping[C]
-        sgS = self.sous_graphe_aligne(S)
-        sgC = self.sous_graphe_aligne(C)
-        if C in sgS or S in sgC:
-            # Arête interne à un sous-graphe aligné
-            # Ne pas poursuivre
-            return 0
-        for i in self.dicNoeuds[S]:
-            for j in self.dicNoeuds[C]:
-                if i != j:
-                    #assert not (i,j) in self.aretes
-                    if (i,j) in self.aretes:
-                        print("Il existe déjà une arête ! (%d, %d) %s"%(i,j,self.amr.id))
-                        fautes += 1
-                    self.aretes[(i,j)] = rel
-        return fautes
-            
-    def hasToken(self, tok):
-        return tok in self.dicTokens
-    
-    def hasAnyToken(self, toks):
-        if type(toks) is int:
-            return self.hasToken(toks)
-        return any(t in self.dicTokens for t in toks)
-    
-    def hasAllTokens(self, toks):
-        if type(toks) is int:
-            return self.hasToken(toks)
-        return all(t in self.dicTokens for t in toks)
-
-    def hasNode(self, nd):
-        nd = self.amr.isi_node_mapping[nd]
-        return nd in self.dicNoeuds
-    
-    def hasAnyNode(self, nds):
-        if type(nds) is str:
-            return self.hasNode(nds)
-        return any(self.amr.isi_node_mapping[nd] in self.dicNoeuds for nd in nds)
-    
-    def hasAllNodes(self, nds):
-        if type(nds) is str:
-            return self.hasNode(nds)
-        return all(self.amr.isi_node_mapping[nd] in self.dicNoeuds for nd in nds)
-    
-    def calculer_groupes(self, simple=True):
-        aretes = [k for k, v in self.aretes.items() if v == "{groupe}"]
-        for i,j in aretes:
-            assert (j,i) in aretes
-        aretes = [(i,j) for (i,j) in aretes if i<j]
-        #chaque sommet reçoit une couleur différente au départ
-        
-        N = len(self.tokens)
-        if simple:
-            #Le groupe zéro contient tous les tokens alignés à rien.
-            couleurs = [0]*N
-            g = 1
-            for i in range(len(self.tokens)):
-                if i in self.dicTokens:
-                    couleurs[i] = g
-                    g +=1
-        else:
-            #sinon, les tokens non alignés ont chacun leur groupe
-            #individuel
-            couleurs = [g for g in range(N)]
-
-        #réduction des couleurs:
-        for s,c in aretes:
-            if couleurs[s] != couleurs[c]:
-                cs = couleurs[s]
-                cc = couleurs[c]
-                if cc < cs:
-                    cs, cc = cc, cs
-                for i, k in enumerate(couleurs):
-                    if k == cc:
-                        couleurs[i] = cs
-        groupes = dict()
-        for i,g in enumerate(couleurs):
-            if not g in groupes:
-                groupes[g] = (i,)
-            else:
-                groupes[g] += (i,)
-        if simple:
-            groupes = [tuple(sorted(v)) for g, v in groupes.items() if g>0]
-            #Éliminer le groupe des tokens alignés à rien
-        else:
-            groupes = [tuple(sorted(v)) for g, v in groupes.items()]
-        grpTok = [[self.tokens[i] for i in g] for g in groupes]
-
-        return groupes, grpTok, couleurs
-    
-    def serialiser(self):
-        jsn = dict()
-        #jsn["mots"] = self.mots
-        jsn["tokens"] = self.tokens
-        N = len(self.tokens)
-        sommets = [i for i in range(N) if self.hasToken(i)]
-        NS = len(sommets)
-        corresp = [None]*N
-        for i, s in enumerate(sommets):
-            corresp[s] = i
-        dictok = [self.dicTokens[sommets[i]] for i in range(NS)]
-        aretes = []
-        for (i,j), v in self.aretes.items():
-            i,j = corresp[i], corresp[j] 
-            aretes.append((i,v,j))
-        jsn["sommets"] = sommets
-        jsn["dicTokens"] = dictok
-        jsn["aretes"] = aretes
-        jsn = json.dumps(jsn)
-        return jsn
-        
-            
-
-
-
 def compter_compos_connexes(aretes_):
     if len(aretes_) == 0:
         return 0
@@ -807,58 +627,7 @@ def find_sub_list(liste, morceau, indice=0):
             matches.append(i)
     return matches
 
-def traiter_reentrances(graphe, amr, aligs_ren_dict):
-    toks = amr.tokens
-    toks_libres = [not graphe.hasToken(t) for t in range(graphe.N)]
-    liste_toks_libres = [toks[i] if v else "" for i, v in enumerate(toks_libres)]
-    autorises = ["reentrancy:repetition", "reentrancy:coref"] #, "reentrancy:primary"]
-    libres2 = [True] * graphe.N
-    anadico = {nd : [] for nd in aligs_ren_dict}
-    for nd, l_alg in aligs_ren_dict.items():
-        assert graphe.hasNode(nd) #Toujours le cas,
-        # sauf pour les AMR à sous-graphes dédoublés,
-        # mais on les a éliminés.
-        anaphores = [a for a in l_alg if a.type in autorises]
-        primary = [a for a in l_alg if a.type == "reentrancy:primary"]
-        assert len(primary) == 1, "Plus d’une réentrance primaire"
-        primary = primary[0]
-        toks_anaphores = set(tuple(a.tokens) for a in anaphores)
-        #if tuple(primary.tokens) in toks_anaphores:
-        #    raise AssertionError("les tokens de la réentrance primaire sont aussi des anaphores.")
-        for tt in toks_anaphores:
-            for t in tt:
-                if not toks_libres[t]:
-                    raise AssertionError("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
-                libres2[t] = False
-            anadico[nd].append(tt) #anaphore à marquer plus tard
-    for i, vf in enumerate(libres2):
-        if not vf:
-            toks_libres[i] = False
-            liste_toks_libres[i] = ""
-
-
-    for nd, l_alg in aligs_ren_dict.items():
-        anaphores = [a for a in l_alg if a.type in autorises]
-        toks_anaphores = set(tuple(a.tokens) for a in anaphores)
-        for tt in toks_anaphores:
-            ttt = [toks[t] for t in tt]
-            ph = " ".join(ttt)
-            if ph in [",", "person"]:
-                continue
-            nttt = len(ttt)
-            mtch = find_sub_list(liste_toks_libres, ttt)
-            if len(mtch) > 0:
-                print("snt %s\nRépétition ou anaphore supplémentaire trouvée ! (%s)\n"%(amr.id,ph))
-                for t  in mtch:
-                    anadico[nd].append(list(range(t, t+nttt)))
-    # Marquons maintenant les anaphores :
-    for nd, ttt in anadico.items():
-        if len(ttt) > 0:
-            for tt in ttt:
-                graphe.idem(tt, nd)
-    return len(anadico)
-
-                
+               
         
 
 def ecrire_structure_dans_fichier(graphes, fichier):
@@ -866,7 +635,7 @@ def ecrire_structure_dans_fichier(graphes, fichier):
         for graphe in graphes:
             amr = graphe.amr
             print(amr.amr_string, file=F)
-            jsn = graphe.serialiser()
+            jsn = graphe.jsonifier()
             print(jsn, file=F)
             print(file=F)
 
@@ -886,7 +655,7 @@ def construire_graphes():
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
 
     fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
-    fichiers_amr = fichiers_amr[0:1]
+    #fichiers_amr = fichiers_amr[0:1]
 
     reader = AMR_Reader()
     amr_liste = []
@@ -953,7 +722,7 @@ def construire_graphes():
                 ntoks = len(toks)
                 snt = amr.metadata["snt"]
 
-                graphe = GRAPHE_PHRASE_2(amr)
+                graphe = GRAPHE_PHRASE(amr)
 
                 graphe.ajouter_aligs(listAlig)
 
@@ -984,7 +753,6 @@ def construire_graphes():
                     
                 #Enregistrement du graphe dans le dico final
                 #graphes_phrases.append(graphe)
-                jason = graphe.jsonifier()
                 graphes_phrases.append(graphe)
             except Exception as e:
                 print("Exception !")
@@ -1000,7 +768,7 @@ def construire_graphes():
     print()
     print("Nb d’AMR restants : %d"%len(graphes_phrases))
     print("Écriture dans le fichier...")
-    #ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases_2.txt")
+    ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases_2.txt")
     print("TERMINÉ.")
             
 AMR_problematique = """
