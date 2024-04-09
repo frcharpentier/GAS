@@ -90,8 +90,8 @@ class RELATION:
         assert all(s in self.sort for s in sort)
         resu = RELATION(*sort)
         indices = [self.sort.index(s) for s in sort]
-        table = [NUPLET(resu, (t[i] for i in indices)) for t in self.table]
-        resu.table = table
+        table = set(NUPLET(resu, (t[i] for i in indices)) for t in self.table)
+        resu.table = list(table)
         return resu
     
     def p(self, *sort):
@@ -135,28 +135,6 @@ class RELATION:
         return resu
     
 
-def transfo_AMR(amr):
-    sommets = RELATION("sommet", "variable", "constante")
-    arcs = RELATION("source", "cible", "relation")
-    arcs_redir = RELATION("source", "cible", "rel_redir")
-
-    for k, v in amr.nodes.items():
-        if k in amr.variables:
-            sommets.add((amr.isi_node_mapping[k], v, None))
-        else:
-            sommets.add((amr.isi_node_mapping[k], None, v))
-
-    for s, r, t in amr.edges:
-        s = amr.isi_node_mapping[s]
-        t = amr.isi_node_mapping[t]
-        arcs.add((s, t, r))
-
-    for s, r, t in amr.edges_redir():
-        s = amr.isi_node_mapping[s]
-        t = amr.isi_node_mapping[t]
-        arcs.add((s, t, r))
-
-    return {"sommets":sommets, "arcs": arcs, "arcs_redir": arcs_redir}
 
     
 def test2():
@@ -209,5 +187,36 @@ def test1():
 
     print(rel.select(lambda x: x.sommet == "s2").table)
 
+
+def test3():
+    SG_mg = RELATION("mot", "groupe")
+    SG_sg = RELATION("sommet", "groupe")
+    REN_mg = RELATION("mot", "type", "groupe")
+    REN_ag = RELATION("cible", "type", "groupe")
+
+    SG_mg.add(("Jean", "G1"),("Valjean", "G1"),("était", "G2"),
+              ("gentil", "G3"),
+              ("etait", "G5"), ("bon", "G6"))
+    
+    SG_sg.add(("S1", "G1"), ("S2","G1"), ("S3","G2"),
+              ("S4", "G3"), ("S5", "G5"), ("S6", "G6"))
+    
+    REN_mg.add(("cet", "_", "G4"), ("homme", "_", "G4"))
+    REN_ag.add(("S1", "_", "G4"), ("S2", "_", "G4"))
+
+    rel1 = SG_mg + REN_mg.p("mot", "groupe")
+    rel2 = (rel1.ren("mot_s", "groupe") * (rel1.ren("mot_c", "groupe"))).p("mot_s", "mot_c")
+    rel2 = rel2.s(lambda x: x.mot_s != x.mot_c)
+    groupes = rel2 * (RELATION("rel").add(("{groupe}",)))
+
+    rel3 = SG_sg + (REN_ag.p("cible", "groupe").ren("sommet", "groupe"))
+    rel3 = (rel1 * rel3).ren("mot", "g1", "sommet")
+    rel3 = (rel3 * SG_sg).p("mot", "groupe")
+    rel4 = (rel3.ren("mot_s", "groupe") * rel3.ren("mot_c", "groupe")).p("mot_s", "mot_c")
+    rel4 = rel4.s(lambda x: x.mot_s != x.mot_c)
+    idems = (rel4-rel2)*(RELATION("rel").add(("{idem}", )))
+
+    print((groupes+idems).table)
+
 if __name__ == "__main__":
-    test2()                          
+    test3()                          
