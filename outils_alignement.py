@@ -500,10 +500,13 @@ class GRAPHE_PHRASE:
         for i, s in enumerate(sommets):
             corresp[s] = i
         dictok = [self.dicTokens[sommets[i]] for i in range(NS)]
+        for i in range(NS):
+            dictok[i].sort()
         aretes = []
         for (i,j), v in self.aretes.items():
             i,j = corresp[i], corresp[j] 
             aretes.append((i,v,j))
+        aretes.sort()
         jsn["sommets"] = sommets
         jsn["dicTokens"] = dictok
         jsn["aretes"] = aretes
@@ -786,7 +789,7 @@ def construire_graphes():
     print()
     print("Nb d’AMR restants : %d"%len(graphes_phrases))
     print("Écriture dans le fichier...")
-    ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases.txt")
+    ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases_1.txt")
     print("TERMINÉ.")
             
 AMR_problematique = """
