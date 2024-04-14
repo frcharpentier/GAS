@@ -72,7 +72,7 @@ class RELATION:
         resu = RELATION(*self.sort)
         table = [NUPLET(resu, t) for t in self.table]
         table.extend([NUPLET(resu, t) for t in rel2.table])
-        resu.table = table
+        resu.table = list(set(table))
         return resu
     
     def __sub__(self, rel2):
@@ -105,6 +105,13 @@ class RELATION:
     
     def s(self, f):
         return self.select(f)
+    
+    def index(self, col):
+        sort = (col,) + self.sort
+        resu = RELATION(*sort)
+        resu.add(*[(i,) + t in enumerate(set(T.t for T in self.table))])
+        return resu
+
     
     def join(self, rel2):
         sort2 = rel2.sort

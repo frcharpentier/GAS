@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
+from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
 from algebre_relationnelle import RELATION
 import os
@@ -23,9 +24,12 @@ AMR_Alignment.__repr__ = alig_to_string
 class ALIGNEUR:
     def __init__(self, nom_modele, ch_debut = "", ch_suite = "##", tok1 = None, tokn = None):
         # ch_debut est la chaine qui préfixe les tokens qui constituent le début d’un mot.
-        # généralement, il s’agit d’une chaine vide
+        # généralement, il s’agit d’une chaine vide. Pour RoBERTa, il s’agit de "Ġ" (bizarre)
         # ch_suite est la chaine qui préfixe les tokens qui consituent la suite d’un mot
-        # déjà commencé. Pour BERT, il s’agit de "##". Pour RoBERTa, il s’agit de "Ġ" (bizarre)
+        # déjà commencé. Pour BERT, il s’agit de "##"
+
+        assert len(ch_debut) == 0 or len(ch_suite)==0
+
         self.nom_modele = nom_modele
         self.ch_debut = ch_debut
         self.ch_suite = ch_suite
@@ -58,7 +62,16 @@ class ALIGNEUR:
         # toksH contient les tokens de l’AMR
         # phrase contient la phrase à faire tokeniser
 
-        toksV = toks_transformer = [self.tokenizer.decode(x).strip().lower() for x in self.tokenizer(phrase).input_ids]
+        toks_nums = [x for x in self.tokenizer(phrase).input_ids]
+        toks_transformer = self.tokenizer.convert_ids_to_tokens(toks_nums)
+        if len(self.ch_debut) == 0 and len(self.ch_suite) > 0:
+            lpf = len(self.ch_suite)
+            toks_transformer = ["¤"+x[lpf:] if x.startswith(self.ch_suite) else x for x in toks_transformer]
+        elif len(self.ch_debut) > 0 and len(self.ch_suite) == 0:
+            lpf = len(self.ch_debut)
+            toks_transformer = [x[lpf:] if x.startswith(self.ch_debut) else "¤"+x for x in toks_transformer]
+
+        toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
         assert toksV[0] == self.tok1
         assert toksV[-1] == self.tokn
         toksV = toksV[1:-1] #Éliminons les tokens CLS et SEP. (On les remettra par la suite.)
@@ -96,7 +109,7 @@ class ALIGNEUR:
                     posV2, posH2 = posV+mvt0, posH+1
                     if not (posV2, posH2) in visites:
                         if (posV2, posH2) in front:
-                            cout0, mvt0 = front[(posV2, posH2)]
+                            cout0, _ = front[(posV2, posH2)]
                             if cout0 > cout+0:
                                 front[(posV2, posH2)] = (cout, (1,mvt0))
                         else:
@@ -131,16 +144,18 @@ class ALIGNEUR:
 
         # On connaît le cheminement optimal dans la grille.
         # déduisons-en un alignement de la chaine toksH vers la chaine toksV
-        # On représentera cet alignement sous forme d’une relation de sorte("token", "mot")
-        # Les tokens et les mots seront représentés par leur numéro d’ordre.
-        resu = RELATION(("token", "mot"))
+        # On représentera cet alignement sous forme de deux relation.
+        # Une relation de schéma("token", "groupe") et une autre de schéma
+        # ("mot", "groupe"). Les tokens et les mots seront représentés par
+        # leur numéro d’ordre.
+        rel_tg = RELATION("token", "groupe")
+        rel_mg = RELATION("mot", "groupe")
         
-        #resu.add_1((0, -1)) #Le token [CLS] ne correspond à aucun mot
-
         i = 1 #Numéro de token
         j = 0 #Numéro de mot
         cumulH = 0
         cumulV = 0
+        NG = 0 #Numéro de groupe pour l’alignement
         
         for H, V in chem:
             if H==0 or V==0:
@@ -151,42 +166,42 @@ class ALIGNEUR:
                 if cumulH > 0 or cumulV > 0:
                     if cumulH == cumulV:
                         #distribuons un token pour un mot
-                        resu.add_n([(i+k, j+k) for k in range(cumulV)])
+                        rel_tg.add(*[(i+k, NG+k) for k in range(cumulV)])
+                        rel_mg.add(*[(j+k, NG+k) for k in range(cumulH)])
+                        NG += cumulV
                     elif cumulH > 0:
                         #alignons l’ensemble des tokens sautés sur l’ensemble des mots sautés
-                        for l in range(cumulH):
-                            resu.add_n([(i+k, j+l) for k in range(cumulV)])
-                    else:
-                        #alignons l’ensemble des tokens sautés sur le vide.
-                        resu.add_n([(i+k, -1) for k in range(cumulV)])
+                        rel_tg.add(*[(i+k, NG) for k in range(cumulV)])
+                        rel_mg.add(*[(j+k, NG) for k in range(cumulH)])
+                        NG += 1
                     i += cumulV
                     j += cumulH
                     cumulH = 0
                     cumulV = 0
                 assert H == 1
-                resu.add_n([(i+k, j) for k in range(V)])
+                rel_tg.add(*[(i+k, NG) for k in range(V)])
+                rel_mg.add((j, NG))
                 i += V
                 j += 1
+                NG += 1
         if cumulH > 0 or cumulV > 0:
             if cumulH == cumulV:
                 #distribuons un token pour un mot
-                resu.add_n([(i+k, j+k) for k in range(cumulV)])
+                rel_tg.add(*[(i+k, NG+k) for k in range(cumulV)])
+                rel_mg.add(*[(j+k, NG+k) for k in range(cumulH)])
+                NG += cumulV
             elif cumulH > 0:
                 #alignons l’ensemble des tokens sautés sur l’ensemble des mots sautés
-                for l in range(cumulH):
-                    resu.add_n([(i+k, j+l) for k in range(cumulV)])
-            else:
-                #alignons l’ensemble des tokens sautés sur le vide.
-                resu.add_n([(i+k, -1) for k in range(cumulV)])
+                rel_tg.add(*[(i+k, NG) for k in range(cumulV)])
+                rel_mg.add(*[(j+k, NG) for k in range(cumulH)])
+                NG += 1
             i += cumulV
             j += cumulH
             cumulH = 0
             cumulV = 0
 
-        #resu.add_1((i, -1)) #Le dernier token [SEP] ne correspond à aucun mot.
-
         toksV = (self.tok1,) + tuple(toksV) + (self.tokn,)
-        return resu, list(toksV)
+        return rel_tg, rel_mg, toks_transformer
 
         
 
@@ -382,35 +397,100 @@ class GRAPHE_PHRASE:
         self.amr_arcs = arcs
         self.amr_arcs_redir = arcs_redir
 
-    def ajouter_aligs(self, listAlig):
-        self.SG_mg = RELATION("mot", "groupe")
-        self.SG_sg = RELATION("sommet", "groupe")
-        self.DSG_mg = RELATION("mot", "groupe")
-        self.DSG_sg = RELATION("sommet", "groupe")
-        self.REL_mg = RELATION("mot", "groupe")
-        self.REL_ag = RELATION("source", "cible", "relation", "groupe")
-        self.REN_mg = RELATION("mot", "type", "groupe")
-        self.REN_ag = RELATION("source", "cible", "relation", "type", "groupe")
+    def ajouter_aligs(self, listAlig, toks_transfo=None, rel_tg=None, rel_mg=None):
+        SG_mG = RELATION("mot", "G")
+        SG_sG = RELATION("sommet", "G")
+        DSG_mG = RELATION("mot", "G")
+        DSG_sG = RELATION("sommet", "G")
+        REL_mG = RELATION("mot", "G")
+        REL_aG = RELATION("source", "cible", "relation", "G")
+        REN_mG = RELATION("mot", "type", "G")
+        REN_aG = RELATION("source", "cible", "relation", "type", "G")
 
         id_groupe = 0
         
         for a in listAlig:
             if a.type == "subgraph":
-                self.SG_mg.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
-                self.SG_sg.add(*[(sommet, "G%d"%id_groupe) for sommet in a.nodes])
+                SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                SG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
                 id_groupe += 1
             elif a.type == "dupl-subgraph":
-                self.DSG_mg.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
-                self.DSG_sg.add(*[(sommet, "G%d"%id_groupe) for sommet in a.nodes])
+                DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                DSG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
                 id_groupe += 1
             elif a.type == "relation":
-                self.REL_mg.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
-                self.REL_ag.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, "G%d"%id_groupe) for s,r,c in a.edges])
+                REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                REL_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, "G%d"%id_groupe) for s,r,c in a.edges])
                 id_groupe += 1
             elif a.type.startswith("reentrancy"):
-                self.REN_mg.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.tokens])
-                self.REN_ag.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, a.type, "G%d"%id_groupe) for s,r,c in a.edges])
+                REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.tokens])
+                REN_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, a.type, "G%d"%id_groupe) for s,r,c in a.edges])
                 id_groupe += 1
+
+        if toks_transfo is None:
+            self.SG_mg = SG_mG.ren("mot", "groupe")
+            self.SG_sg = SG_sG.ren("sommet", "groupe")
+            self.DSG_mg = DSG_mG.ren("mot", "groupe")
+            self.DSG_sg = DSG_sG.ren("sommet", "groupe")
+            self.REL_mg = REL_mG.ren("mot", "groupe")
+            self.REL_ag = REL_aG.ren("source", "cible", "relation", "groupe")
+            self.REN_mg = REN_mG.ren("mot", "type", "groupe")
+            self.REN_ag = REN_aG.ren("source", "cible", "relation", "type", "groupe")
+        else:
+            self.mots = self.tokens
+            self.tokens = toks_transfo
+            self.N = len(self.tokens)
+            rel_SG_gG = (rel_mg.ren("mot", "g") * SG_mG.ren("mot", "G")).p("g", "G")
+            rel_SG_gG = rel_SG_gG * RELATION("typ").add(("SG",))
+            rel_DSG_gG = (rel_mg.ren("mot", "g") * DSG_mG.ren("mot", "G")).p("g", "G")
+            rel_DSG_gG = rel_DSG_gG * RELATION("typ").add(("DSG",))
+            rel_REL_gG = (rel_mg.ren("mot", "g") * REL_mG.ren("mot", "G")).p("g", "G")
+            rel_REL_gG = rel_REL_gG * RELATION("typ").add(("REL",))
+            rel_REN_gG = (rel_mg.ren("mot", "g") * REN_mG.ren("mot", "type", "G")).p("g", "G")
+            rel_REN_gG = rel_REN_gG * RELATION("typ").add(("REN",))
+
+            rel_gG1 = rel_SG_gG + rel_DSG_gG
+            rel_gG = rel_gG1 + rel_REL_gG + rel_REN_gG
+            rel_GG = (rel_gG1.ren("g","G1","typ") * rel_gG1.ren("g","G2","typ")).p("G1","G2").s(lambda x: x.G1 <= x.G2)
+            rel_GG_sup = RELATION("G1", "G2")
+            rel_GG_sup.add(*[(G, G) for (G,) in rel_REL_gG.p("G").enum()])
+            rel_GG_sup.add(*[(G, G) for (G,) in rel_REN_gG.p("G").enum()])
+            rel_GG = rel_GG + rel_GG_sup
+
+            grps = [G for (G,) in rel_gG.p("G").enum()]
+            couleurs = {g : i for i, g in enumerate(grps)}
+            for G1, G2 in rel_GG.enum():
+                c1 = couleurs[G1]
+                c2 = couleurs[G2]
+                if c1 > c2:
+                    c1, c2 = c2, c1
+                if(c1 !=  c2):
+                    for G, c in couleurs.items():
+                        if c == c2:
+                            couleurs[G] = c1
+            rel_GH = RELATION("G", "H")
+            rel_GH.add(*[(G,"H%d"%H) for G,H in couleurs.items()])
+
+            
+            SG_tH = (rel_tg * rel_mg * SG_mG * rel_GH).p("token", "H")
+            DSG_tH = (rel_tg * rel_mg * DSG_mG * rel_GH).p("token", "H")
+            REL_tH = (rel_tg * rel_mg * REL_mG * rel_GH).p("token", "H")
+            REN_tH = (rel_tg * rel_mg * REN_mG * rel_GH).p("token", "type", "H")
+
+            SG_sH = (SG_sG * rel_GH).p("sommet", "H")
+            DSG_sH = (DSG_sG * rel_GH).p("sommet", "H")
+            REL_aH = (REL_aG * rel_GH).p("source", "cible", "relation", "H")
+            REN_aH = (REN_aG * rel_GH).p("source", "cible", "relation", "type", "H")
+
+            self.SG_mg = SG_tH.ren("mot", "groupe")
+            self.SG_sg = SG_sH.ren("sommet", "groupe")
+            self.DSG_mg = DSG_tH.ren("mot", "groupe")
+            self.DSG_sg = DSG_sH.ren("sommet", "groupe")
+            self.REL_mg = REL_tH.ren("mot", "groupe")
+            self.REL_ag = REL_aH.ren("source", "cible", "relation", "groupe")
+            self.REN_mg = REN_tH.ren("mot", "type", "groupe")
+            self.REN_ag = REN_aH.ren("source", "cible", "relation", "type", "groupe")
+            
 
     def verifier_reentrance(self):
         # le schéma de self.amr_arcs est ("source", "cible", "relation")
@@ -466,6 +546,8 @@ class GRAPHE_PHRASE:
         idG = 0
         for (g,) in groupes.enum():
             sommets = self.anaphores_ag.select(lambda x: x.groupe == g).proj("cible")
+            if not len(sommets) == 1:
+                pass
             assert len(sommets) == 1
             som = list(s for (s,) in sommets.enum())[0]
             t_t = [t for (t,_,_) in self.anaphores_mg.select(lambda x: (x.groupe == g)).enum()]
@@ -496,13 +578,14 @@ class GRAPHE_PHRASE:
         rels = self.amr_arcs_redir.ren("source", "cible", "rel")
         sgg = self.SG_sg.ren("source", "gr_s") * rels * self.SG_sg.ren("cible", "gr_c")
         sgg = sgg.p("gr_s", "gr_c", "rel").s(lambda x: x.gr_s != x.gr_c)
-        N = len(sgg)
-        if N > len(sgg.p("gr_s", "gr_c")):
-            # Si le cardinal diminue quand on enlève le type de
-            # relation sémantique, c’est qu’il y a plusieurs arêtes
-            # différentes entre deux sous-graphes.
-            # C’est un cas d’erreur.
-            return False
+        if False:
+            N = len(sgg)
+            if N > len(sgg.p("gr_s", "gr_c")):
+                # Si le cardinal diminue quand on enlève le type de
+                # relation sémantique, c’est qu’il y a plusieurs arêtes
+                # différentes entre deux sous-graphes.
+                # C’est un cas d’erreur.
+                return False
         
         #calcul des relations mot-mot (pour les mots alignés au même sous-graphe)
         rel1 = self.SG_mg + self.anaphores_mg.p("mot", "groupe")
@@ -518,6 +601,7 @@ class GRAPHE_PHRASE:
         #calcul du graphe amr de mots :
         gr_mots = rel3.ren("mot_s", "gr_s") * sgg * rel3.ren("mot_c", "gr_c")
         gr_mots = gr_mots.p("mot_s", "mot_c", "rel")
+        gr_mots = gr_mots.s(lambda x: x.mot_s != x.mot_c)
 
         #calcul de la relation mot-mot pour les anaphores.
         rel4 = (rel3.ren("mot_s", "groupe") * rel3.ren("mot_c", "groupe")).p("mot_s", "mot_c")
@@ -525,7 +609,37 @@ class GRAPHE_PHRASE:
         idem = (rel4-rel2)*(RELATION("rel").add(("{idem}", )))
 
         #relation finale:
-        self.graphe_toks = groupes + idem + gr_mots
+        graphe_toks = groupes + idem + gr_mots
+        #filtrage
+        dic_filtrage = dict()
+        sans_classement = set()
+        interdits = set()
+        for s,c,r in (groupes+idem).enum():
+            dic_filtrage[(s,c)] = r
+        for s,c,r in gr_mots.enum():
+            if ((s,c) in dic_filtrage) or ((c,s) in dic_filtrage):
+                interdits.add((s,c,r))
+                if (s,c) in dic_filtrage:
+                    interdits.add((s,c,dic_filtrage[(s,c)]))
+                if (c,s) in dic_filtrage:
+                    interdits.add((c,s,dic_filtrage[(c,s)]))
+                sans_classement.add((s,c,"{ne_pas_classer}"))
+                sans_classement.add((c,s,"{ne_pas_classer}"))
+        if len(interdits) > 0:
+            graphe_toks = graphe_toks.s(lambda x: x.t not in interdits)
+            graphe_toks.add(*list(sans_classement))
+            print("### %s "%self.amr.id)
+
+
+        if False:
+            N = len(graphe_toks)
+            if N > len(graphe_toks.p("mot_s", "mot_c")):
+                # Si le cardinal diminue quand on enlève le type de
+                # relation sémantique, c’est qu’il y a plusieurs arêtes
+                # différentes entre deux sous-graphes.
+                # C’est un cas d’erreur.
+                return False
+        self.graphe_toks = graphe_toks
         return True
     
     def jsonifier(self):
@@ -602,20 +716,6 @@ def compter_compos_connexes(aretes_):
     N = len(set(couleurs))
     return N
         
-def comparer_reentrances(amr, nd, edges):
-    edges = [(amr.isi_node_mapping[s], r, amr.isi_node_mapping[t]) for s,r,t in edges]
-    nd = amr.isi_node_mapping[nd]
-    edgesR = [(amr.isi_node_mapping[s], r, nd) for s, r, t in amr.edges if amr.isi_node_mapping[t]==nd]
-    # edgesR contient tous les arcs de l’AMR dont la cible est nd.
-    # La fonction vérifie que cet ensemble d’arcs est bien celui passé en paramète.
-    # (Qui est l’ensemble des arcs de réentrance.)
-    if not len(edgesR) == len(edges):
-        return False
-    if any(not e in edges for e in edgesR):
-        return False
-    if any(not e in edgesR for e in edges):
-        return False
-    return True
 
 
 
@@ -627,20 +727,51 @@ def find_sub_list(liste, morceau, indice=0):
             matches.append(i)
     return matches
 
-               
+
+def yield_prefix(nf):
+    etat = 0
+    lignes = []
+    with open(nf, "r", encoding="utf-8") as FICHIER:
+        for ligne in FICHIER:
+            ligne = ligne.strip()
+            if ligne.startswith("#"):
+                lignes.append(ligne)
+                etat = 1
+            elif etat == 1:
+                yield "\n".join(lignes)
+                lignes = []
+                etat = 2
+        if etat == 1:
+            yield "\n".join(lignes)
+            lignes = []
+
+def quick_read_amr_file(nom_fichier, dico_snt):
+    for pfx in yield_prefix(nom_fichier):
+        metadata, _ = Metadata_Parser.readlines(pfx)
+        if "id" in metadata and "snt" in metadata:
+            id = metadata["id"]
+            snt = metadata["snt"]
+            dico_snt[id] = snt
+    return dico_snt
+
+def amr_to_string(amr):
+    resu1 = [("id", amr.id)]
+    resu2 = []
+    for k, v in amr.metadata.items():
+        if k == "id":
+            pass
+        if k in ("tok", "snt", "alignments"):
+            resu2.append((k,v))
+        else:
+            resu1.append((k,v))
+    if not "tok" in amr.metadata and amr.tokens:
+        resu2.append(("tok", " ".join(amr.tokens)))
+    resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
+    resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
+    resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string 
+    return resu
+    
         
-
-def ecrire_structure_dans_fichier(graphes, fichier):
-    with open(fichier, "w", encoding="UTF-8") as F:
-        for graphe in graphes:
-            amr = graphe.amr
-            print(amr.amr_string, file=F)
-            jsn = graphe.jsonifier()
-            print(jsn, file=F)
-            print(file=F)
-
-
-
 
 def construire_graphes():
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
@@ -648,6 +779,7 @@ def construire_graphes():
     fichier_reentrances = prefixe_alignements + "reentrancy_alignments.json"
     fichier_relations = prefixe_alignements + "relation_alignments.json"
     amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+    snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
     doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
 
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
@@ -655,25 +787,34 @@ def construire_graphes():
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
 
     fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    fichiers_snt = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
     #fichiers_amr = fichiers_amr[0:1]
 
-    reader = AMR_Reader()
+    amr_reader = AMR_Reader()
+    aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
+
     amr_liste = []
     amr_dict = dict()
+    snt_dict = dict()
+
+    for sntfile in fichiers_snt:
+        snt_dict = quick_read_amr_file(sntfile, snt_dict)
 
     for amrfile in fichiers_amr:
         #print(amrfile)
-        listeG = [G for G in reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
+        listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
         amr_liste.extend(listeG)
         for graphe in listeG:
             amrid = graphe.id
-            if graphe.id == "PROXY_APW_ENG_20080515_0931.24":
-                pass
             amr_dict[graphe.id] = graphe
             assert hasattr(graphe, "tokens")
             if not "snt" in graphe.metadata:
-                toks = graphe.tokens
-                graphe.metadata["snt"] = " ".join(toks)
+                if amrid in snt_dict:
+                    graphe.metadata["snt"] = snt_dict[amrid]
+                else:
+                    toks = graphe.tokens
+                    graphe.metadata["snt"] = " ".join(toks)
+
             
 
 
@@ -706,30 +847,39 @@ def construire_graphes():
     nb_amr_ssgrphes_dedoubles = 0
     #nb_coref_probleme = 0
     nb_amr_erreurs_reentrances = 0
+    nb_exceptions_reentrances = 0
     nb_amr_reentrance = 0
     nb_amr_anaphore = 0
     nb_pbs_relations = 0
 
-    #with open("liste_problemes.txt", "w", encoding="UTF-8") as FFF:
-    if True:
-        FFF = sys.stdout
-        graphes_phrases = []
+    #graphes_phrases = []
+    limNgraphe = -1 #500
+    NgraphesEcrits = 0
+    with open("./AMR_et_graphes_phrases_2.txt", "w", encoding="UTF-8") as FF:
         for idSNT, listAlig in alignements.items():
             try:
                 amr = listAlig[0].amr  #amr_dict[idSNT]
                 #amr_dic_rel = transfo_AMR(amr)
-                toks = amr.tokens
-                ntoks = len(toks)
+                toks_amr = amr.tokens
+                ntoks = len(toks_amr)
                 snt = amr.metadata["snt"]
 
                 graphe = GRAPHE_PHRASE(amr)
+                if amr.id == "bolt12_10474_1831.9":
+                    pass
 
-                graphe.ajouter_aligs(listAlig)
+                if amr.id in snt_dict:
+                    #print(" ### %s"%amr.id)
+                    trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(toks_amr, snt_dict[amr.id])
+                    graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
+                else:
+                    graphe.ajouter_aligs(listAlig)
+                
 
                 if len(graphe.DSG_sg) > 0:
                     nb_amr_ssgrphes_dedoubles += 1
                     continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
-   
+
                 if len(graphe.REN_ag) > 0:
                     nb_amr_reentrance += 1
 
@@ -744,32 +894,43 @@ def construire_graphes():
                 if len(mentions) > 0:
                     nb_amr_anaphore += 1
                 
-                graphe.traiter_reentrances()
+                try:
+                    graphe.traiter_reentrances()
+                except AssertionError:
+                    nb_exceptions_reentrances += 1
+                    continue
                 
                 ok = graphe.calculer_graphe_toks()
                 if not ok:
                     nb_pbs_relations += 1
                     continue
-                    
-                #Enregistrement du graphe dans le dico final
-                #graphes_phrases.append(graphe)
-                graphes_phrases.append(graphe)
+
+                print(amr_to_string(amr), file=FF)
+                jsn = graphe.jsonifier()
+                print(jsn, file=FF)
+                print(file=FF)
+                NgraphesEcrits += 1
+                if limNgraphe > 0 and NgraphesEcrits > limNgraphe:
+                    break
+
+                
             except Exception as e:
                 print("Exception !")
                 print(e)
                 raise
+    print("TERMINÉ.")
+    print("Nombre d’AMR alignés au total : %d"%len(alignements))
     print("Nombres d’AMR à sous-graphes dédoublés : %d"%nb_amr_ssgrphes_dedoubles)
     #print("Nombres prbs dans les coréférences : %d"%nb_coref_probleme)
     print("Nombres d’AMR à réentrance : %d"%nb_amr_reentrance)
     print("Nombres d’AMR à anaphore : %d"%nb_amr_anaphore)
     print("Nombres d’AMR à erreurs dans les réentrances : %d"%nb_amr_erreurs_reentrances)
+    print("Nombres d’exceptions dans les réentrances : %d"%nb_exceptions_reentrances)
     print("Nombre de problèmes dans les relations : %d"%nb_pbs_relations)
     #print(str(set_Realigs))
     print()
-    print("Nb d’AMR restants : %d"%len(graphes_phrases))
-    print("Écriture dans le fichier...")
-    ecrire_structure_dans_fichier(graphes_phrases[:500], "./AMR_et_graphes_phrases_2.txt")
-    print("TERMINÉ.")
+    print("Nb d’AMR restants écrits: %d"%NgraphesEcrits)
+    
             
 AMR_problematique = """
 # ::id bolt12_6453_3271.7 ::date 2012-12-19T12:03:10 ::annotator SDL-AMR-09 ::preferred
@@ -795,11 +956,15 @@ def test_aligneur():
     #         "on", "hand", ",", "such", "that", "even", "if", "it", "is", "highly",
     #         "capable", ",", "it", "will", "n't", "last", "long", ",", "as", "it", 
     #         "will", "be", "dragged", "down", "by", "numerous", "petty", "things", "."]
-    phrase = "if Establishing it won't last long."
-    toksH = ["if", "Estab", "lishing", "it", "will", "n't", "last", "long"]
-    rel, toksV = aligneur.aligner_seq(toksH, phrase)
-    for t in rel.table:
-        tV, tH = t
+    #phrase = "if Establishing it won't last long."
+    phrase = "I am sure many of us are well aware of Samuel Huntington's \"Clash of Civilizations\" theory, that future conflict would be along cultural lines between \"West\", \"East\" and \"Confucian\" blocks, whatever they are."
+    #toksH = ["if", "Estab", "lishing", "it", "will", "n't", "last", "long"]
+    toksH = "I am sure many of us are well aware of Samuel Huntington 's \" Clash of Civilizations \" theory , that future conflict would be along cultural lines between \" West \" , \" East \" and \" Confucian \" blocks , whatever they are ."
+    toksH = toksH.split()
+    rel_tg, rel_mg, toksV = aligneur.aligner_seq(toksH, phrase)
+    aligs = [(v,h) for v,h in (rel_tg * rel_mg).p("token", "mot").enum()]
+    aligs.sort()
+    for tV, tH in aligs:
         if tV >= 0 and tV < len(toksV):
             tV = toksV[tV]
         else:

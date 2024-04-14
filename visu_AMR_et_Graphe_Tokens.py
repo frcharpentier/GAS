@@ -1,3 +1,4 @@
+import sys
 import pygraphviz as pgv
 import random
 import re
@@ -129,7 +130,8 @@ class RECHERCHE_AMR:
         return amr, jsn
 
     def alea(self):
-        idx = random.randint(0, self.N)
+        #print("self.N = %d"%self.N)
+        idx = random.randint(0, (self.N)-1)
         return self.__getitem__(idx)
 
 
@@ -206,21 +208,27 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
         clusters = tuple(tuple(sorted(C)) for C in clusters)
         clusters = list(set(clusters))
 
-        svg, _, dico_triplets = convert2graph(amr,
-                                variables=variables,
-                                voir_racine=voir_racine,
-                                reverse_roles=reverse_roles,
-                                return_edges=True,
-                                clusters = clusters)
+        G, prfx, dico_triplets = drawAMR(amr, variables, voir_racine, reverse_roles, clusters)
+        G = drawSentGraph(prfx, jsn["tokens"], jsn["sommets"], jsn["aretes"], G)
+
+        svg = grapheToSVG(amr, G)
+
+        #svg, _, dico_triplets = convert2graph(amr,
+        #                        variables=variables,
+        #                        voir_racine=voir_racine,
+        #                        reverse_roles=reverse_roles,
+        #                        return_edges=True,
+        #                        clusters = clusters)
         
-        prfx = PREFIXE.prfx
+        #prfx = PREFIXE.prfx
+        
         lprfx = len(prfx)
         jsn["prefixe"] = prfx
         dico_triplets = {k : v for k,v in dico_triplets.items() if k[0] != ":instance"}
         dico_triplets = [(v[0][lprfx:], v[1][lprfx:]) for v in dico_triplets.values()]
         dico_triplets = [[S1, S2] for S1, S2 in dico_triplets if not any((S1 in G and S2 in G) for G in jsn["dicTokens"])]
         jsn["triplets"] = dico_triplets
-        print(repr(dico_triplets))
+        #print(repr(dico_triplets))
         
         #for clus in jsn["dicTokens"]:
         #    for i, C in enumerate(clus):
@@ -237,9 +245,7 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
         arbo = ET.XML("<htmlfrag/>")
         
         arbo.append(svg)
-        jsns = json.dumps(jsn)
-        jsns = re.sub("\]\]+", lambda x: " ]"*len(x[0]), jsns)
-        svg.tail = ET.CDATA(json.dumps(jsn))
+        svg.tail = json.dumps(jsn)
         
         
         reponse = arbo
@@ -251,33 +257,6 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
         self.end_headers()
         self.wfile.write(reponse)
     
-class POST_CHOIX_VISU(EXEC_ADDRESS):
-    @staticmethod
-    def test(chemin):
-        if (
-                chemin.startswith("/")
-                and chemin.endswith(".html")
-                and len(chemin) == 9
-                and all(x in ["X", "O"] for x in chemin[1:4])
-            ):
-            return True
-        return False
-    
-    def execute(self):
-        content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-        post_data = self.rfile.read(content_length) # <--- Gets the data itself
-        variables, voir_racine, reverse_roles = tuple(x == 'X' for x in self.chemin[1:4])
-        reponse = convert2graph(post_data.decode('utf-8'),
-                                        variables=variables,
-                                        voir_racine=voir_racine,
-                                        reverse_roles=reverse_roles)
-        reponse = ET.tostring(reponse, encoding="utf-8", method="xml")
-        taille = len(reponse)
-        self.send_response(200)
-        self.send_header("Content-Type", "application/xml")
-        self.send_header("Content-Length", "%d"%taille)
-        self.end_headers()
-        self.wfile.write(reponse)
 
            
         
@@ -300,6 +279,48 @@ class PREFIXE():
             PREFIXE.prefixe_cur = 0
         PREFIXE.prfx = resu
         return resu
+
+
+dico_ponctuation = {",":"[virgule]", ".":"[point]", ":":"[deux points]", ";":"[point-virgule]" , "!":"[exclam]", "?":"[interrog]", "-":"[trait d’union]"};
+
+def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
+    tokens = []
+    for t in toks:
+        if t.startswith("¤"):
+            t = t[1:]
+            if t in dico_ponctuation:
+                t = dico_ponctuation[t]
+            else:
+                t = "~"+t
+        elif t in dico_ponctuation:
+            t = dico_ponctuation[t]
+        tokens.append(t)
+    for i, s in enumerate(tk_utiles):
+        G.add_node(
+            "tk_%d"%i,
+            label=tokens[s],
+            id = "%s_tk_%d"%(prefixe, s),
+            style = "filled",
+            fillcolor="white",
+            shape="rect"
+        )
+    for src, r, tgt in aretes:
+        ident = "%s_tk_%d_tk_%d"%(prefixe, tk_utiles[src], tk_utiles[tgt])
+        if r=="{groupe}":
+            if src < tgt:
+                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="blue", dir="none")
+        elif r == "{idem}":
+            if src < tgt:
+                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="purple", dir="none")
+        elif r == "{ne_pas_classer}":
+            if src < tgt:
+                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
+        else:
+            G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident)
+
+    return G
+    #G.draw("graphe_mot.svg", prog="dot")
+
 
 
 def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, clusters=[]):
@@ -383,16 +404,13 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
         G.add_edge(iden, amr.root, id=idarete)
         dico_triplets[triplet] = [prefixe+amr.root, iden, idarete]
         
-    G.layout(prog='dot')
+    #G.layout(prog='dot')
     return G, prefixe, dico_triplets
     
 
-def convert2graph(amr, variables=False, voir_racine=False, reverse_roles=False, return_edges=False, clusters=[]):
-    if type(amr) is str:
-        reader = AMR_Reader()
-        amr = reader.loads(amr)
-    f, prefixe, dico_triplets = drawAMR(amr, variables, voir_racine, reverse_roles, clusters)
-    f = f.draw(path=None, format="svg")
+def grapheToSVG(amr, G):
+    G.layout(prog='dot')
+    f = G.draw(path=None, format="svg")
     
     svg = ET.fromstring(f)   #.decode("utf-8"))
     largeur = svg.attrib["width"]
@@ -418,20 +436,16 @@ def convert2graph(amr, variables=False, voir_racine=False, reverse_roles=False, 
         arbo.append(ET.XML("<h3>" + phrase + "</h3>"))
     arbo.append(svg)
     
-    if return_edges:
-        return (arbo, prefixe, dico_triplets)
-    else:
-        return arbo
+    return arbo
  
 
-def main():
+def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
     global recherche_amr
-    nom_fichier = "./AMR_et_graphes_phrases.txt"
     print("Ouverture du fichier %s pour dresser la table")
     recherche_amr = RECHERCHE_AMR(nom_fichier)
     print("Table dressée.")
     ServeurReq.add_get(GET_INDEX, GET_VIVAGRAPH, GET_VIVAGRAPH_FACTORY, GET_LDC_2020_T02)
-    ServeurReq.add_post(POST_CHOIX_VISU)
+    #ServeurReq.add_post(POST_CHOIX_VISU)
     lancer_serveur("localhost", 8081)
 
 
@@ -457,5 +471,9 @@ def main3():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        nom_fichier = sys.argv[1]
+        main(nom_fichier)
+    else:
+        main()
     

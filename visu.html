@@ -34,17 +34,21 @@
 <input type="checkbox" id="CBrels" name="CBrels"/>
 <label for="CBrels">Redresser rôles</label>
 <br/>
+<textarea id="idSNT"></textarea><button id="choisirAMR">Choisir</button>
+<br/>
 <button id="voirAMR">Voir un AMR au hasard</button>
 </div>
 <div id="affichages">
 </div>
 <button id="voirGrapheAdjoint" disabled="true">Voir graphe adjoint</button>
 <script>
-let GraphFactory = new Factory();
+//let GraphFactory = new Factory();
 let LgraphFactory = new Factory();
 
 
 let bouton = document.getElementById("voirAMR");
+let boutonChoix = document.getElementById("choisirAMR");
+let txtarea = document.getElementById("idSNT");
 let btnAdj = document.getElementById("voirGrapheAdjoint");
 
 
@@ -66,7 +70,7 @@ let ROUGE = ["red", "MistyRose", "red"]
 
 
 
-let envoi = function(){
+let envoi = function(idSNT){
 	let XOvars = CBvars.checked;
 	let XOrac = CBrac.checked;
 	let XOrels = CBrels.checked;
@@ -75,7 +79,7 @@ let envoi = function(){
 		if(this.readyState == 4 && this.status == 200)
 		{
 			let codesvg = this.responseText;
-			GraphFactory.effacerGraphe();
+			//GraphFactory.effacerGraphe();
 			LgraphFactory.effacerGraphe();
 			affichages.textContent = '';
 			let cont_G1 = document.createElement("td");
@@ -89,14 +93,9 @@ let envoi = function(){
 			while(fragdiv.firstChild.childNodes.length > 0)
 			{
 				let noeud = fragdiv.firstChild.firstChild
-				if ((noeud.nodeType == 4) || (noeud.nodeType == 8))
+				if (noeud.nodeType == 3)
 				{
 					texte = noeud.textContent;
-					if (texte.startsWith("[CDATA[") && texte.endsWith("]]"))
-					{
-						texte = texte.slice(7, -2);
-						//console.log(texte);
-					}
 					infos_jsn = JSON.parse(texte);
 					noeud.remove();
 				}
@@ -110,7 +109,7 @@ let envoi = function(){
 			tableau.appendChild(rangee);
 			rangee.appendChild(cont_G1)
 			affichages.appendChild(tableau);
-			GraphFactory.setContainer(rangee);
+			//GraphFactory.setContainer(rangee);
 			
 			repr1 = alignements(infos_jsn.prefixe, infos_jsn.tokens, infos_jsn.sommets, infos_jsn.dicTokens, infos_jsn.aretes, infos_jsn.triplets);
 			btnAdj.removeAttribute("disabled");
@@ -147,7 +146,7 @@ let envoi = function(){
 		chemin += "X"
 	else
 		chemin += "O"
-	chemin = "/LDC_2020_T02/alea_" + chemin + ".html"
+	chemin = "/LDC_2020_T02/" + idSNT + "_" + chemin + ".html"
 	//chemin = "/LDC_2020_T02/bolt12_12120_6301.8_" + chemin + ".html"
 	xhttp.open("GET", chemin);
 	xhttp.send();
@@ -177,7 +176,8 @@ let effacerGrapheAdjoint = function(prefixe, repr2)
 	LgraphFactory.container.parentNode.remove();
 };
 
-bouton.addEventListener("click", envoi);
+bouton.addEventListener("click", () => envoi("alea"));
+boutonChoix.addEventListener("click", () => envoi(idSNT.value));
 
 let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
 {
@@ -213,17 +213,19 @@ let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
 			{
 				[idorig, r] = truc;
 				if(r == "{groupe}")
-					dataTad = {"r": 5, "fill": "white", "stroke": "blue", "svg": "circle"};
+					dataTad = {"r": 5, "fill": "lightblue", "stroke": "black", "svg": "circle"};
 				else if(r == "{idem}")
-					dataTad = {"r": 5, "fill": "white", "stroke": "red", "svg": "circle"};
+					dataTad = {"r": 5, "fill": "mediumpurple", "stroke": "black", "svg": "circle"};
 				else
 				{
 					dataTad = {"r": 5, "fill": "white", "stroke": "black", "svg": "circle"};
 					repr2[idorig] = [idtokad];
 				}
 			}
-			else
+			else if((tk_utiles.indexOf(i) >= 0)&&(tk_utiles.indexOf(j) >= 0))
 				dataTad = {"r": 3, "fill": "grey", "stroke": "grey", "svg": "circle"};
+			else
+				dataTad = {"r": 3, "fill": "red", "stroke": "red", "svg": "circle"};
 				
 			dataTad["id"] = idtokad;
 			Gsommets[tokad] = dataTad;
@@ -415,6 +417,7 @@ des relations entre sommets AMR. (identifiés par une chaine du type "1.2.3->1.2
 Chaque élément (token, arete entre tokens, sommet AMR ou relation entre sommet) est représenté par une liste d’éléments SVG : Representants
 */
 
+
 let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triplets)
 {
 	let frag = document.createDocumentFragment();
@@ -429,7 +432,7 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 	let representants = {};
 	let classe = 0;
 	let Gsommets = [];
-	let Garetes = [];
+	
 	for(let iii=0; iii<tokens.length; iii+=1)
 	{
 		representants["tk_" + iii] = [];
@@ -437,9 +440,19 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		if(i >= 0)
 		{
 			let span = document.createElement("span");
-			span.appendChild(document.createTextNode(tokens[iii] + " "));
 			let iden = prefixe + "_span_" + i;
 			span.setAttribute("id", iden);
+			let tkcur = tokens[iii]
+			if(tkcur.startsWith("¤"))
+			{
+				span.appendChild(document.createTextNode(tkcur.substr(1)));
+				frag.appendChild(document.createTextNode("~"));
+			}
+			else
+			{
+				span.appendChild(document.createTextNode(tkcur));
+				frag.appendChild(document.createTextNode(" "));
+			}
 			frag.appendChild(span);
 			//lisReprTok[iii].push(span);
 			representants["tk_" + iii].push(span);
@@ -466,8 +479,18 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		else
 		{
 			let span = document.createElement("span");
-			span.appendChild(document.createTextNode(tokens[iii] + " "));
 			span.setAttribute("style", "color: lightGray");
+			let tkcur = tokens[iii]
+			if(tkcur.startsWith("¤"))
+			{
+				span.appendChild(document.createTextNode(tkcur.substr(1)));
+				frag.appendChild(document.createTextNode("~"));
+			}
+			else
+			{
+				span.appendChild(document.createTextNode(tkcur));
+				frag.appendChild(document.createTextNode(" "));
+			}
 			frag.appendChild(span);
 			liesATokens.push([[],[]]);
 		}
@@ -506,7 +529,7 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 			liesASommets[s] = lt_ls;
 		}
 	}
-	tk_utiles.forEach((s, i) => {Gsommets.push([tokens[s], prefixe + "_tk_" + s]); representants["tk_" + s].push(prefixe + "_tk_" + s);});
+	tk_utiles.forEach((s, i) => {representants["tk_" + s].push(prefixe + "_tk_" + s);});
 	for(let art of aretes)
 	{
 		let s, r, c;
@@ -514,24 +537,9 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		r = art[1];
 		c = art[2];
 		let ident = prefixe + "_tk_" + tk_utiles[s] + "_tk_" + tk_utiles[c];
-		if(r == "{groupe}")
-		{
-			if(s < c)
-			{
-				Garetes.push([s,c, {"stroke":"blue", "bidir":true, "stroke-dasharray":"5,5", "id": ident}])
-			}
-		}
-		else if(r == "{idem}")
-		{
-			if(s < c)
-			{
-				Garetes.push([s,c, {"stroke":"red", "bidir":true, "stroke-dasharray":"5,5", "id": ident}])
-			}
-		}
-		else
+		if((r != "{groupe}")&&(r != "{idem}"))
 		{
 			let idt = "tk_" + tk_utiles[s] + "→tk_" + tk_utiles[c];
-			Garetes.push([s,c, {"id": ident}]);
 			representants[idt] = [ident, prefixe+ "_tk_" + tk_utiles[s], prefixe+ "_tk_" + tk_utiles[c]];
 		}
 	}
@@ -566,10 +574,6 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		}
 	}
 	
-	GraphFactory.dessinerGraphe({
-		"sommets" : Gsommets,
-		"aretes" : Garetes
-	}, 800, -1);
 	
 	// remplaçons les identifiants par les véritables éléments DOM.
 	for(let l in representants)
