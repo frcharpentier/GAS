@@ -149,6 +149,16 @@ class GET_INDEX(EXEC_ADDRESS):
     def execute(self):
         self.sendFile("text/html; charset=utf-8", "./visu.html")
 
+
+class GET_ALGEBRA(EXEC_ADDRESS):
+    @staticmethod
+    def test(chemin):
+        if chemin == "/algebre_relationnelle.js":
+            return True
+        return False
+    
+    def execute(self):
+        self.sendFile("text/javascript; charset=utf-8", "algebre_relationnelle.js")
   
 class GET_VIVAGRAPH(EXEC_ADDRESS):
     @staticmethod
@@ -213,34 +223,15 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
 
         svg = grapheToSVG(amr, G)
 
-        #svg, _, dico_triplets = convert2graph(amr,
-        #                        variables=variables,
-        #                        voir_racine=voir_racine,
-        #                        reverse_roles=reverse_roles,
-        #                        return_edges=True,
-        #                        clusters = clusters)
-        
-        #prfx = PREFIXE.prfx
-        
+               
         lprfx = len(prfx)
         jsn["prefixe"] = prfx
         dico_triplets = {k : v for k,v in dico_triplets.items() if k[0] != ":instance"}
         dico_triplets = [(v[0][lprfx:], v[1][lprfx:]) for v in dico_triplets.values()]
         dico_triplets = [[S1, S2] for S1, S2 in dico_triplets if not any((S1 in G and S2 in G) for G in jsn["dicTokens"])]
         jsn["triplets"] = dico_triplets
-        #print(repr(dico_triplets))
-        
-        #for clus in jsn["dicTokens"]:
-        #    for i, C in enumerate(clus):
-        #        clus[i] = prfx+C
-
-        
-        #dico = {redresse_arete(*k) : v for k, v in dico.items()}
-        
+                
         svg = svg[1]
-        
-        
-        
         
         arbo = ET.XML("<htmlfrag/>")
         
@@ -444,7 +435,10 @@ def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
     print("Ouverture du fichier %s pour dresser la table")
     recherche_amr = RECHERCHE_AMR(nom_fichier)
     print("Table dressée.")
-    ServeurReq.add_get(GET_INDEX, GET_VIVAGRAPH, GET_VIVAGRAPH_FACTORY, GET_LDC_2020_T02)
+    ServeurReq.add_get(GET_INDEX, GET_VIVAGRAPH,
+                       GET_VIVAGRAPH_FACTORY,
+                       GET_LDC_2020_T02,
+                       GET_ALGEBRA)
     #ServeurReq.add_post(POST_CHOIX_VISU)
     lancer_serveur("localhost", 8081)
 

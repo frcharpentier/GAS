@@ -453,13 +453,13 @@ class GRAPHE_PHRASE:
             rel_gG = rel_gG1 + rel_REL_gG + rel_REN_gG
             rel_GG = (rel_gG1.ren("g","G1","typ") * rel_gG1.ren("g","G2","typ")).p("G1","G2").s(lambda x: x.G1 <= x.G2)
             rel_GG_sup = RELATION("G1", "G2")
-            rel_GG_sup.add(*[(G, G) for (G,) in rel_REL_gG.p("G").enum()])
-            rel_GG_sup.add(*[(G, G) for (G,) in rel_REN_gG.p("G").enum()])
+            rel_GG_sup.add(*[(G, G) for (G,) in rel_REL_gG.p("G")])
+            rel_GG_sup.add(*[(G, G) for (G,) in rel_REN_gG.p("G")])
             rel_GG = rel_GG + rel_GG_sup
 
-            grps = [G for (G,) in rel_gG.p("G").enum()]
+            grps = [G for (G,) in rel_gG.p("G")]
             couleurs = {g : i for i, g in enumerate(grps)}
-            for G1, G2 in rel_GG.enum():
+            for G1, G2 in rel_GG:
                 c1 = couleurs[G1]
                 c2 = couleurs[G2]
                 if c1 > c2:
@@ -496,7 +496,7 @@ class GRAPHE_PHRASE:
         # le schéma de self.amr_arcs est ("source", "cible", "relation")
         # le schéma de self.REN_ag est ("source", "cible", "relation", "type", "groupe")
         reen = self.REN_ag.proj("source", "cible", "relation")
-        liste_ = [nd for (nd,) in reen.proj("cible").enum()]
+        liste_ = [nd for (nd,) in reen.proj("cible")]
         
         arcs_nd = self.amr_arcs.select(lambda x: x.cible in liste_)
         
@@ -516,7 +516,7 @@ class GRAPHE_PHRASE:
         if len(self.REN_ag) == 0:
             return
         toks = self.tokens
-        settoks = set(m for (m, _) in self.SG_mg.enum())
+        settoks = set(m for (m, _) in self.SG_mg)
         toks_libres = [not t in settoks for t in range(self.N)]
         liste_toks_libres = [toks[i] if v else "" for i, v in enumerate(toks_libres)]
         autorises = ["reentrancy:repetition", "reentrancy:coref"] #, "reentrancy:primary"]
@@ -529,7 +529,7 @@ class GRAPHE_PHRASE:
         if len(mots) == 0:
             return
 
-        for (t,) in mots.enum():
+        for (t,) in mots:
             if not toks_libres[t]:
                 raise AssertionError("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
             libres2[t] = False
@@ -544,13 +544,13 @@ class GRAPHE_PHRASE:
         ajout_ag = RELATION(*(self.REN_ag.sort))
 
         idG = 0
-        for (g,) in groupes.enum():
+        for (g,) in groupes:
             sommets = self.anaphores_ag.select(lambda x: x.groupe == g).proj("cible")
             if not len(sommets) == 1:
                 pass
             assert len(sommets) == 1
-            som = list(s for (s,) in sommets.enum())[0]
-            t_t = [t for (t,_,_) in self.anaphores_mg.select(lambda x: (x.groupe == g)).enum()]
+            som = list(s for (s,) in sommets)[0]
+            t_t = [t for (t,_,_) in self.anaphores_mg.s(lambda x: (x.groupe == g))]
             t_t.sort()
             assert all(s == 1+t_t[i] for i, s in enumerate(t_t[1:]))
 
@@ -614,9 +614,9 @@ class GRAPHE_PHRASE:
         dic_filtrage = dict()
         sans_classement = set()
         interdits = set()
-        for s,c,r in (groupes+idem).enum():
+        for s,c,r in (groupes+idem):
             dic_filtrage[(s,c)] = r
-        for s,c,r in gr_mots.enum():
+        for s,c,r in gr_mots:
             if ((s,c) in dic_filtrage) or ((c,s) in dic_filtrage):
                 interdits.add((s,c,r))
                 if (s,c) in dic_filtrage:
@@ -626,7 +626,7 @@ class GRAPHE_PHRASE:
                 sans_classement.add((s,c,"{ne_pas_classer}"))
                 sans_classement.add((c,s,"{ne_pas_classer}"))
         if len(interdits) > 0:
-            graphe_toks = graphe_toks.s(lambda x: x.t not in interdits)
+            graphe_toks = graphe_toks.s(lambda x: x not in interdits)
             graphe_toks.add(*list(sans_classement))
             print("### %s "%self.amr.id)
 
@@ -647,8 +647,8 @@ class GRAPHE_PHRASE:
         #jsn["mots"] = self.mots
         jsn["tokens"] = self.tokens
         N = len(self.tokens)
-        settoks = set(m for (m, _, _) in self.graphe_toks.enum())
-        settoks = settoks.union(set(m for (_, m, _) in self.graphe_toks.enum()))
+        settoks = set(m for (m, _, _) in self.graphe_toks)
+        settoks = settoks.union(set(m for (_, m, _) in self.graphe_toks))
         sommets = [i for i in range(N) if i in settoks]
         NS = len(sommets)
         corresp = [None]*N
@@ -659,7 +659,7 @@ class GRAPHE_PHRASE:
         rel2 = self.SG_sg + (self.anaphores_ag.p("cible", "groupe").ren("sommet", "groupe"))
         rel = (rel1 * rel2).p("mot", "sommet")
         dico = dict()
-        for (m,s) in rel.enum():
+        for (m,s) in rel:
             if m in dico:
                 dico[m].append(s)
             else:
@@ -669,7 +669,7 @@ class GRAPHE_PHRASE:
 
         dictok = [dico[sommets[i]] for i in range(NS)]
         aretes = []
-        for (s,c,r) in self.graphe_toks.enum():
+        for (s,c,r) in self.graphe_toks:
             s,c = corresp[s], corresp[c] 
             aretes.append((s,r,c))
         aretes.sort()
@@ -962,7 +962,7 @@ def test_aligneur():
     toksH = "I am sure many of us are well aware of Samuel Huntington 's \" Clash of Civilizations \" theory , that future conflict would be along cultural lines between \" West \" , \" East \" and \" Confucian \" blocks , whatever they are ."
     toksH = toksH.split()
     rel_tg, rel_mg, toksV = aligneur.aligner_seq(toksH, phrase)
-    aligs = [(v,h) for v,h in (rel_tg * rel_mg).p("token", "mot").enum()]
+    aligs = [(v,h) for v,h in (rel_tg * rel_mg).p("token", "mot")]
     aligs.sort()
     for tV, tH in aligs:
         if tV >= 0 and tV < len(toksV):

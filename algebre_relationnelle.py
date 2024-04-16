@@ -1,34 +1,6 @@
 import types
+from collections import namedtuple
 
-class NUPLET:
-    def __init__(self, rel, t):
-        if isinstance(t, NUPLET):
-            self.t = t.t
-        else: 
-            self.t = tuple(t)
-        self.rel = rel
-
-    def __getattr__(self, s):
-        idx = self.rel.sort.index(s)
-        return self.t[idx]
-    
-    def __getitem__(self, idx):
-        return self.t[idx]
-    
-    def __hash__(self):
-        return hash(self.t + self.rel.sort)
-    
-    def __eq__(self, n2):
-        return (self.rel.sort == n2.rel.sort) and (self.t == n2.t)
-    
-    def __len__(self):
-        return len(self.t)
-    
-    def __str__(self):
-        return str(self.t)
-    
-    def __repr__(self):
-        return repr(self.t)
 
 class RELATION:
     def __init__(self, *sort):
@@ -38,24 +10,35 @@ class RELATION:
         self.sort = sort
         self.arite = len(sort)
         self.table = []
+        self.nuplet = namedtuple("nuplet", " ".join(self.sort))
 
     def __len__(self):
         return len(self.table)
     
-    def enum(self):
-        for t in self.table:
-            yield t.t
+    def __iter__(self):
+        return iter(self.table)
+    
+    #def __next__(self):
+    #    if self.idx_table < len(self.table):
+    #        t = self.table[self.idx_table]
+    #        self.idx_table += 1
+    #        return t
+    #    else:
+    #        raise StopIteration
 
     def ren(self, *sort):
         #Pour changer le nom des sortes. (Utile avant une jointure)
         assert len(sort) == len(self.sort)
         resu = RELATION(*sort)
-        resu.table = [NUPLET(resu, t) for t in self.table]
+        resu.table = [resu.nuplet(*t) for t in self.table]
         return resu
+    
+    def d(self, *sort):
+        return self.ren(*sort)
     
     def copy(self):
         resu = RELATION(*self.sort[:])
-        resu.table = [NUPLET(resu, (t for t in tt)) for tt in self.table]
+        resu.table = [resu.nuplet(*(t for t in tt)) for tt in self.table]
         return resu
     
     def rmdup(self):
@@ -64,14 +47,14 @@ class RELATION:
 
     def add(self, *ajout):
         assert all(len(t)==self.arite for t in ajout)
-        self.table.extend([NUPLET(self, t) for t in ajout])
+        self.table.extend([self.nuplet(*t) for t in ajout])
         return self
     
     def __add__(self, rel2):
         assert rel2.sort == self.sort
         resu = RELATION(*self.sort)
-        table = [NUPLET(resu, t) for t in self.table]
-        table.extend([NUPLET(resu, t) for t in rel2.table])
+        table = [resu.nuplet(*t) for t in self.table]
+        table.extend([resu.nuplet(*t) for t in rel2.table])
         resu.table = list(set(table))
         return resu
     
@@ -80,7 +63,7 @@ class RELATION:
         ens = set(self.table)
         ens = ens - set(rel2.table)
         resu = RELATION(*self.sort)
-        resu.table = [NUPLET(resu, t) for t in ens]
+        resu.table = [resu.nuplet(*t) for t in ens]
         return resu
     
     def __mul__(self, rel2):
@@ -90,7 +73,7 @@ class RELATION:
         assert all(s in self.sort for s in sort)
         resu = RELATION(*sort)
         indices = [self.sort.index(s) for s in sort]
-        table = set(NUPLET(resu, (t[i] for i in indices)) for t in self.table)
+        table = set(resu.nuplet(*(t[i] for i in indices)) for t in self.table)
         resu.table = list(table)
         return resu
     
@@ -99,29 +82,34 @@ class RELATION:
     
     def select(self, f):
         resu = RELATION(*self.sort)
-        table = [NUPLET(resu, t) for t in self.table if f(t)]
+        table = [resu.nuplet(*t) for t in self.table if f(t)]
         resu.table = table
         return resu
     
     def s(self, f):
         return self.select(f)
     
-    def index(self, col):
-        sort = (col,) + self.sort
-        resu = RELATION(*sort)
-        resu.add(*[(i,) + t in enumerate(set(T.t for T in self.table))])
-        return resu
+    #def index(self, col):
+    #    sort = (col,) + self.sort
+    #    resu = RELATION(*sort)
+    #    resu.add(*[(i,) + t in enumerate(set(T.t for T in self.table))])
+    #    return resu
 
     
     def join(self, rel2):
         sort2 = rel2.sort
         sort_ = tuple(s for s in sort2 if not s in self.sort)
         sort_i = tuple(s for s in sort2 if s in self.sort)
-        idxexter = [i for i,s in enumerate(sort2) if not (s in self.sort)]
         sort = self.sort + sort_
+        resu = RELATION(*sort)
+        if len(sort_i) == 0:
+            # Produit cartésien
+            table = [resu.nuplet(*(t+t2)) for t in self.table for t2 in rel2.table]
+            resu.table = table
+            return resu
+        idxexter = [i for i,s in enumerate(sort2) if not (s in self.sort)]
         idxinter = [i for i,s in enumerate(sort2) if s in self.sort]
         idxinter1 = [self.sort.index(s) for s in sort_i]
-        resu = RELATION(*sort)
         dic2 = {}
         for t in rel2.table:
             clef = tuple(t[i] for i in idxinter)
@@ -135,7 +123,7 @@ class RELATION:
             try:
                 val = dic2[clef]
                 for v in val:
-                    table.append(NUPLET(resu, (t.t + v)))
+                    table.append(resu.nuplet(*(t + v)))
             except:
                 pass
         resu.table = table
