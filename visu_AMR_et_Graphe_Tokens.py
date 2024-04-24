@@ -1,6 +1,7 @@
 import sys
 import pygraphviz as pgv
 import random
+import random
 import re
 from micro_serveur import EXEC_ADDRESS, ServeurReq, lancer_serveur
 
@@ -133,6 +134,9 @@ class RECHERCHE_AMR:
         #print("self.N = %d"%self.N)
         idx = random.randint(0, (self.N)-1)
         return self.__getitem__(idx)
+    
+    def pick_ident(self):
+        return random.choice(list(self.dico.keys()))
 
 
 
@@ -207,7 +211,9 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
         
         iden = chm[:-9]
         if iden == "alea":
-            amr, jsn = recherche_amr.alea()
+            identAMR = recherche_amr.pick_ident()
+            amr, jsn = recherche_amr[identAMR]
+            jsn["identAMR"] = identAMR
         else:
             amr, jsn = recherche_amr[iden]
         if not "snt" in amr.metadata:

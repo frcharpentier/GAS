@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <script src="vivagraph.min.js"></script>
 <script src="vivagraph_factory.js"></script>
+<script src="algebre_relationnelle.js"></script>
 <style type="text/css" media="screen">
     html, body { width: 100%; height: 100%;}
 	div.encadre {
@@ -13,9 +14,13 @@
 	.droite{
 		float:right;
 	}
-	span.select{
+	span.selectV{
 		background-color: #A0D6B4;
 		color: #08A04B;
+	}
+	span.selectR{
+		background-color: MistyRose;
+		color: red;
 	}
 	table, th, td {
 		border: 1px solid;
@@ -41,6 +46,13 @@
 <div id="affichages">
 </div>
 <button id="voirGrapheAdjoint" disabled="true">Voir graphe adjoint</button>
+<p>Pour une phrase à <i>n</i> tokens, le graphe adjoint possède <i>n</i>(<i>n</i>-1)/2 sommets,
+notés {<i>i</i>,<i>j</i>}, où <i>i</i> et <i>j</i> sont listés dans n’importe quel ordre.<br/>
+Chaque sommet {<i>i</i>,<i>j</i>} est relié aux (<i>n</i>-2) sommets {<i>i</i>,<i>k</i>} (<i>k</i>≠<i>i</i> et <i>k</i>≠<i>j</i>),
+et aux (<i>n</i>-2) sommets {<i>j</i>,<i>l</i>} (<i>l</i>≠<i>j</i> et <i>l</i>≠<i>i</i>).<br/>
+Dans le graphe adjoint, tous les sommets sont donc de degré 2<i>n</i>-4.</p>
+
+
 <script>
 //let GraphFactory = new Factory();
 let LgraphFactory = new Factory();
@@ -79,6 +91,7 @@ let envoi = function(idSNT){
 		if(this.readyState == 4 && this.status == 200)
 		{
 			let codesvg = this.responseText;
+			let repr1, repr2, fcolor;
 			//GraphFactory.effacerGraphe();
 			LgraphFactory.effacerGraphe();
 			affichages.textContent = '';
@@ -111,7 +124,9 @@ let envoi = function(idSNT){
 			affichages.appendChild(tableau);
 			//GraphFactory.setContainer(rangee);
 			
-			repr1 = alignements(infos_jsn.prefixe, infos_jsn.tokens, infos_jsn.sommets, infos_jsn.dicTokens, infos_jsn.aretes, infos_jsn.triplets);
+			if("identAMR" in infos_jsn)
+				txtarea.value = infos_jsn.identAMR;
+			[repr1, fcolor] = alignements(infos_jsn.prefixe, infos_jsn.tokens, infos_jsn.sommets, infos_jsn.dicTokens, infos_jsn.aretes, infos_jsn.triplets);
 			btnAdj.removeAttribute("disabled");
 			
 			let fadj = function()
@@ -121,7 +136,7 @@ let envoi = function(idSNT){
 				LgraphFactory.setContainer(rangee2);
 				LgraphFactory.container.setAttribute("colspan", "2");
 				
-				repr2 = faire_graphe_adjoint(infos_jsn.prefixe, infos_jsn.tokens.length, infos_jsn.sommets, infos_jsn.aretes);
+				repr2 = faire_graphe_adjoint(infos_jsn.prefixe, infos_jsn.tokens.length, infos_jsn.sommets, infos_jsn.aretes, fcolor);
 				// remplaçons les identifiants par les véritables éléments DOM.
 				for(let l in repr2)
 				{
@@ -177,14 +192,15 @@ let effacerGrapheAdjoint = function(prefixe, repr2)
 };
 
 bouton.addEventListener("click", () => envoi("alea"));
-boutonChoix.addEventListener("click", () => envoi(idSNT.value));
+boutonChoix.addEventListener("click", () => envoi(txtarea.value));
 
-let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
+let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes, fcolor)
 {
 	let dicTokad = {};
 	let Gsommets = {};
 	let Garetes = [];
 	let repr2 = {};
+	let dicAuscult = {};
 	for(let art of aretes)
 	{
 		let s, r, c;
@@ -213,45 +229,51 @@ let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
 			{
 				[idorig, r] = truc;
 				if(r == "{groupe}")
+				{
 					dataTad = {"r": 5, "fill": "lightblue", "stroke": "black", "svg": "circle"};
+					dicAuscult[idtokad] = (onoff) => fcolor(idorig, "art_", onoff);
+				}
 				else if(r == "{idem}")
+				{
 					dataTad = {"r": 5, "fill": "mediumpurple", "stroke": "black", "svg": "circle"};
+					dicAuscult[idtokad] = (onoff) => fcolor(idorig, "art_", onoff);
+				}
 				else if(r == "{ne_pas_classer}")
 					dataTad = {"r": 3, "fill": "red", "stroke": "red", "svg": "circle"};
 				else
 				{
 					dataTad = {"r": 5, "fill": "white", "stroke": "black", "svg": "circle"};
+					dicAuscult[idtokad] = (onoff) => fcolor(idorig, "art_", onoff);
 					repr2[idorig] = [idtokad];
 				}
 			}
 			else if((tk_utiles.indexOf(i) >= 0)&&(tk_utiles.indexOf(j) >= 0))
 				dataTad = {"r": 3, "fill": "grey", "stroke": "grey", "svg": "circle"};
 			else
+			{
 				dataTad = {"r": 3, "fill": "red", "stroke": "red", "svg": "circle"};
+				//dicAuscult[idtokad] = () => console.log(tokad);
+			}
 				
 			dataTad["id"] = idtokad;
 			Gsommets[tokad] = dataTad;
 		}
 	}
 	
-	for(let i=0; i < ntokens; i++)
-	{
-		repr2["tk_" + i] = [];
-	}
 	for(let i=0; i<ntokens; i++)
 	{
 		for(let j=i+1; j<ntokens; j++)
 		{
 			let tokad1 = "adj_" + i + "_" + j;
-			for(let jj=j+1; jj<ntokens; jj++)
+			for(let jj = j+1; jj < ntokens; jj++)
 			{
 				if((i != jj)&&(j != jj))
 				{
 					let tokad2 = "adj_" + i + "_" + jj;
-					let idtk = prefixe = "_adj_" + i + "_" + j + "_" + i + "_" + jj;
+					let idtk = prefixe + "_adj_" + i + "_" + j + "_" + i + "_" + jj;
 					let datarete = {"stroke": "gray", "bidir": true, "class":"inv", "visibility": "hidden", "id": idtk};
 					Garetes.push([tokad1, tokad2, datarete]);
-					repr2["tk_" + i].push(idtk);
+					//repr2["tk_" + i].push(idtk);
 					if(tokad1 in dicTokad)
 					{
 						let idorig, r;
@@ -290,7 +312,7 @@ let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
 					}
 					let datarete = {"stroke": "gray", "bidir": true, "class":"inv", "visibility": "hidden", "id": idtk};
 					Garetes.push([tokad1, tokad2, datarete]);
-					repr2["tk_" + j].push(idtk);
+					//repr2["tk_" + j].push(idtk);
 					if(tokad1 in dicTokad)
 					{
 						let idorig, r;
@@ -317,6 +339,36 @@ let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes)
 		"sommets" : Gsommets,
 		"aretes" : Garetes
 	}, -1, 500);
+	
+	for(let i=0; i<ntokens; i++)
+	{
+		for(let j=i+1; j<ntokens; j++)
+		{
+			let tokad = "adj_" + i + "_" + j;
+			let idtokad = prefixe + "_" + tokad;
+			if(idtokad in dicAuscult)
+			{
+				let f = dicAuscult[idtokad]
+				let elt = document.getElementById(idtokad)
+				elt.addEventListener("mouseover", () => f(true));
+				elt.addEventListener("mouseout", () => f(false));
+			}
+			else
+			{
+				let elt = document.getElementById(idtokad)
+				//elt.addEventListener("mousedown", () => f(true));
+				//elt.addEventListener("mouseup", () => f(false));
+			}
+		}
+	}
+	
+	/*for(let x in dicAuscult)
+	{
+		let f = dicAuscult[x]
+		document.getElementById(x).addEventListener("mouseover", () => f(true));
+		document.getElementById(x).addEventListener("mouseout", () => f(false));
+	}*/
+	
 	return repr2;
 }
 
@@ -349,7 +401,9 @@ let colore_liste_elts = function(liste, couleur){
 		if(elt.tagName.toUpperCase() == "SPAN")
 		{
 			if (couleur[2] == VERT[2])
-				elt.setAttribute("class", "select");
+				elt.setAttribute("class", "selectV");
+			else if(couleur[2] == ROUGE[2])
+				elt.setAttribute("class", "selectR");
 			else
 				elt.setAttribute("class", "")
 			continue;
@@ -359,7 +413,7 @@ let colore_liste_elts = function(liste, couleur){
 			elt.setAttribute("stroke", couleur[0]);
 			if(elt.hasAttribute("class") && elt.getAttribute("class") == "inv")
 			{
-				if(couleur[0] == VERT[0])
+				if((couleur[0] == VERT[0])||(couleur[0] == ROUGE[0]))
 				{
 					elt.setAttribute("visibility", "visible");
 				}
@@ -403,18 +457,15 @@ let colore_liste_elts = function(liste, couleur){
 
 
 
-
-
-
 /*
 On a des tokens, (numérotés)
 des aretes entre tokens (identifiés par une chaine "art_i_j")
 des sommets AMR (identifiés par une chaine du type "1.2.3")
 des relations entre sommets AMR. (identifiés par une chaine du type "1.2.3->1.2.3.1")
 
-À chaque token correspond : plusieurs autres tokens, plusieurs sommets AMR (dans une liste liesATokens).
-À chaque sommet AMR correspond : plusieurs autres sommets AMR, plusieurs tokens (dans un dictionnaire liesASommets).
-À chaque relation entre sommets AMR correspond : plusieurs arêtes entre tokens. (dans un dictionnaire liesARelations).
+À chaque token correspond : plusieurs autres tokens, plusieurs sommets AMR (dans la liste eltsLies).
+À chaque sommet AMR correspond : plusieurs autres sommets AMR, plusieurs tokens (dans la liste eltsLies).
+À chaque relation entre sommets AMR correspond : plusieurs arêtes entre tokens. (dans la liste eltsLies).
 
 Chaque élément (token, arete entre tokens, sommet AMR ou relation entre sommet) est représenté par une liste d’éléments SVG : Representants
 */
@@ -423,21 +474,19 @@ Chaque élément (token, arete entre tokens, sommet AMR ou relation entre sommet
 let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triplets)
 {
 	let frag = document.createDocumentFragment();
-	let liesATokens = [];
-	let liesASommets = {};
-	let liesARelations = {};
-	/*let lisReprTok = tokens.map((e) => []);
-	let dicReprSom = {};
-	let dicReprRelat = {};
-	let dicReprArt = [];
-	*/
+	let eltsLies = {};
 	let representants = {};
+	let auscult = {};
+	
+	
 	let classe = 0;
 	let Gsommets = [];
 	
 	for(let iii=0; iii<tokens.length; iii+=1)
 	{
 		representants["tk_" + iii] = [];
+		auscult["tk_" + iii] = [];
+		
 		let i = tk_utiles.indexOf(iii);
 		if(i >= 0)
 		{
@@ -456,25 +505,26 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 				frag.appendChild(document.createTextNode(" "));
 			}
 			frag.appendChild(span);
-			//lisReprTok[iii].push(span);
 			representants["tk_" + iii].push(span);
+			auscult["tk_" + iii].push(span);
 			let classeCourante;
 			let nouveauBloc = false;
 			for(let idNd of dicTokens[i])
 			{
-				if(idNd in liesASommets)
+				let clef = "sm_" + idNd;
+				if(clef in eltsLies)
 				{
-					classeCourante = liesASommets[idNd];
+					classeCourante = eltsLies[clef];
 					break;
 				}
 				else
 				{
-					liesASommets[idNd] = classe;
+					eltsLies[clef] = classe;
 					classeCourante = classe;
 					nouveauBloc = true;
 				}
 			}
-			liesATokens.push(classeCourante);
+			eltsLies["tk_" + iii] = classeCourante;
 			if(nouveauBloc)
 				classe += 1;
 		}
@@ -494,7 +544,7 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 				frag.appendChild(document.createTextNode(" "));
 			}
 			frag.appendChild(span);
-			liesATokens.push([[],[]]);
+			eltsLies["tk_" + iii] = [[],[]];
 		}
 	}
 	let h3 = document.createElement("h3");
@@ -507,31 +557,37 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		let lt_ls = [[],[]];
 		for (let i=0; i<tokens.length; i +=1)
 		{
-			let cl = liesATokens[i];
+			let cl = eltsLies["tk_" + i];
 			if(cl == n)
 			{
 				lt_ls[0].push(i);
 			}
 		}
-		for(let s in liesASommets)
+		for(let sm_s in eltsLies)
 		{
-			representants[s] = [prefixe + s];
-			let cl = liesASommets[s];
-			if(cl == n)
+			if(sm_s.startsWith("sm_"))
 			{
-				lt_ls[1].push(s);
+				let s = sm_s.substr(3);
+				representants[s] = [prefixe + s];
+				auscult[s] = [prefixe + s];
+				let cl = eltsLies[sm_s];
+				if(cl == n)
+				{
+					lt_ls[1].push(s);
+				}
 			}
 		}
 		for(let i of lt_ls[0])
 		{
-			liesATokens[i] = lt_ls;
+			eltsLies["tk_" + i] = [lt_ls[0].filter((x) => x!=i).map((x) => "tk_" + x), lt_ls[1]];
 		}
 		for(let s of lt_ls[1])
 		{
-			liesASommets[s] = lt_ls;
+			eltsLies["sm_" + s] = [lt_ls[1].filter((x) => x!=s), lt_ls[0].map((x) => "tk_" + x)];
 		}
 	}
 	tk_utiles.forEach((s, i) => {representants["tk_" + s].push(prefixe + "_tk_" + s);});
+	tk_utiles.forEach((s, i) => {auscult["tk_" + s].push(prefixe + "_tk_" + s);});
 	for(let art of aretes)
 	{
 		let s, r, c;
@@ -539,39 +595,57 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		r = art[1];
 		c = art[2];
 		let ident = prefixe + "_tk_" + tk_utiles[s] + "_tk_" + tk_utiles[c];
+		let idt = "tk_" + tk_utiles[s] + "→tk_" + tk_utiles[c];
+		representants[idt] = [
+			ident,
+			prefixe+ "_tk_" + tk_utiles[s],
+			prefixe+ "_tk_" + tk_utiles[c],
+			prefixe + "_span_" + s,
+			prefixe + "_span_" + c];
 		if((r != "{groupe}")&&(r != "{idem}"))
 		{
-			let idt = "tk_" + tk_utiles[s] + "→tk_" + tk_utiles[c];
-			representants[idt] = [ident, prefixe+ "_tk_" + tk_utiles[s], prefixe+ "_tk_" + tk_utiles[c]];
+			auscult[idt] = [ident];
 		}
 	}
 	//Relations dans l’AMR.
+	
 	for(let trp of triplets)
 	{
 		let S1 = trp[0];
 		let S2 = trp[1];
 		let ident = S1 + "→" + S2;
-		let Lies1 = liesASommets[S1];
-		let Lies2 = liesASommets[S2];
+		let idClf = "ARC_" + ident;
+		let Lies1 = eltsLies["sm_" + S1];
+		let Lies2 = eltsLies["sm_" + S2];
+		eltsLies[idClf] = [[],[]];
 		if ((Lies1[1].indexOf(S2) >= 0)||(Lies2[1].indexOf(S1) >= 0))
 		{
-			liesARelations[ident] = [];
 			continue;
 		}
-		representants[ident] = [prefixe + S1 + "→" + prefixe + S2];// , prefixe+S1, prefixe+S2];
-		liesARelations[ident] = [ident];
-		let toks1 = Lies1[0];
-		let toks2 = Lies2[0];
+		representants[ident] = [prefixe + S1 + "→" + prefixe + S2, prefixe + S1, prefixe + S2];
+		auscult[ident] = [prefixe + S1 + "→" + prefixe + S2];
+		let toks1 = Lies1[1];
+		let toks2 = Lies2[1];
 		for(let t1 of toks1)
 		{
 			for(let t2 of toks2)
 			{
-				let idta = "tk_" + t1 + "→tk_" + t2;
-				if(idta in representants)
-					liesARelations[ident].push(idta);
-				idta = "tk_" + t2 + "→tk_" + t1;
-				if(idta in representants)
-					liesARelations[ident].push(idta);
+				for(let idta of [t1 + "→" + t2, t2 + "→" + t1])
+				{
+					if(idta in auscult)
+					{
+						let id2 = "art_" + idta;
+						if(!(id2 in eltsLies))
+							eltsLies[id2] = [[],[]];
+						for(let a of eltsLies[idClf][1])
+						{
+							eltsLies["art_"+a][0].push(idta);
+							eltsLies[id2][0].push(a);
+						}
+						eltsLies[idClf][1].push(idta);
+						eltsLies[id2][1].push(ident);
+					}
+				}
 			}
 		}
 	}
@@ -581,77 +655,90 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 	for(let l in representants)
 	{
 		representants[l] = representants[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+		representants[l] = representants[l].filter( (x) => x != null);
+	}
+	for(let l in auscult)
+	{
+		auscult[l] = auscult[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+		auscult[l] = auscult[l].filter( (x) => x != null);
 	}
 	
+	
+	let fcolor = function(sclef, type, onoff){
+		let C1, C2;
+		if(onoff)
+		{
+			C1 = VERT;
+			C2 = ROUGE;
+		}
+		else
+		{
+			C1 = BLANC;
+			C2 = BLANC;
+		}
+		let semblables;
+		let correspondants;
+		if(type+sclef in eltsLies)
+		{
+			let lies = eltsLies[type+sclef]
+			semblables = lies[0];
+			correspondants = lies[1];
+		}
+		else
+		{
+			semblables =[];
+			correspondants = [];
+		}
+		for(let x of semblables)
+		{
+			colore_liste_elts(representants[x], C2);
+		}
+		if(sclef in representants)
+			colore_liste_elts(representants[sclef], C1);
+		for(let x of correspondants)
+		{
+			colore_liste_elts(representants[x], C1);
+		}
+	};
+	
+	
 	//réactivité des éléments SVG:
-	for(let tk of tk_utiles)
+	for(let clef in eltsLies)
 	{
-		let lies = liesATokens[tk];
-		let tkLies = lies[0];
-		let somLies = lies[1];
-		if((tkLies.length == 0)&&(somLies.length == 0))
+		let sclef;
+		let typElt;
+		let lies = eltsLies[clef];
+		if((lies[0].length == 0)&&(lies[1].length == 0))
 			continue;
-		let f = function(C){
-			for(let t of tkLies)
-			{
-				colore_liste_elts(representants["tk_"+t], C);
-			}
-			for(let som of somLies)
-			{
-				colore_liste_elts(representants[som], C);
-			}
-		};
-		for(let selt of representants["tk_" + tk])
+		if(clef.startsWith("tk_"))
 		{
-			selt.addEventListener("mouseover", () => f(VERT));
-			selt.addEventListener("mouseout", () => f(BLANC));
+			sclef = clef;
+			typElt = "";
+		}
+		else if(clef.startsWith("sm_"))
+		{
+			sclef = clef.substr(3);
+			typElt = "sm_";
+		}
+		else if(clef.startsWith("ARC_"))
+		{
+			sclef = clef.substr(4);
+			typElt = "ARC_";
+		}
+		else if(clef.startsWith("art_"))
+		{
+			sclef = clef.substr(4);
+			typElt = "art_";
+		}
+		
+		for(let selt of auscult[sclef])
+		{
+			selt.addEventListener("mouseover", () => fcolor(sclef, typElt, true));
+			selt.addEventListener("mouseout", () => fcolor(sclef, typElt, false));
 		}
 	}
-	for(let samr in liesASommets)
-	{
-		let lies = liesASommets[samr];
-		let tkLies = lies[0];
-		let somLies = lies[1];
-		if((tkLies.length == 0)&&(somLies.length == 0))
-			continue;
-		let f = function(C){
-			for(let t of tkLies)
-			{
-				colore_liste_elts(representants["tk_"+t], C);
-			}
-			for(let som of somLies)
-			{
-				colore_liste_elts(representants[som], C);
-			}
-		};
-		for(let selt of representants[samr])
-		{
-			selt.addEventListener("mouseover", () => f(VERT));
-			selt.addEventListener("mouseout", () => f(BLANC));
-		}
-	}
-	for(let rel in liesARelations)
-	{
-		let lies = liesARelations[rel];
-		if(lies.length == 0)
-			continue;
-		let flh = rel.indexOf("→");
-		let S1 = document.getElementById(prefixe + rel.substr(0,flh));
-		let S2 = document.getElementById(prefixe + rel.substr(1+flh));
-		let f = function(C){
-			for(let r of lies)
-			{
-				colore_liste_elts(representants[r], C);
-			}
-			colore_liste_elts([S1, S2], C);
-		}
-		for(let selt of representants[rel])
-		{
-			selt.addEventListener("mouseover", () => f(VERT));
-			selt.addEventListener("mouseout", () => f(BLANC));
-		}
-	}
-	return representants;
+	
+	return [representants, fcolor];
 }
 
 

@@ -773,6 +773,28 @@ def amr_to_string(amr):
     
         
 
+def compter_reifications():
+    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+    fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
+
+    amr_reader = AMR_Reader()
+    dicomptage = dict()
+    for amrfile in tqdm.tqdm(fichiers_amr):
+        #print(amrfile)
+        listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=False) if not G.id in doublons] #Élimination des doublons
+        for amr in listeG:
+            for idV, V in amr.nodes.items():
+                if V[-3:-1] == "-9":
+                    if not V in dicomptage:
+                        dicomptage[V] = 1
+                    else:
+                        dicomptage[V] += 1
+    for k,v in dicomptage.items():
+        print(k,v)
+
+
+
 def construire_graphes():
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
     fichier_sous_graphes = prefixe_alignements + "subgraph_alignments.json"
@@ -977,4 +999,5 @@ def test_aligneur():
 
 if __name__ == "__main__":
     #test_aligneur()
-    construire_graphes()
+    compter_reifications()
+    #construire_graphes()
