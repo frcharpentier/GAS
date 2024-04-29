@@ -38,6 +38,8 @@
 <label for="CBrac">Voir racine</label>
 <input type="checkbox" id="CBrels" name="CBrels"/>
 <label for="CBrels">Redresser rôles</label>
+<input type="checkbox" id="CBxplct" name="CBxplct"/>
+<label for="CBxplct">Expliciter rôles</label>
 <br/>
 <textarea id="idSNT"></textarea><button id="choisirAMR">Choisir</button>
 <br/>
@@ -69,6 +71,7 @@ let affichages = document.getElementById("affichages");
 let CBvars = document.getElementById("CBvars");
 let CBrac = document.getElementById("CBrac")
 let CBrels = document.getElementById("CBrels");
+let CBxplct = document.getElementById("CBxplct");
 
 let fermerDiv = function(evt){
 	let aFermer = evt.srcElement.parentNode;
@@ -86,6 +89,7 @@ let envoi = function(idSNT){
 	let XOvars = CBvars.checked;
 	let XOrac = CBrac.checked;
 	let XOrels = CBrels.checked;
+	let XOxplct = CBxplct.checked;
 	let xhttp = new XMLHttpRequest();
 	xhttp.onreadystatechange = function(){
 		if(this.readyState == 4 && this.status == 200)
@@ -158,6 +162,10 @@ let envoi = function(idSNT){
 	else
 		chemin += "O"
 	if(XOrels)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOxplct)
 		chemin += "X"
 	else
 		chemin += "O"

@@ -2,7 +2,9 @@ from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
 from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
+from examiner_framefiles import expliciter_AMR
 from algebre_relationnelle import RELATION
+import re
 import os
 import sys
 import json
@@ -793,9 +795,14 @@ def compter_reifications():
     for k,v in dicomptage.items():
         print(k,v)
 
+             
 
+    
 
-def construire_graphes():
+def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_arg = False):
+    #explicit_arg, si VRAI, transformera tous les rôles ARGn en une description sémantique
+    #plus explicite. (Sans doute plus facile à classer, également.)
+
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
     fichier_sous_graphes = prefixe_alignements + "subgraph_alignments.json"
     fichier_reentrances = prefixe_alignements + "reentrancy_alignments.json"
@@ -825,6 +832,8 @@ def construire_graphes():
     for amrfile in fichiers_amr:
         #print(amrfile)
         listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
+        if explicit_arg:
+            listeG = [expliciter_AMR(G) for G in listeG]
         amr_liste.extend(listeG)
         for graphe in listeG:
             amrid = graphe.id
@@ -877,7 +886,7 @@ def construire_graphes():
     #graphes_phrases = []
     limNgraphe = -1 #500
     NgraphesEcrits = 0
-    with open("./AMR_et_graphes_phrases_2.txt", "w", encoding="UTF-8") as FF:
+    with open(fichier_out, "w", encoding="UTF-8") as FF:
         for idSNT, listAlig in alignements.items():
             try:
                 amr = listAlig[0].amr  #amr_dict[idSNT]
@@ -999,5 +1008,5 @@ def test_aligneur():
 
 if __name__ == "__main__":
     #test_aligneur()
-    compter_reifications()
-    #construire_graphes()
+    #compter_reifications()
+    construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)

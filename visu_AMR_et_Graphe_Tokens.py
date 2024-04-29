@@ -9,7 +9,8 @@ from micro_serveur import EXEC_ADDRESS, ServeurReq, lancer_serveur
 from lxml import etree as ET
 
 from amr_utils.amr_readers import AMR_Reader
-from amr_utils.propbank_frames import propbank_frames_dictionary
+from examiner_framefiles import EXPLICITATION_AMR
+#from amr_utils.propbank_frames import propbank_frames_dictionary
 import json
 
 
@@ -77,6 +78,16 @@ if __name__ == "__main__":
             :polarity -
             :ARG1 (m / museum)))
       """
+
+
+def make_propbank_frames_dictionary():
+    global Explicit
+    #global propbank_frames_dictionary
+
+    Explicit = EXPLICITATION_AMR()
+    Explicit.dicFrames = EXPLICITATION_AMR.make_json_from_propbank_github()
+
+
 
 
 class RECHERCHE_AMR:
@@ -195,8 +206,10 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
     def test(chemin):
         if (  chemin.startswith("/LDC_2020_T02/")
                 and chemin.endswith(".html")
-                and chemin[-9] == "_"
-                and all(x in ["X", "O"] for x in chemin[-8:-5])
+                #and chemin[-9] == "_"
+                and chemin[-10] == "_"
+                #and all(x in ["X", "O"] for x in chemin[-8:-5])
+                and all(x in ["X", "O"] for x in chemin[-9:-5])
              ):
             return True
             # exemple de chemin : /Le_petit_prince/JAMR_125_XOO.html
@@ -204,18 +217,23 @@ class GET_LDC_2020_T02(EXEC_ADDRESS):
     
     def execute(self):
         global recherche_amr
+        global Explicit
         chemin = self.chemin
         chm = chemin[14:]
         
-        variables, voir_racine, reverse_roles = tuple(x == 'X' for x in chm[-8:-5])
+        #variables, voir_racine, reverse_roles = tuple(x == 'X' for x in chm[-8:-5])
+        variables, voir_racine, reverse_roles, explct_roles = tuple(x == 'X' for x in chm[-9:-5])
         
-        iden = chm[:-9]
+        #iden = chm[:-9]
+        iden = chm[:-10]
         if iden == "alea":
             identAMR = recherche_amr.pick_ident()
             amr, jsn = recherche_amr[identAMR]
             jsn["identAMR"] = identAMR
         else:
             amr, jsn = recherche_amr[iden]
+        if (explct_roles):
+            amr = Explicit.expliciter_AMR(amr)
         if not "snt" in amr.metadata:
             toks = amr.tokens
             amr.metadata["snt"] = " ".join(toks)
@@ -313,11 +331,33 @@ def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
             if src < tgt:
                 G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
         else:
-            G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident)
+            edgL = r[1:] if r.startswith(":") else r
+            G.add_edge("tk_%d"%src, "tk_%d"%tgt, label=edgL, id=ident)
 
     return G
     #G.draw("graphe_mot.svg", prog="dot")
 
+
+def calc_tooltip(dicors):
+    roles = [ (R if not R in Explicit.description_roles else Explicit.description_roles[R]) for R in dicors["roles"]]
+    if roles[0] == None:
+        start = 1
+    else:
+        start = 0
+    roles = "\n".join( "ARG%d: %s"%(i, roles[i]) for i in range(start, len(roles)) )
+    
+    tooltip = [roles]
+    
+    rolesPB = dicors["roles_PB"]
+    descr = dicors["descr"]
+    rolesPB = "PropBank:\n" + "\n".join( "ARG%d: %s : %s"%(i, rolesPB[i], descr[i]) for i in range(start, len(rolesPB))   )
+    tooltip.append(rolesPB)
+    for K, rol in dicors.items():
+        if K.startswith("roles_") and K != "roles_PB":
+            K = K[6:]
+            tooltip.append( K + ":\n" + "\n".join( "ARG%d: %s"%(i, rol[i]) for i in range(start, len(rol)) ) )
+    tooltip = "\n-----\n".join(tooltip)
+    return tooltip
 
 
 def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, clusters=[]):
@@ -337,13 +377,13 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
         dico_triplets[triplet] = []
         label = amr.nodes[iden]
         argus["id"] = prefixe+iden
-        if label in propbank_frames_dictionary:
-            tooltip = propbank_frames_dictionary[label].replace("\t","\n")
-            tooltip = iden + "\n" + tooltip
+        #if label in propbank_frames_dictionary:
+        if label in Explicit.dicFrames:
+            dicors = Explicit.dicFrames[label]
             G.add_node(iden, label="" if voir_variables else label,
                        style="filled",
                        fillcolor="white",
-                       tooltip = tooltip,
+                       tooltip = calc_tooltip(dicors),
                        **argus
                     )
         else:
@@ -438,6 +478,7 @@ def grapheToSVG(amr, G):
 
 def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
     global recherche_amr
+    make_propbank_frames_dictionary()
     print("Ouverture du fichier %s pour dresser la table")
     recherche_amr = RECHERCHE_AMR(nom_fichier)
     print("Table dressée.")
