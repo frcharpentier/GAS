@@ -15,7 +15,8 @@ import tqdm
 def alig_to_string(self):
     resu = dict()
     resu["type"] = self.type
-    resu["tokens"] = self.tokens
+    #resu["tokens"] = self.tokens
+    resu["tokens"] = self.word_ids
     resu["nodes"] = self.nodes
     resu["edges"] = self.edges
     return repr(resu)
@@ -46,13 +47,13 @@ class ALIGNEUR:
             self.tokn = tokn
    
         
-    def aligner_seq(self, toksH, phrase):
+    def aligner_seq(self, motsH, phrase):
         # Chercher le parcours de coût minimal
         # pour traverser une grille du coin supérieur gauche
         # au coin inférieur droit, d’intersection en intersection.
         # les intervalles entre deux intersections sont indexés
         # verticalement et horizontalement
-        # par les tokens toksV et toksH.
+        # par les tokens toksV et motsH.
         # À chaque intersection, on a le droit de se déplacer
         # vers la droite ou vers le bas, pour un coût qui vaut 1.
         # Si les tokens vertical et horizontal de l’intervalle
@@ -61,7 +62,7 @@ class ALIGNEUR:
         # Il s’agit de l’algo de Needleman-Wunsch, que je considère
         # comme un cas particulier de l’algo A*.
         #
-        # toksH contient les tokens de l’AMR
+        # motsH contient les tokens de l’AMR
         # phrase contient la phrase à faire tokeniser
 
         toks_nums = [x for x in self.tokenizer(phrase).input_ids]
@@ -81,7 +82,7 @@ class ALIGNEUR:
         visites = dict()
         front = {(0,0): (0, (0,0))}
         nV = len(toksV)
-        nH = len(toksH)
+        nH = len(motsH)
         
         estim = lambda x: abs(nV-x[0] - nH + x[1])
         clef = lambda x : x[1][0] + estim(x[0])
@@ -97,8 +98,8 @@ class ALIGNEUR:
             #ajoutant à chaque fois un déplacement élémentaire.
             del front[(posV, posH)]
             visites[(posV, posH)] = mvt
-            if posV < nV and posH < nH and len(toksV[posV]) <= len(toksH[posH]):
-                H = toksH[posH].lower()
+            if posV < nV and posH < nH and len(toksV[posV]) <= len(motsH[posH]):
+                H = motsH[posH].lower()
                 mvt0 = 0
                 V = toksV[posV + mvt0].lower()
                 vf = True
@@ -145,7 +146,7 @@ class ALIGNEUR:
         chem = chem[::-1]
 
         # On connaît le cheminement optimal dans la grille.
-        # déduisons-en un alignement de la chaine toksH vers la chaine toksV
+        # déduisons-en un alignement de la chaine motsH vers la chaine toksV
         # On représentera cet alignement sous forme de deux relations.
         # Une relation de schéma("token", "groupe") et une autre de schéma
         # ("mot", "groupe"). Les tokens et les mots seront représentés par
@@ -313,6 +314,8 @@ def load_aligs_from_json(json_files, amrs=None):
             if elimine:
                 break #sortir de for a
             alig = AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']] if "edges" in a else None)
+            alig.word_ids = alig.tokens
+            del alig.tokens
             alig.amr = amr
             aligs.append(alig)
         if elimine:
@@ -357,8 +360,10 @@ class GRAPHE_PHRASE:
     def __init__(self, amr):
         self.amr = amr
         self.id = amr.id
-        self.mots = amr.tokens #À changer ultérieurement
-        self.tokens = amr.tokens #À changer ultérieurement
+        #self.mots = amr.tokens #À changer ultérieurement
+        #self.tokens = amr.tokens #À changer ultérieurement
+        self.mots = amr.words
+
         #self.setSommets = set()
         #self.setTokens = set()
 
@@ -371,7 +376,8 @@ class GRAPHE_PHRASE:
         self.REN_mg = None
         self.REN_ag = None
         
-        self.N = len(self.tokens)
+        #self.N = len(self.tokens)
+        self.N = len(self.mots)
         self.transfo_AMR()
 
     def transfo_AMR(self):
@@ -417,19 +423,19 @@ class GRAPHE_PHRASE:
         
         for a in listAlig: ## Construction des tables relationnelles
             if a.type == "subgraph":
-                SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
                 SG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
                 id_groupe += 1
             elif a.type == "dupl-subgraph":
-                DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
                 DSG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
                 id_groupe += 1
             elif a.type == "relation":
-                REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
+                REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
                 REL_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, "G%d"%id_groupe) for s,r,c in a.edges])
                 id_groupe += 1
             elif a.type.startswith("reentrancy"):
-                REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.tokens])
+                REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.word_ids])
                 REN_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, a.type, "G%d"%id_groupe) for s,r,c in a.edges])
                 id_groupe += 1
 
@@ -443,7 +449,7 @@ class GRAPHE_PHRASE:
             self.REN_mg = REN_mG.ren("mot", "type", "groupe")
             self.REN_ag = REN_aG.ren("source", "cible", "relation", "type", "groupe")
         else:
-            self.mots = self.tokens
+            #self.mots = self.tokens
             self.tokens = toks_transfo
             self.N = len(self.tokens)
             rel_SG_gG = (rel_mg.ren("mot", "g") * SG_mG.ren("mot", "G")).p("g", "G")
@@ -772,8 +778,8 @@ def amr_to_string(amr):
             resu2.append((k,v))
         else:
             resu1.append((k,v))
-    if not "tok" in amr.metadata and amr.tokens:
-        resu2.append(("tok", " ".join(amr.tokens)))
+    if not "tok" in amr.metadata and amr.words:
+        resu2.append(("tok", " ".join(amr.words)))
     resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
     resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
     #resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string
@@ -898,6 +904,7 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
 
     fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
     fichiers_snt = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
+    
     #fichiers_amr = fichiers_amr[0:1]
 
     amr_reader = AMR_Reader()
@@ -931,15 +938,15 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
             amrid = graphe.id
             amr_dict[graphe.id] = graphe
             
-            assert hasattr(graphe, "tokens")
-            #graphe.words = graphe.tokens
-            #del graphe.tokens
+            #assert hasattr(graphe, "tokens")
+            graphe.words = graphe.tokens
             
             if not "snt" in graphe.metadata:
                 if amrid in snt_dict:
                     graphe.metadata["snt"] = snt_dict[amrid]
                 else:
-                    toks = graphe.tokens
+                    #toks = graphe.tokens
+                    toks = graphe.words
                     graphe.metadata["snt"] = " ".join(toks)
 
             
@@ -966,7 +973,7 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
             if a.type in ("subgraph", "dupl-subgraph"):
                 N = compter_compos_connexes(a.edges)
                 if N > 1:
-                    #print("AMR %s, tokens %s, %d composantes"%(idSNT, str([a.amr.tokens[tt] for tt in a.tokens]), N))
+                    print("AMR %s, tokens %s, %d composantes"%(idSNT, str([a.amr.words[tt] for tt in a.word_ids]), N))
                     eliminations.append(idSNT)
                     break #sortir de la boucle for a
     eliminations = set(eliminations)
@@ -991,8 +998,8 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
             try:
                 amr = listAlig[0].amr  #amr_dict[idSNT]
                 #amr_dic_rel = transfo_AMR(amr)
-                toks_amr = amr.tokens
-                ntoks = len(toks_amr)
+                mots_amr = amr.words
+                #ntoks = len(mots_amr)
                 snt = amr.metadata["snt"]
 
                 graphe = GRAPHE_PHRASE(amr)
@@ -1001,7 +1008,7 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
 
                 if amr.id in snt_dict:
                     #print(" ### %s"%amr.id)
-                    trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(toks_amr, snt_dict[amr.id])
+                    trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(mots_amr, snt_dict[amr.id])
                     #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
                     # et toks_transfo est la liste in extenso des tokens du transformer
                     graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
@@ -1081,7 +1088,7 @@ AMR_problematique = """
 def test_aligneur():
     aligneur = ALIGNEUR("roberta-base")
     #phrase = "The lack or serious shortage of intermediate layers of Party organizations and units between the two has resulted in its inability to consider major issues with endless minor issues on hand, such that even if it is highly capable, it won't last long, as it will be dragged down by numerous petty things."
-    #toksH = ["The", "lack", "or", "serious", "shortage", "of", "intermediate",
+    #motsH = ["The", "lack", "or", "serious", "shortage", "of", "intermediate",
     #         "layers", "of", "Party", "organizations", "and", "units", "between",
     #         "the", "two", "has", "resulted", "in", "its", "inability", "to",
     #         "consider", "major", "issues", "with", "endless", "minor", "issues",
@@ -1090,10 +1097,10 @@ def test_aligneur():
     #         "will", "be", "dragged", "down", "by", "numerous", "petty", "things", "."]
     #phrase = "if Establishing it won't last long."
     phrase = "I am sure many of us are well aware of Samuel Huntington's \"Clash of Civilizations\" theory, that future conflict would be along cultural lines between \"West\", \"East\" and \"Confucian\" blocks, whatever they are."
-    #toksH = ["if", "Estab", "lishing", "it", "will", "n't", "last", "long"]
-    toksH = "I am sure many of us are well aware of Samuel Huntington 's \" Clash of Civilizations \" theory , that future conflict would be along cultural lines between \" West \" , \" East \" and \" Confucian \" blocks , whatever they are ."
-    toksH = toksH.split()
-    rel_tg, rel_mg, toksV = aligneur.aligner_seq(toksH, phrase)
+    #motsH = ["if", "Estab", "lishing", "it", "will", "n't", "last", "long"]
+    motsH = "I am sure many of us are well aware of Samuel Huntington 's \" Clash of Civilizations \" theory , that future conflict would be along cultural lines between \" West \" , \" East \" and \" Confucian \" blocks , whatever they are ."
+    motsH = motsH.split()
+    rel_tg, rel_mg, toksV = aligneur.aligner_seq(motsH, phrase)
     aligs = [(v,h) for v,h in (rel_tg * rel_mg).p("token", "mot")]
     aligs.sort()
     for tV, tH in aligs:
@@ -1101,8 +1108,8 @@ def test_aligneur():
             tV = toksV[tV]
         else:
             tV = "[]"
-        if tH >= 0 and tH < len(toksH):
-            tH = toksH[tH]
+        if tH >= 0 and tH < len(motsH):
+            tH = motsH[tH]
         else:
             tH = "[]"
         print("%s --> %s"%(tV, tH))
