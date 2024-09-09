@@ -380,7 +380,8 @@ let faire_graphe_adjoint = function(prefixe, ntokens, tk_utiles, aretes, fcolor)
 	return repr2;
 }
 
-let colore_liste_elts = function(liste, couleur){
+let colore_liste_elts = function(liste, kouleur, isEdge=false){
+	let couleur;
 	for(let ielt=0; ielt<liste.length; ielt++)
 	{
 		let elt = liste[ielt];
@@ -389,6 +390,16 @@ let colore_liste_elts = function(liste, couleur){
 		if(elt.tagName.toUpperCase() == "G")
 		{
 			let sselts;
+			classListe = elt.classList;
+			if (kouleur == null)
+			{
+				if (classListe.contains("ROUGE"))
+					couleur = ["black", "white", "red"];
+				else
+					couleur = BLANC;
+			}
+			else
+				couleur = kouleur;
 			sselts = elt.getElementsByTagName("ellipse");
 			if(sselts.length > 0)
 				colore_liste_elts(sselts, couleur);
@@ -400,12 +411,18 @@ let colore_liste_elts = function(liste, couleur){
 				colore_liste_elts(sselts, couleur);
 			sselts = elt.getElementsByTagName("polygon");
 			if(sselts.length > 0)
-				colore_liste_elts(sselts, couleur);
+			{
+				colore_liste_elts(sselts, couleur, classListe.contains("edge"));
+			}
 			sselts = elt.getElementsByTagName("rect");
 			if(sselts.length > 0)
 				colore_liste_elts(sselts, couleur);
 			continue;
 		}
+		if (kouleur == null)
+			couleur = BLANC;
+		else
+			couleur = kouleur;
 		if(elt.tagName.toUpperCase() == "SPAN")
 		{
 			if (couleur[2] == VERT[2])
@@ -452,7 +469,10 @@ let colore_liste_elts = function(liste, couleur){
 		if (elt.tagName.toUpperCase() == "POLYGON")
 		{
 			elt.setAttribute("stroke", couleur[0]);
-			elt.setAttribute("fill", couleur[1]);
+			if(isEdge)
+				elt.setAttribute("fill", couleur[0]);
+			else
+				elt.setAttribute("fill", couleur[1]);
 			continue;
 		}
 		if (elt.tagName.toUpperCase() == "RECT")
@@ -681,8 +701,8 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		}
 		else
 		{
-			C1 = BLANC;
-			C2 = BLANC;
+			C1 = null;
+			C2 = null;
 		}
 		let semblables;
 		let correspondants;

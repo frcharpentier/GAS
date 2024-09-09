@@ -98,18 +98,19 @@ class RELATION:
     
     def join(self, rel2):
         sort2 = rel2.sort
-        sort_ = tuple(s for s in sort2 if not s in self.sort)
-        sort_i = tuple(s for s in sort2 if s in self.sort)
-        sort = self.sort + sort_
+        sort_ = tuple(s for s in sort2 if not s in self.sort) # colonnes de rel2\self
+        sort_i = tuple(s for s in sort2 if s in self.sort)    # colonnes de rel2 inter self
+        sort = self.sort + sort_                              # d’abord les colonnes de self, puis celles de rel2\self.
         resu = RELATION(*sort)
         if len(sort_i) == 0:
-            # Produit cartésien
+            # S’il n’y a aucune colonnes dans l’intersection, il s’agit d’un produit cartésien
             table = [resu.nuplet(*(t+t2)) for t in self.table for t2 in rel2.table]
             resu.table = table
             return resu
-        idxexter = [i for i,s in enumerate(sort2) if not (s in self.sort)]
-        idxinter = [i for i,s in enumerate(sort2) if s in self.sort]
-        idxinter1 = [self.sort.index(s) for s in sort_i]
+        # Sinon (si on a une intersection non vide entre les colonnes)
+        idxexter = [i for i,s in enumerate(sort2) if not (s in self.sort)] # indice dans rel2 des colonnes de rel2\self
+        idxinter = [i for i,s in enumerate(sort2) if s in self.sort]       # indice dans rel2 des colonnes de rel2 inter self.
+        idxinter1 = [self.sort.index(s) for s in sort_i]                   # indice dans self des colonnes de rel2 inter self.
         dic2 = {}
         for t in rel2.table:
             clef = tuple(t[i] for i in idxinter)

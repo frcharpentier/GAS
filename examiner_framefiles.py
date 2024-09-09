@@ -6,6 +6,28 @@ import csv
 import json
 import random
 
+def faire_roles_en_91():
+    with open("C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames/AMR-UMR-91-rolesets.xml",
+              "r", encoding="utf-8") as F:
+        arbo = ET.parse(F)
+    with open("./UMR_91_rolesets.tsv", "w", encoding="utf-8") as F:
+        rolesets = arbo.iterfind("//roleset")
+        for roleset in rolesets:
+            iden = roleset.attrib["id"]
+            roles = roleset.findall("./roles/role")
+            usages = roleset.findall("./usagenotes/usage")
+            usages = [u.attrib["inuse"] for u in usages if u.attrib["resource"] == "AMR"]
+            ARGn = [r.attrib["n"] for r in roles]
+            descr = [r.attrib["f"] if (not "descr" in r.attrib) else r.attrib["descr"] for r in roles]
+            lig = "\t".join([ "A%s>[%s]"%(A,d) for A,d in zip(ARGn, descr)])
+            lig = "%s>va:????"%(iden) + "\t" + lig
+            if all(u=="-" for u in usages):
+                lig = "### " + lig
+            print(lig, file=F)
+
+
+
+#faire_roles_en_91()
 
 class EXPLICITATION_AMR:
     description_roles = {
@@ -74,29 +96,88 @@ class EXPLICITATION_AMR:
         for s,r,t in amr.edges:
             if r.startswith(":ARG"):
                 reverse = (r.endswith("-of"))
-                fnd = re.search("ARG(\d+|m|M)", r)
-                if fnd:
-                    ARGn = fnd[1]
-                    ARGn = -1 if ARGn in ("m", "M") else int(ARGn)
-                    ND = t if reverse else s
-                    ND = amr.nodes[amr.isi_node_mapping[ND]]
-                    if ND in self.dicFrames:
-                        roles = self.dicFrames[ND]["roles"]
-                        if len(roles) > 0:
+                ND = t if reverse else s
+                ND = amr.nodes[amr.isi_node_mapping[ND]]
+                if ND in self.dicFrames:
+                    fnd = re.search("ARG(\d+)", r[1:])
+                    if not fnd:
+                        ARGn = r[1:]
+                        roles = self.dicFrames[ND]["special"]
+                        if ARGn in roles:
                             transfo = True
-                            role = roles[ARGn].upper()
-                            if role in self.description_roles:
-                                role = self.description_roles[role]
-                            role = ":>" + role
-                            if reverse:
-                                role += "-of"
-                            edges_t.append((s, role, t))
-                            continue
+                            fnd = True
+                        else:
+                            fnd = False
+                    else:
+                        ARGn = int(fnd[1])
+                        roles = self.dicFrames[ND]["ARGn"]
+                        lenr = len(roles)
+                        if 0 <= ARGn < lenr :
+                            transfo = True
+                            fnd = True
+                        else:
+                            fnd = False
+                    if fnd:
+                        role = roles[ARGn].upper()
+                        role = ":>" + role
+                        if reverse:
+                            role += "-of"
+                        edges_t.append((s, role, t))
+                        continue
             edges_t.append((s,r,t))
         if transfo:
             amr.edges = edges_t
         return amr
     
+    @staticmethod
+    def transfo_pb2va_tsv(fichiers = ["../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv", "./UMR_91_rolesets.tsv"]):
+        prems = True
+        resu = {}
+        f = lambda x: int(x[2]) if x[2] is not None else -1
+        for fichier in fichiers:
+            print("ouverture de %s"%fichier)
+            with open(fichier, "r", encoding="utf-8") as F:
+                for ligne in F:
+                    if prems:
+                        prems=False
+                        continue
+                    ligne = ligne.strip()
+                    if ligne.startswith("#"):
+                        continue
+                    if ligne.startswith("===FIN"):
+                        break
+                    speciaux = dict()
+                    frame, *argus = ligne.split("\t")
+                    pbframe, vaframe = frame.split(">")
+
+                    fnd = re.search("^(.+)\.(\d+)$", pbframe)
+                    if fnd:
+                        pbframe = fnd[1] + "-" + fnd[2]
+
+                    argus = [kv.split(">", maxsplit=1) for kv in argus]
+                    
+                    ARGn = [(re.search("^(A(\d+)|A.+)$", k),v) for k,v in argus]
+                    if any(k is None for k,v in ARGn):
+                        print(pbframe)
+                    for k, v in ARGn:
+                        if k[2] == None:
+                            speciaux[k[1]] = v
+                    ARGn = [(f(k),v) for k,v in ARGn if k[2] is not None]
+                    if len(ARGn) == 0:
+                        resu[pbframe] = {"vaframe": vaframe}
+                        continue
+                    maxi = max(k for k,v in ARGn)
+                    mini = min(k for k,v in ARGn)
+                    assert mini in (0,1)
+                    argus = ["ARG%d"%x for x in range(1+maxi)]
+                    for k,v in ARGn:
+                        argus[k] = v
+                    resu[pbframe] = {"vaframe" : vaframe,
+                                    "ARGn" : argus,
+                                    "special" : speciaux}
+                    (vaframe,) + tuple(argus)
+        return resu
+
     @staticmethod
     def make_json_from_propbank_github(repertoire=None, fichier_91="AMR-UMR-91-rolesets.xml", fichier_corr = None, fichier_out=None):
         dico = dict()
@@ -257,7 +338,14 @@ def transfo_frame_arg_descr():
             wrtr.writerow(lig)
     print("TERMINÉ.")
 
+
+
+            
+            
+
+
 #transfo_frame_arg_descr()
 if __name__ == "__main__":
     #make_json_from_framefiles(None, "./RoleFrames.json")
-    EXPLICITATION_AMR.make_json_from_propbank_github()
+    #EXPLICITATION_AMR.make_json_from_propbank_github()
+    transfo_pb2va_tsv()

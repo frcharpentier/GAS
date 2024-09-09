@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
 from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
-from examiner_framefiles import expliciter_AMR
+from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
 from algebre_relationnelle import RELATION
 import re
 import os
@@ -146,12 +146,12 @@ class ALIGNEUR:
 
         # On connaît le cheminement optimal dans la grille.
         # déduisons-en un alignement de la chaine toksH vers la chaine toksV
-        # On représentera cet alignement sous forme de deux relation.
+        # On représentera cet alignement sous forme de deux relations.
         # Une relation de schéma("token", "groupe") et une autre de schéma
         # ("mot", "groupe"). Les tokens et les mots seront représentés par
         # leur numéro d’ordre.
-        rel_tg = RELATION("token", "groupe")
-        rel_mg = RELATION("mot", "groupe")
+        rel_tg = RELATION("token", "groupe") #Token de transformer -- groupe
+        rel_mg = RELATION("mot", "groupe")   #mot de phrase -- groupe
         
         i = 1 #Numéro de token
         j = 0 #Numéro de mot
@@ -204,7 +204,7 @@ class ALIGNEUR:
 
         toksV = (self.tok1,) + tuple(toksV) + (self.tokn,)
         return rel_tg, rel_mg, toks_transformer
-
+        # La fonction renvoie la relation Token -- Groupe, la relation mot--groupe et la liste in extenso des tokens du transformer
         
 
     
@@ -400,18 +400,22 @@ class GRAPHE_PHRASE:
         self.amr_arcs_redir = arcs_redir
 
     def ajouter_aligs(self, listAlig, toks_transfo=None, rel_tg=None, rel_mg=None):
-        SG_mG = RELATION("mot", "G")
-        SG_sG = RELATION("sommet", "G")
-        DSG_mG = RELATION("mot", "G")
-        DSG_sG = RELATION("sommet", "G")
-        REL_mG = RELATION("mot", "G")
-        REL_aG = RELATION("source", "cible", "relation", "G")
-        REN_mG = RELATION("mot", "type", "G")
-        REN_aG = RELATION("source", "cible", "relation", "type", "G")
+        #toks_transfo est la liste in extenso des tokens du transformer
+        #rel_tg est la relation num_token -- groupe
+        #rel_mg est la relation num_mot -- groupe
+        
+        SG_mG = RELATION("mot", "G")        #subgraph mot -- groupe
+        SG_sG = RELATION("sommet", "G")     #sous-graphe  sommet - groupe
+        DSG_mG = RELATION("mot", "G")       #sous-graphe dupliqué mot -- groupe
+        DSG_sG = RELATION("sommet", "G")    #sous-graphe dupliqué sommet -- groupe
+        REL_mG = RELATION("mot", "G")       # relation mot -- groupe
+        REL_aG = RELATION("source", "cible", "relation", "G") # relation arete (source, cible, relation) -- groupe
+        REN_mG = RELATION("mot", "type", "G") # réentrance mot -- groupe
+        REN_aG = RELATION("source", "cible", "relation", "type", "G") # réentrance arête -- groupe
 
         id_groupe = 0
         
-        for a in listAlig:
+        for a in listAlig: ## Construction des tables relationnelles
             if a.type == "subgraph":
                 SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.tokens])
                 SG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
@@ -748,6 +752,8 @@ def yield_prefix(nf):
             lignes = []
 
 def quick_read_amr_file(nom_fichier, dico_snt):
+    # Renvoie un dico python dont les clés sont les ids d’AMR et les valeurs
+    # sont les phrases
     for pfx in yield_prefix(nom_fichier):
         metadata, _ = Metadata_Parser.readlines(pfx)
         if "id" in metadata and "snt" in metadata:
@@ -796,8 +802,82 @@ def compter_reifications():
         print(k,v)
 
              
+def recenser_relation_opn():
+    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+    doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
 
-    
+    fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    amr_reader = AMR_Reader()
+    dico_opn = dict()
+    for amrfile in fichiers_amr:
+        listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons]
+        for AMR in listeG:
+            for s,r,t in AMR.edges_redir():
+                if re.search("^:op\d+$",r):
+                    s = AMR.nodes[AMR.isi_node_mapping[s]]
+                    if not s in dico_opn:
+                        dico_opn[s] = 1
+                    else:
+                        dico_opn[s] += 1
+    dico_opn = [(k,v) for k,v in dico_opn.items()]
+    dico_opn.sort(key = lambda x : x[1])
+    return dico_opn
+
+
+def yield_AMR_1_par_1(fichier):
+    lignes = []
+    with open(fichier, "r", encoding="utf-8") as F:
+        for ligne in F:
+            ligne = ligne.strip()
+            if len(ligne) == 0:
+                yield "\n".join(lignes)
+                lignes = []
+            else:
+                lignes.append(ligne)
+
+def parse_one_AMR(parser, AMRtxt, remove_wiki=False, output_alignments=False, link_string=False):
+    no_tokens = False
+    resu = parser.loads(AMRtxt, remove_wiki, output_alignments, no_tokens, link_string)
+    if not resu:
+        return False
+    if output_alignments:
+        amr, aligns = resu[0], resu[1]
+        return amr, aligns
+    else:
+        amr = resu
+        return amr
+
+
+def essai_AMR_string():
+    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+    fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
+    amr_reader = AMR_Reader()
+    for amrfile in fichiers_amr:
+        #print(amrfile)
+        for AMRtxt in yield_AMR_1_par_1(amrfile):
+            AMR1 = amr_reader.loads(AMRtxt, remove_wiki=True, output_alignments=False, no_tokens=False, link_string=True)
+            if not AMR1:
+                continue
+            print(AMR1.id)
+            string = AMR1.amr_string()
+            AMR2 = amr_reader.loads(string, remove_wiki=True, output_alignments=False, no_tokens=False, link_string=True)
+            #print(string)
+            iden = AMR1.id
+            assert all(k in AMR2.nodes and AMR2.nodes[k] == v for k,v in AMR1.nodes.items()), ("Nodes %s %s"%(amrfile, iden))
+            assert all(k in AMR1.nodes and AMR1.nodes[k] == v for k,v in AMR2.nodes.items()), ("Nodes %s %s"%(amrfile, iden))
+            assert all(e in AMR2.edges for e in AMR1.edges), ("Edges %s %s"%(amrfile, iden))
+            assert all(e in AMR1.edges for e in AMR2.edges), ("Edges %s %s"%(amrfile, iden))
+            assert all(e in AMR2.variables for e in AMR1.variables), ("Variables %s %s"%(amrfile, iden))
+            assert all(e in AMR1.variables for e in AMR2.variables), ("Variables %s %s"%(amrfile, iden))
+            assert all(k in AMR2.isi_node_mapping and AMR2.isi_node_mapping[k] == v for k,v in AMR1.isi_node_mapping.items()), ("ISI Node Mapping %s %s"%(amrfile, iden))
+            assert all(k in AMR1.isi_node_mapping and AMR1.isi_node_mapping[k] == v for k,v in AMR2.isi_node_mapping.items()), ("ISI Node Mapping %s %s"%(amrfile, iden))
+
+
+
+
+
+#essai_AMR_string()
 
 def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_arg = False):
     #explicit_arg, si VRAI, transformera tous les rôles ARGn en une description sémantique
@@ -821,24 +901,39 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
 
     amr_reader = AMR_Reader()
     aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
+    if explicit_arg:
+        Explicit = EXPLICITATION_AMR()
+        Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
 
     amr_liste = []
+    # amr_liste sera une liste remplie d’objets AMR
     amr_dict = dict()
+    # amr_dict sera un dico dont les clés seront les identifiants de phrases,
+    # et dont les valeurs seront les objets AMR correspondants
     snt_dict = dict()
+    # snt_dict sera un dico dont les clés sont des identifiants de phrases
+    # et dont les valeurs sont les phrases modèle.
 
     for sntfile in fichiers_snt:
         snt_dict = quick_read_amr_file(sntfile, snt_dict)
+        # snt_dict est un dico dont les clés sont des identifiants de phrases
+        # et dont les valeurs sont les phrases modèle.
 
     for amrfile in fichiers_amr:
         #print(amrfile)
         listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
+        # listeG est une liste remplie d’objets AMR.
         if explicit_arg:
-            listeG = [expliciter_AMR(G) for G in listeG]
+            listeG = [Explicit.expliciter_AMR(G) for G in listeG]
         amr_liste.extend(listeG)
         for graphe in listeG:
             amrid = graphe.id
             amr_dict[graphe.id] = graphe
+            
             assert hasattr(graphe, "tokens")
+            #graphe.words = graphe.tokens
+            #del graphe.tokens
+            
             if not "snt" in graphe.metadata:
                 if amrid in snt_dict:
                     graphe.metadata["snt"] = snt_dict[amrid]
@@ -857,6 +952,10 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
         fichier_relations,
         fichier_reentrances],
         amr_liste)
+    # alignements est un dico dont les clés sont les identifiants de phrase
+    # et dont les valeurs sont des listes de dico d’alignements
+    # un dico d’alignements est un dico avec les clés type,
+    # tokens(càd mots), nodes, et edges
     
     # Un examen des alignements a montré que quelques alignements se font vers une portion de l’AMR non-connexe.
     # On va simplement éliminer les AMR concernés
@@ -902,6 +1001,8 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
                 if amr.id in snt_dict:
                     #print(" ### %s"%amr.id)
                     trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(toks_amr, snt_dict[amr.id])
+                    #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
+                    # et toks_transfo est la liste in extenso des tokens du transformer
                     graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
                 else:
                     graphe.ajouter_aligs(listAlig)
@@ -1009,4 +1110,7 @@ def test_aligneur():
 if __name__ == "__main__":
     #test_aligneur()
     #compter_reifications()
-    construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
+    
+    #essai_AMR_string()
+    #construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
+    construire_graphes(fichier_out = "./a_tej.txt", explicit_arg = True)

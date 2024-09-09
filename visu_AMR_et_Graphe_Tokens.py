@@ -85,7 +85,7 @@ def make_propbank_frames_dictionary():
     #global propbank_frames_dictionary
 
     Explicit = EXPLICITATION_AMR()
-    Explicit.dicFrames = EXPLICITATION_AMR.make_json_from_propbank_github()
+    Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
 
 
 
@@ -338,7 +338,7 @@ def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
     #G.draw("graphe_mot.svg", prog="dot")
 
 
-def calc_tooltip(dicors):
+def calc_tooltip_0(dicors):
     roles = [ (R if not R in Explicit.description_roles else Explicit.description_roles[R]) for R in dicors["roles"]]
     if roles[0] == None:
         start = 1
@@ -359,6 +359,13 @@ def calc_tooltip(dicors):
     tooltip = "\n-----\n".join(tooltip)
     return tooltip
 
+def calc_tooltip(dicors):
+    ARGn = [(("ARG%d"%x),r) for x,r in enumerate(dicors["ARGn"])]
+    ARGn.extend((k,v) for k,v in dicors["special"].items())
+    ARGn = ["%s: %s"%(x,r) for x,r in ARGn if x != r]
+    tooltip = "\n".join(ARGn)
+    return tooltip
+
 
 def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, clusters=[]):
     clusters = [list(C) for C in clusters if len(C) > 1]
@@ -367,42 +374,62 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
     G.graph_attr.update(id="GR_%s"%prefixe)
     G.node_attr["fontname"] = "helvetica"
     G.edge_attr["fontname"] = "helvetica"
-    if voir_variables:
-        argus = {"shape": "circle"}
-    else:
-        argus = dict()
+    
     dico_triplets = dict()
     for iden in amr.variables:
+        texte_rouge = False
+        if voir_variables:
+            argus = {"shape": "circle"}
+        else:
+            argus = dict()
         triplet = (":instance", iden, amr.nodes[iden])
         dico_triplets[triplet] = []
         label = amr.nodes[iden]
         argus["id"] = prefixe+iden
-        #if label in propbank_frames_dictionary:
+        
         if label in Explicit.dicFrames:
             dicors = Explicit.dicFrames[label]
-            G.add_node(iden, label="" if voir_variables else label,
-                       style="filled",
-                       fillcolor="white",
-                       tooltip = calc_tooltip(dicors),
-                       **argus
-                    )
+            tooltip = calc_tooltip(dicors)
+            if tooltip:
+                argus["tooltip"] = tooltip
+            else:
+                texte_rouge = True
+        elif re.search("-\d+$", label):
+            texte_rouge = True
+        if voir_variables:
+            G.add_node(iden, label="",
+                    style="filled",
+                    fillcolor="white",
+                    **argus)
         else:
-            G.add_node(iden, label="" if voir_variables else label,
-                       style="filled",
-                       fillcolor="white",
-                       **argus)
+            if texte_rouge:
+                argus["class"] = "ROUGE"
+                argus["fontcolor"] = "red"
+            G.add_node(iden, label=label,
+                        style="filled",
+                        fillcolor="white",
+                        **argus)
         dico_triplets[triplet].append(prefixe+iden)
         if voir_variables:
             id2 = "%s_concept_%s"%(prefixe, iden)
             for C in clusters:
                 if iden in C:
                     C.append(id2)
-            G.add_node( id2,
+            if texte_rouge:
+                G.add_node( id2,
                         label=label,
                         id=id2,
                         style="filled",
                         fillcolor="white",
-                        shape="rect")
+                        shape="rect",
+                        fontcolor = "red")
+            else:
+                G.add_node( id2,
+                            label=label,
+                            id=id2,
+                            style="filled",
+                            fillcolor="white",
+                            shape="rect")
             dico_triplets[triplet].append(id2)
             idarete = "%s→%s"%(prefixe+iden,id2)
             G.add_edge( iden,
@@ -417,10 +444,18 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
         aretes = amr.edges
     for id1, rol, id2 in aretes:
         edgL = rol[1:] if rol.startswith(":") else rol
+        texte_rouge = (rol.startswith(":ARG") or rol.startswith(":>ARG"))
         if id2 in amr.variables:
             triplet = (rol, id1, id2)
             idarete = "%s→%s"%(prefixe+id1,prefixe+id2)
-            G.add_edge(id1, id2, label=edgL, id=idarete)
+            if texte_rouge:
+                G.add_edge(id1, id2,
+                           label=edgL,
+                           id=idarete,
+                           fontcolor="red",
+                           **{"class":"ROUGE"})
+            else:
+                G.add_edge(id1, id2, label=edgL, id=idarete)
             dico_triplets[triplet] = [prefixe+id1, prefixe+id2, idarete]
         else:
             triplet = (rol, id1, amr.nodes[id2])
@@ -479,7 +514,7 @@ def grapheToSVG(amr, G):
 def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
     global recherche_amr
     make_propbank_frames_dictionary()
-    print("Ouverture du fichier %s pour dresser la table")
+    print("Ouverture du fichier %s pour dresser la table"%nom_fichier)
     recherche_amr = RECHERCHE_AMR(nom_fichier)
     print("Table dressée.")
     ServeurReq.add_get(GET_INDEX, GET_VIVAGRAPH,
@@ -507,8 +542,18 @@ def main2():
         
 
 def main3():
-    amr = AMR_Reader().loads(AMRtxt2)
-    drawAMR(amr)
+    #amr = AMR_Reader().loads(AMRtxt2)
+    #drawAMR(amr)
+    global recherche_amr
+    make_propbank_frames_dictionary()
+    nom_fichier = "./AMR_et_graphes_phrases_2.txt"
+    print("Ouverture du fichier %s pour dresser la table")
+    recherche_amr = RECHERCHE_AMR(nom_fichier)
+    print("Table dressée.")
+    XX = GET_LDC_2020_T02(
+        "/LDC_2020_T02/PROXY_AFP_ENG_20070201_0099.7_OOOX.html",
+        None,None)
+    XX.execute()
 
 
 if __name__ == "__main__":
