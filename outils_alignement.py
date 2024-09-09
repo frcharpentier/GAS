@@ -776,7 +776,8 @@ def amr_to_string(amr):
         resu2.append(("tok", " ".join(amr.tokens)))
     resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
     resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
-    resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string 
+    #resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string
+    resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_chaine_brute 
     return resu
     
         
@@ -1036,7 +1037,6 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
                 if not ok:
                     nb_pbs_relations += 1
                     continue
-
                 print(amr_to_string(amr), file=FF)
                 jsn = graphe.jsonifier()
                 print(jsn, file=FF)
@@ -1113,4 +1113,4 @@ if __name__ == "__main__":
     
     #essai_AMR_string()
     #construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
-    construire_graphes(fichier_out = "./a_tej.txt", explicit_arg = True)
+    construire_graphes(fichier_out = "./a_tej.txt", explicit_arg = False)
