@@ -4,6 +4,7 @@ from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
 from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
 from algebre_relationnelle import RELATION
+from enchainables import MAILLON
 import re
 import os
 import sys
@@ -468,6 +469,8 @@ class GRAPHE_PHRASE:
             rel_GG_sup.add(*[(G, G) for (G,) in rel_REL_gG.p("G")])
             rel_GG_sup.add(*[(G, G) for (G,) in rel_REN_gG.p("G")])
             rel_GG = rel_GG + rel_GG_sup
+            #rel_GG est une relation de type groupe de tokens -- groupe de tokens, tels qu’il 
+            #existe un arc correspondant dans l’AMR.
 
             grps = [G for (G,) in rel_gG.p("G")]
             couleurs = {g : i for i, g in enumerate(grps)}
@@ -692,6 +695,7 @@ class GRAPHE_PHRASE:
         return jsn
 
 def compter_compos_connexes(aretes_):
+    # aretes_ est un ensemble de triplets (s, r, c) alignés avec un ou plusieurs mots.
     if len(aretes_) == 0:
         return 0
     dico = dict()
@@ -710,9 +714,10 @@ def compter_compos_connexes(aretes_):
             N += 1
         else:
             c1 = dico[c]
+        #À ce stade, on a transformé la source et la cible en des numéros uniques
         aretes.append((s1, c1))
 
-    #chaque sommet reçoit une couleur différente au départ
+    #chaque sommet reçoit une couleur différente au départ. N est le nombre de sommets
     couleurs = list(range(N))
 
     #réduction des couleurs:
@@ -769,6 +774,7 @@ def quick_read_amr_file(nom_fichier, dico_snt):
     return dico_snt
 
 def amr_to_string(amr):
+    liste = ["id", "amr-annotator", "preferred"]
     resu1 = [("id", amr.id)]
     resu2 = []
     for k, v in amr.metadata.items():
@@ -780,6 +786,7 @@ def amr_to_string(amr):
             resu1.append((k,v))
     if not "tok" in amr.metadata and amr.words:
         resu2.append(("tok", " ".join(amr.words)))
+    resu1.sort(key=lambda x: liste.index(x[0]) if x[0] in liste else len(liste)   )
     resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
     resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
     #resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string
@@ -882,30 +889,26 @@ def essai_AMR_string():
 
 
 
-
-
 #essai_AMR_string()
 
-def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_arg = False):
+
+
+@MAILLON
+def iterer_alignements(SOURCE, explicit_arg=False, **kwargs):
     #explicit_arg, si VRAI, transformera tous les rôles ARGn en une description sémantique
     #plus explicite. (Sans doute plus facile à classer, également.)
 
-    prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
-    fichier_sous_graphes = prefixe_alignements + "subgraph_alignments.json"
-    fichier_reentrances = prefixe_alignements + "reentrancy_alignments.json"
-    fichier_relations = prefixe_alignements + "relation_alignments.json"
-    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
-    snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
-    doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
+    fichiers_amr = kwargs["fichiers_amr"]
+    fichiers_snt = kwargs["fichiers_snt"]
+    if "doublons" in kwargs:
+        doublons = kwargs["doublons"]
+    else:
+        doublons = []
+    fichier_sous_graphes = kwargs["fichier_sous_graphes"]
+    fichier_reentrances = kwargs["fichier_reentrances"]
+    fichier_relations = kwargs["fichier_relations"]
 
-    # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
-    # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
-    # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
 
-    fichiers_amr = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
-    fichiers_snt = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
-    
-    #fichiers_amr = fichiers_amr[0:1]
 
     amr_reader = AMR_Reader()
     aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
@@ -949,7 +952,7 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
                     toks = graphe.words
                     graphe.metadata["snt"] = " ".join(toks)
 
-            
+    
 
 
     #monamr = amr_dict["DF-199-192821-670_2956.4"]
@@ -965,110 +968,166 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
     # un dico d’alignements est un dico avec les clés type,
     # tokens(càd mots), nodes, et edges
     
+    print(" *** DÉBUT ***")
+
+    for idSNT, listAlig in alignements.items():
+        yield idSNT, listAlig
+
+
+
+
+@MAILLON
+def filtrer_non_connexe(SOURCE, compteurs):
     # Un examen des alignements a montré que quelques alignements se font vers une portion de l’AMR non-connexe.
     # On va simplement éliminer les AMR concernés
-    eliminations = []
-    for idSNT, listAlig in alignements.items():
+    for idSNT, listAlig in SOURCE:
         for a in listAlig:
             if a.type in ("subgraph", "dupl-subgraph"):
                 N = compter_compos_connexes(a.edges)
                 if N > 1:
                     print("AMR %s, tokens %s, %d composantes"%(idSNT, str([a.amr.words[tt] for tt in a.word_ids]), N))
-                    eliminations.append(idSNT)
+                    compteurs["non-connexes"] += 1
                     break #sortir de la boucle for a
-    eliminations = set(eliminations)
-    print("Élimination de %d AMR problématiques"%len(eliminations))
-    for k in eliminations:
-        del alignements[k]
-    print("Voilà.")
-    #set_Realigs = set()
-    nb_amr_ssgrphes_dedoubles = 0
-    #nb_coref_probleme = 0
-    nb_amr_erreurs_reentrances = 0
-    nb_exceptions_reentrances = 0
-    nb_amr_reentrance = 0
-    nb_amr_anaphore = 0
-    nb_pbs_relations = 0
+        else:
+            # Code exécuté si la boucle for a in listAlig s’est exécutée sans interruption break.
+            yield idSNT, listAlig
+    
+        
+@MAILLON
+def iterer_graphe(SOURCE):
+    aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
+    for idSNT, listAlig in SOURCE:
+        amr = listAlig[0].amr
+        mots_amr = amr.words
+        snt = amr.metadata["snt"]
 
-    #graphes_phrases = []
-    limNgraphe = -1 #500
-    NgraphesEcrits = 0
+        graphe = GRAPHE_PHRASE(amr)
+        #if amr.id == "bolt12_10474_1831.9":
+        #    pass
+
+        trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(mots_amr, snt)
+        #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
+        # et toks_transfo est la liste in extenso des tokens du transformer
+        graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
+
+        yield idSNT, amr, graphe
+
+@MAILLON
+def filtrer_SG_dedoubles(SOURCE, compteurs):
+    for idSNT, amr, graphe in SOURCE:
+        if len(graphe.DSG_sg) > 0:
+            compteurs["nb_amr_ssgrphes_dedoubles"] += 1
+            continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
+        yield idSNT, amr, graphe
+
+
+@MAILLON
+def filtrer_reentrance(SOURCE, compteurs):
+    for idSNT, amr, graphe in SOURCE:
+        if len(graphe.REN_ag) > 0:
+            compteurs["nb_amr_reentrance"] += 1
+
+        if not graphe.verifier_reentrance():
+            compteurs["nb_amr_erreurs_reentrances"] += 1
+            #Éliminons ces AMR problématiques
+            continue
+
+        yield idSNT, amr, graphe
+
+@MAILLON
+def filtrer_anaphore(SOURCE, compteurs):
+    autorises = ["reentrancy:repetition", "reentrancy:coref"] #"reentrancy:primary"]
+    for idSNT, amr, graphe in SOURCE:
+        mentions = graphe.REN_ag.select(lambda x: (x.type in autorises))
+        if len(mentions) > 0:
+            compteurs["nb_amr_anaphore"] += 1
+        
+        try:
+            graphe.traiter_reentrances()
+        except AssertionError:
+            compteurs["nb_exceptions_reentrances"] += 1
+            continue
+
+        yield idSNT, amr, graphe
+
+@MAILLON
+def calculer_graphe_toks(SOURCE, compteurs):
+    for idSNT, amr, graphe in SOURCE:
+        ok = graphe.calculer_graphe_toks()
+        if not ok:
+            compteurs["nb_pbs_relations"] += 1
+            continue
+        yield idSNT, amr, graphe
+
+
+@MAILLON
+def ecrire_liste(SOURCE, compteurs, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
     with open(fichier_out, "w", encoding="UTF-8") as FF:
-        for idSNT, listAlig in alignements.items():
-            try:
-                amr = listAlig[0].amr  #amr_dict[idSNT]
-                #amr_dic_rel = transfo_AMR(amr)
-                mots_amr = amr.words
-                #ntoks = len(mots_amr)
-                snt = amr.metadata["snt"]
+        for idSNT, amr, graphe in SOURCE:
+            #print(amr_to_string(graphe.amr), file=FF)
+            print(amr_to_string(amr), file=FF)
+            jsn = graphe.jsonifier()
+            print(jsn, file=FF)
+            print(file=FF)
+            compteurs["NgraphesEcrits"] += 1
+            if compteurs["limNgraphe"] > 0 and compteurs["NgraphesEcrits"] > compteurs["limNgraphe"]:
+                break
 
-                graphe = GRAPHE_PHRASE(amr)
-                if amr.id == "bolt12_10474_1831.9":
-                    pass
-
-                if amr.id in snt_dict:
-                    #print(" ### %s"%amr.id)
-                    trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(mots_amr, snt_dict[amr.id])
-                    #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
-                    # et toks_transfo est la liste in extenso des tokens du transformer
-                    graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
-                else:
-                    graphe.ajouter_aligs(listAlig)
-                
-
-                if len(graphe.DSG_sg) > 0:
-                    nb_amr_ssgrphes_dedoubles += 1
-                    continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
-
-                if len(graphe.REN_ag) > 0:
-                    nb_amr_reentrance += 1
-
-                if not graphe.verifier_reentrance():
-                    nb_amr_erreurs_reentrances += 1
-                    #Éliminons ces AMR problématiques
-                    continue
-
-
-                autorises = ["reentrancy:repetition", "reentrancy:coref"] #"reentrancy:primary"]
-                mentions = graphe.REN_ag.select(lambda x: (x.type in autorises))
-                if len(mentions) > 0:
-                    nb_amr_anaphore += 1
-                
-                try:
-                    graphe.traiter_reentrances()
-                except AssertionError:
-                    nb_exceptions_reentrances += 1
-                    continue
-                
-                ok = graphe.calculer_graphe_toks()
-                if not ok:
-                    nb_pbs_relations += 1
-                    continue
-                print(amr_to_string(amr), file=FF)
-                jsn = graphe.jsonifier()
-                print(jsn, file=FF)
-                print(file=FF)
-                NgraphesEcrits += 1
-                if limNgraphe > 0 and NgraphesEcrits > limNgraphe:
-                    break
-
-                
-            except Exception as e:
-                print("Exception !")
-                print(e)
-                raise
     print("TERMINÉ.")
-    print("Nombre d’AMR alignés au total : %d"%len(alignements))
-    print("Nombres d’AMR à sous-graphes dédoublés : %d"%nb_amr_ssgrphes_dedoubles)
+    #print("Nombre d’AMR alignés au total : %d"%len(compteurs["alignements"]))
+    print("Nombres d’AMR à sous-graphes dédoublés : %d"%(compteurs["nb_amr_ssgrphes_dedoubles"]))
     #print("Nombres prbs dans les coréférences : %d"%nb_coref_probleme)
-    print("Nombres d’AMR à réentrance : %d"%nb_amr_reentrance)
-    print("Nombres d’AMR à anaphore : %d"%nb_amr_anaphore)
-    print("Nombres d’AMR à erreurs dans les réentrances : %d"%nb_amr_erreurs_reentrances)
-    print("Nombres d’exceptions dans les réentrances : %d"%nb_exceptions_reentrances)
-    print("Nombre de problèmes dans les relations : %d"%nb_pbs_relations)
-    #print(str(set_Realigs))
+    print("Nombres d’AMR à réentrance : %d"%(compteurs["nb_amr_reentrance"]))
+    print("Nombres d’AMR à anaphore : %d"%(compteurs["nb_amr_anaphore"]))
+    print("Nombres d’AMR à erreurs dans les réentrances : %d"%(compteurs["nb_amr_erreurs_reentrances"]))
+    print("Nombres d’exceptions dans les réentrances : %d"%(compteurs["nb_exceptions_reentrances"]))
+    print("Nombre de problèmes dans les relations : %d"%(compteurs["nb_pbs_relations"]))
+    
     print()
-    print("Nb d’AMR restants écrits: %d"%NgraphesEcrits)
+    print("Nb d’AMR restants écrits: %d"%(compteurs["NgraphesEcrits"]))
+
+                
+def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_arg = False):
+    compteurs = {
+    "non-connexes" : 0,
+    "nb_amr_ssgrphes_dedoubles" : 0,
+    #"nb_coref_probleme" : 0,
+    "nb_amr_erreurs_reentrances" : 0,
+    "nb_exceptions_reentrances" : 0,
+    "nb_amr_reentrance" : 0,
+    "nb_amr_anaphore" : 0,
+    "nb_pbs_relations" : 0,
+
+    #"graphes_phrases" : [],
+    "limNgraphe" : -1, #500
+    "NgraphesEcrits" : 0,
+    }
+
+    kwargs = dict()
+    prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
+    kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
+    kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
+    kwargs["fichier_relations"] = prefixe_alignements + "relation_alignments.json"
+    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+    snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
+    kwargs["doublons"] = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
+    # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
+    # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
+    # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
+    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
+    
+
+    chaine = iterer_alignements(explicit_arg=explicit_arg, **kwargs)
+    chaine = chaine >> filtrer_non_connexe(compteurs) >> iterer_graphe()
+    chaine = chaine >> filtrer_SG_dedoubles(compteurs) >> filtrer_reentrance(compteurs)
+    chaine = chaine >> filtrer_anaphore(compteurs) >> calculer_graphe_toks(compteurs)
+    chaine = chaine >> ecrire_liste(compteurs, fichier_out = fichier_out)
+
+    chaine.enchainer()
+
+
+
     
             
 AMR_problematique = """
@@ -1113,6 +1172,7 @@ def test_aligneur():
         else:
             tH = "[]"
         print("%s --> %s"%(tV, tH))
+
 
 if __name__ == "__main__":
     #test_aligneur()
