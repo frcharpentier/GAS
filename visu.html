@@ -646,6 +646,10 @@ let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triple
 		let Lies1 = eltsLies["sm_" + S1];
 		let Lies2 = eltsLies["sm_" + S2];
 		eltsLies[idClf] = [[],[]];
+		if ((typeof(Lies1) == "undefined") || (typeof(Lies2)=="undefined"))
+		{
+			continue;
+		}
 		if ((Lies1[1].indexOf(S2) >= 0)||(Lies2[1].indexOf(S1) >= 0))
 		{
 			continue;

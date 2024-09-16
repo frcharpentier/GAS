@@ -511,16 +511,20 @@ class GRAPHE_PHRASE:
         # le schéma de self.amr_arcs est ("source", "cible", "relation")
         # le schéma de self.REN_ag est ("source", "cible", "relation", "type", "groupe")
         reen = self.REN_ag.proj("source", "cible", "relation")
-        liste_ = [nd for (nd,) in reen.proj("cible")]
+        liste_ = set(nd for (nd,) in reen.proj("cible"))
+        #liste_ contient la liste des cibles d’arcs indiqués comme arcs de réentrance
         
         arcs_nd = self.amr_arcs.select(lambda x: x.cible in liste_)
+        #arcs_nd contient la liste des cibles d’arcs dans l’AMR contenus dans liste_
         
-        if not len(reen) == len(arcs_nd):
-            return False
+        #if not len(reen) == len(arcs_nd):
+        #    return False
         if any(not e in arcs_nd.table for e in reen.table):
             return False
         if any(not e in reen.table for e in arcs_nd.table):
             return False
+        
+        #les deux listes doivent être identiques
         
         return True
 
@@ -546,6 +550,7 @@ class GRAPHE_PHRASE:
 
         for (t,) in mots:
             if not toks_libres[t]:
+                print("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
                 raise AssertionError("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
             libres2[t] = False
 
@@ -642,8 +647,8 @@ class GRAPHE_PHRASE:
                 sans_classement.add((c,s,"{ne_pas_classer}"))
         if len(interdits) > 0:
             graphe_toks = graphe_toks.s(lambda x: x not in interdits)
-            graphe_toks.add(*list(sans_classement))
-            print("### %s "%self.amr.id)
+            #graphe_toks.add(*list(sans_classement))
+            #print("### %s "%self.amr.id)
 
 
         if False:
@@ -893,8 +898,8 @@ def essai_AMR_string():
 
 
 
-@MAILLON
-def iterer_alignements(SOURCE, explicit_arg=False, **kwargs):
+
+def preparer_alignements(explicit_arg=False, **kwargs):
     #explicit_arg, si VRAI, transformera tous les rôles ARGn en une description sémantique
     #plus explicite. (Sans doute plus facile à classer, également.)
 
@@ -967,7 +972,12 @@ def iterer_alignements(SOURCE, explicit_arg=False, **kwargs):
     # et dont les valeurs sont des listes de dico d’alignements
     # un dico d’alignements est un dico avec les clés type,
     # tokens(càd mots), nodes, et edges
+
+    return alignements
     
+
+@MAILLON
+def iterer_alignements(SOURCE, alignements):
     print(" *** DÉBUT ***")
 
     for idSNT, listAlig in alignements.items():
@@ -1118,7 +1128,8 @@ def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_
     kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
     
 
-    chaine = iterer_alignements(explicit_arg=explicit_arg, **kwargs)
+    alignements = preparer_alignements(**kwargs)
+    chaine = iterer_alignements(alignements)
     chaine = chaine >> filtrer_non_connexe(compteurs) >> iterer_graphe()
     chaine = chaine >> filtrer_SG_dedoubles(compteurs) >> filtrer_reentrance(compteurs)
     chaine = chaine >> filtrer_anaphore(compteurs) >> calculer_graphe_toks(compteurs)

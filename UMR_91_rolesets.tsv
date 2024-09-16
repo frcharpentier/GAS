@@ -1,0 +1,101 @@
+############
+be-destined-for.91>va:????	A1>Theme	A2>Destination
+be-from.91>va:????	A1>Theme	A2>Source
+be-located-at.91>va:????	A1>Theme	A2>Location
+be-polite.91>va:????	A1>Theme	A2>Extent
+be-temporally-at.91>va:????	A1>Theme	A2>Time
+### belong.91>va:????	A1>[possession]	A2>[possessor]
+# binding-affinity.91>va:????	A1>[binding affinity constant measured (e.g. dissociation-constant (Kd), inhibitor-constant (Ki))]	A2>[binding affinity quantity (e.g. concentration-quantity such as '5 nanomolar')]
+### but.91>va:????	A1>[first event]	A2>[second event]
+# byline.91>va:????	A0>[news organization]	A1>[author]	A2>[photographer, illustrator]	A3>[translator]	A4>[means]
+### cite.91>va:????	A1>[text accompanied by a citation]	A2>[source publication (may use publication-91)]
+correlate.91>va:????	A1>Theme	A2>Co-Theme
+### contrast.91>va:????	A1>[first item in comparison]	A2>[second item in comparison]
+# course.91>va:????	A1>[topic]	A2>[number]	A3>[section]	A4>[institution]	A5>[instructor]
+# distribution-range.91>va:????	A1>[center, mean]	A2>[lower bound]	A3>[upper bound]	A4>[radius, distance from center to bounds]	A5>[confidence that value is in range, typically a percentage, e.g. 95%]	A6>[deviation covered by range, e.g. standard-deviation, standard-error-of-the-mean]	A7>[type of distribution, e.g. normal-distribution]
+### emit_sound.91>va:????	A1>[entity emitting sound]	A2>[the sound (may use (s / string-entity))]
+### exist.91>va:????	A1>[location]	A2>[entity]
+### gesture.91>va:????	A0>[gesturer]	A1>[the gesture]	A2>[audience]
+### have.91>va:????	A1>[possessor]	A2>[possession]
+### have-actor.91>va:????	A1>[event]	A2>[actor]
+### have-affectee.91>va:????	A1>[event]	A2>[affectee]
+### have-age.91>va:????	A1>[entity]	A2>[age]
+### have-apprehensive.91>va:????	A1>[main event]	A2>[apprehensive event]
+### have-cause.91>va:????	A1>[cause]	A2>[event]
+### have-causer.91>va:????	A1>[event]	A2>[causer]
+### have-companion.91>va:????	A1>[event]	A2>[accompanier]
+have-concession.91>va:????	A1>Theme	A2>Concession
+### have-concessive-condition.91>va:????	A1>[main event]	A2>[concessive condition]
+have-condition.91>va:????	A1>Theme	A2>Condition
+have-degree.91>va:????	A1>Theme	A2>Attribute	A3>Extent	A4>Source	A5>Location	A6>Idiom
+# have-degree.92>va:????	A1>[attribute (e.g. tall)]	A2>['Intensifier', 'Downtoner', or 'Equal']
+# have-degree-of-resemblance.91>va:????	A1>[Thing resembling things]	A2>[First resemblance under comparison]	A3>[Second resemblance under comparison]	A4>[Degree word comparing ARG2 to ARG3]
+have-direction.91>va:????	A1>Theme	A2>Direction
+### have-duration.91>va:????	A1>[thing that lasts]	A2>[period of time]
+### have-example.91>va:????	A1>[example]	A2>[of what]
+### have-experience.91>va:????	A1>[experiencer]	A2>[the experience itself]	A3>[stimulus]
+### have-experiencer.91>va:????	A1>[event]	A2>[experiencer]
+have-extent.91>va:????	A1>Theme	A2>Extent
+have-frequency.91>va:????	A1>Theme	A2>Frequency
+### have-force.91>va:????	A1>[event]	A2>[force]
+### have-goal.91>va:????	A1>[entity in motion]	A2>[goal]
+### have-group.91>va:????	A1>[members]	A2>[group]
+have-instrument.91>va:????	A1>Theme	A2>Instrument
+# have-li.91>va:????	A1>[entity]	A2>[list-item]
+### have-list-item.91>va:????	A1>[entity]	A2>[list-item]
+have-manner.91>va:????	A1>Theme	A2>Manner
+### have-material.91>va:????	A1>[entity]	A2>[material]
+### have-medium.91>va:????	A1>[entity]	A2>[medium]
+have-mod.91>va:????	A1>Theme	A2>Mod
+have-mode.91>va:????	A1>Theme	A2>Mode
+have-name.91>va:????	A1>Theme	A2>Name
+have-ord.91>va:????	A1>Theme	A2>Value	A3>Extent	A4>Source	A5>Direction
+have-org-role.91>va:????	A0>Theme	A1>Beneficiary	A2>Attribute	A3>Idiom
+### have-org-role.92>va:????	A1>[office holder]	A2>[organization]	A3>[title of office held]	A4>[description of responsibility]
+### have-other-role.91>va:????	A1>[event or entity]	A2>[other role]
+have-part.91>va:????	A1>Theme	A2>Part
+### have-path.91>va:????	A1>[event/entity]	A2>[path]
+### have-location.91>va:????	
+### have-place.91>va:????	A1>[entity]	A2>[location]
+have-polarity.91>va:????	A1>Theme	A2>Polarity
+### have-pure-addition.91>va:????	A1>[first event]	A2>[second event]
+have-purpose.91>va:????	A1>Theme	A2>Purpose
+have-quant.91>va:????	A1>Theme	A2>Value	A3>Extent	A4>Source	A5>Location	A6>Purpose
+### have-reason.91>va:????	A1>Cause	A2>Result
+### have-recipient.91>va:????	A1>[event]	A2>[recipient]
+have-rel-role.91>va:????	A0>Theme	A1>Co-Theme	A2>Attribute	A3>Attribute	A4>Idiom
+### have-rel-role.92>va:????	A1>[entity A]	A2>[entity B]	A3>[role of entity A (must be specified)]	A4>[role of entity B (often left unspecified)]	A5>[relationship basis (contract, case; rarely used)]
+### have-role.91>va:????	A1>[first entity]	A2>[optional second entity]	A3>[object category for ARG1]	A4>[optional object category for ARG2]
+### have-source.91>va:????	A1>[entity]	A2>[source]
+### have-start.91>va:????	A1>[event/entity]	A2>[start]
+### have-stimulus.91>va:????	A1>[event]	A2>[stimulus]
+# have-subevent.91>va:????	A1>[main event]	A2>[subevent]
+### have-substitution.91>va:????	A1>[this]	A2>[instead of that]
+### have-subtraction.91>va:????	A1>[main event]	A2>[event/entity that does not occur]
+### have-temporal.91>va:????	A1>[event]	A2>[temporal]
+### have-theme.91>va:????	A1>[event]	A2>[theme]
+### have-topic.91>va:????	A1>[entity/event]	A2>[topic]
+### have-undergoer.91>va:????	A1>[event]	A2>[undergoer]
+### have-unit.91>va:????	A1>[event]	A2>[unit of measurement]
+have-value.91>va:????	A1>Theme	A2>Value
+### have-vocative.91>va:????	A1>[proposition]	A2>[vocative]
+# hyperlink.91>va:????	A1>[text being hyperlinked]	A3>[url-entity]
+### identity.91>va:????	A1>[theme]	A2>[equated referent]
+include.91>va:????	A1>Theme	A2>Location	A3>Extent
+### infer.91>va:????	A0>[entity inferring something]	A1>[inference]	A2>[source of inference]
+instead-of.91>va:????	A1>Theme	A2>Co-Theme
+### mean.91>va:????	A0>[agent]	A1>[element containing meaning]	A2>[meaning]	A3>[perceiver, beneficiary]
+### proverb.91>va:????	A1>[proverb]	A2>[2nd part of a two-part allegorical exp. Gives a focused interpretation of ARG1]
+# publication.91>va:????	A0>[author(s)]	A1>[title]	A2>[abstract]	A3>[full text]	A4>[venue (journal, conference)]	A5>[volume]	A6>[issue]	A7>[pages]	A8>[id (e.g. PubMed)]	A9>[editor(s)]	A10>[publisher]	A11>[url]
+### range.91>va:????	A1>[start of the range]	A2>[end of the range]
+rate-entity.91>va:????	A1>Value	A2>Extent	A3>Time	A4>Idiom
+regardless.91>va:????	A1>Result	A2>Condition
+# reference-illustration.91>va:????	A1>[clause which points to an figure, table, or example]	A2>[the figure, table or example]
+# request-confirmation.91>va:????	A0>[entity requesting confirmation]	A1>[thing to be confirmed]	A2>[entity requestion is being made to]
+# request-response.91>va:????	A0>[entity requesting response]	A1>[thing to be responded to]	A2>[entity requestion is being made to]
+### resemble.91>va:????	A1>[resembler]	A2>[resemble what]
+# score-on-scale.91>va:????	A1>[score]	A2>[worst score on scale]	A3>[best score on scale]	A4>[name of scale]
+# statistical-test.91>va:????	A1>[finding]	A2>[p-value (probability of null-hypothesis)]	A3>[r-squared (coefficient of determination)]	A4>[significance test (e.g. t-test, Chi-square test, Fisher's exact test)]	A5>[alternative hypothesis (vs. ...)]
+# street-address.91>va:????	A1>[street number]	A2>[street]	A3>[unit (apartment, suite, etc.)]	A4>[city]	A5>[state, province, district]	A6>[zip code]	A7>[country]
+### unexpected-co-occurrence.91>va:????	A1>[first event]	A2>[second event (unexpected)]
+### weather.91>va:????	A1>[location]	A2>[environmental condition]
