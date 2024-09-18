@@ -163,6 +163,18 @@ class GET_INDEX(EXEC_ADDRESS):
         
     def execute(self):
         self.sendFile("text/html; charset=utf-8", "./visu.html")
+        
+        
+class GET_OPN(EXEC_ADDRESS):
+    @staticmethod
+    def test(chemin):
+        if chemin.lower() in ["/opn.html", "/opn"]:
+            return True
+        else:
+            return False
+            
+    def execute(self):
+        self.sendFile("text/html; charset=utf-8", "./observation_op_N.html")
 
 
 class GET_ALGEBRA(EXEC_ADDRESS):
@@ -328,6 +340,9 @@ def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
             if src < tgt:
                 G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="purple", dir="none")
         elif r == "{ne_pas_classer}":
+            if src < tgt:
+                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
+        elif r == "{and}":
             if src < tgt:
                 G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
         else:
@@ -520,7 +535,7 @@ def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
     ServeurReq.add_get(GET_INDEX, GET_VIVAGRAPH,
                        GET_VIVAGRAPH_FACTORY,
                        GET_LDC_2020_T02,
-                       GET_ALGEBRA)
+                       GET_ALGEBRA, GET_OPN)
     #ServeurReq.add_post(POST_CHOIX_VISU)
     lancer_serveur("localhost", 8081)
 

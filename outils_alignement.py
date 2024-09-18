@@ -1,16 +1,19 @@
 from transformers import AutoTokenizer
-from amr_utils.amr_readers import AMR_Reader
+from amr_utils.amr_readers import AMR_Reader, AMR
 from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
 from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
+from aligneur_seq import aligneur_seq
 from algebre_relationnelle import RELATION
 from enchainables import MAILLON
 import re
 import os
 import sys
+import random
 import json
 import numpy as np
 import tqdm
+
 
 
 def alig_to_string(self):
@@ -24,6 +27,48 @@ def alig_to_string(self):
 
 AMR_Alignment.__str__ = alig_to_string
 AMR_Alignment.__repr__ = alig_to_string
+
+class AMR_modif(AMR):
+    def __init__(self, amr):
+        self.id = amr.id
+        self.tokens = amr.tokens
+        self.words = amr.tokens #nouvel attribut
+        self.root = amr.root
+        self.nodes = amr.nodes
+        self.edges = amr.edges
+        self.metadata = amr.metadata
+        self.variables = amr.variables
+        if hasattr(amr, "reconstruction"):
+            self.reconstruction = amr.reconstruction
+        if hasattr(amr, "prefix"):
+            self.prefix = amr.prefix
+        if hasattr(amr, "amr_chaine_brute"):
+            self.amr_chaine_brute = amr.amr_chaine_brute
+        if hasattr(amr, "isi_node_mapping"):
+            self.isi_node_mapping = amr.isi_node_mapping
+        if hasattr(amr, "jamr_node_mapping"):
+            self.isi_node_mapping = amr.jamr_node_mapping
+
+
+    def amr_to_string(self):
+        liste = ["id", "amr-annotator", "preferred"]
+        resu1 = [("id", self.id)]
+        resu2 = []
+        for k, v in self.metadata.items():
+            if k == "id":
+                pass
+            if k in ("tok", "snt", "alignments"):
+                resu2.append((k,v))
+            else:
+                resu1.append((k,v))
+        if not "tok" in self.metadata and self.words:
+            resu2.append(("tok", " ".join(self.words)))
+        resu1.sort(key=lambda x: liste.index(x[0]) if x[0] in liste else len(liste)   )
+        resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
+        resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
+        resu = "# " + resu1 + "\n" + resu2 + "\n" + self.amr_chaine_brute 
+        return resu
+
 
 class ALIGNEUR:
     def __init__(self, nom_modele, ch_debut = "", ch_suite = "##", tok1 = None, tokn = None):
@@ -46,26 +91,8 @@ class ALIGNEUR:
             self.tokn = self.tokenizer.sep_token
         else:
             self.tokn = tokn
-   
-        
-    def aligner_seq(self, motsH, phrase):
-        # Chercher le parcours de coût minimal
-        # pour traverser une grille du coin supérieur gauche
-        # au coin inférieur droit, d’intersection en intersection.
-        # les intervalles entre deux intersections sont indexés
-        # verticalement et horizontalement
-        # par les tokens toksV et motsH.
-        # À chaque intersection, on a le droit de se déplacer
-        # vers la droite ou vers le bas, pour un coût qui vaut 1.
-        # Si les tokens vertical et horizontal de l’intervalle
-        # à traverser sont identiques, on peut se déplacer en
-        # diagonale (vers le bas et la droite) pour un coût nul.
-        # Il s’agit de l’algo de Needleman-Wunsch, que je considère
-        # comme un cas particulier de l’algo A*.
-        #
-        # motsH contient les tokens de l’AMR
-        # phrase contient la phrase à faire tokeniser
 
+    def aligner_seq(self, motsH, phrase):
         toks_nums = [x for x in self.tokenizer(phrase).input_ids]
         toks_transformer = self.tokenizer.convert_ids_to_tokens(toks_nums)
         if len(self.ch_debut) == 0 and len(self.ch_suite) > 0:
@@ -78,137 +105,9 @@ class ALIGNEUR:
         toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
         assert toksV[0] == self.tok1
         assert toksV[-1] == self.tokn
-        toksV = toksV[1:-1] #Éliminons les tokens CLS et SEP. (On les remettra par la suite.)
-        
-        visites = dict()
-        front = {(0,0): (0, (0,0))}
-        nV = len(toksV)
-        nH = len(motsH)
-        
-        estim = lambda x: abs(nV-x[0] - nH + x[1])
-        clef = lambda x : x[1][0] + estim(x[0])
-
-        while True:
-            choix = min(front.items(), key=clef)
-            
-            (posV, posH), (cout, mvt) = choix
-            if (posV, posH) == (nV, nH):
-                break
-            # On va faire évoluer ce cheminement, et
-            # considérer tous les cheminements possibles en 
-            #ajoutant à chaque fois un déplacement élémentaire.
-            del front[(posV, posH)]
-            visites[(posV, posH)] = mvt
-            if posV < nV and posH < nH and len(toksV[posV]) <= len(motsH[posH]):
-                H = motsH[posH].lower()
-                mvt0 = 0
-                V = toksV[posV + mvt0].lower()
-                vf = True
-                while H.startswith(V) and posV+mvt0+1 < nV:
-                    mvt0 += 1
-                    H = H[len(V):]
-                    V = toksV[posV + mvt0].lower()
-                if len(H) == 0:
-                    #possibilité de déplacement en diagonale
-                    posV2, posH2 = posV+mvt0, posH+1
-                    if not (posV2, posH2) in visites:
-                        if (posV2, posH2) in front:
-                            cout0, _ = front[(posV2, posH2)]
-                            if cout0 > cout+0:
-                                front[(posV2, posH2)] = (cout, (1,mvt0))
-                        else:
-                            front[(posV2, posH2)] = (cout, (1,mvt0))
-            if posV < nV:
-                #possibilité de déplacement vertical
-                posV2, posH2 = posV+1, posH
-                if not (posV2, posH2) in visites:
-                    if (posV2, posH2) in front:
-                        cout0, mvt0 = front[(posV2, posH2)]
-                        if cout0 > cout+1:
-                            front[(posV2, posH2)] = (cout+1, (0,1))
-                    else:
-                        front[(posV2, posH2)] = (cout+1, (0,1))
-            if posH < nH:
-                #possibilité de déplacement horizontal
-                posV2, posH2 = posV, posH+1
-                if not (posV2, posH2) in visites:
-                    if (posV2, posH2) in front:
-                        cout0, mvt0 = front[(posV2, posH2)]
-                        if cout0 > cout+0:
-                            front[(posV2, posH2)] = (cout+1, (1,0))
-                    else:
-                        front[(posV2, posH2)] = (cout+1, (1,0))
-        
-        chem = []
-        while (posV, posH) != (0,0):
-            chem.append(mvt)
-            posH, posV = posH - mvt[0], posV-mvt[1]
-            mvt = visites[(posV, posH)]
-        chem = chem[::-1]
-
-        # On connaît le cheminement optimal dans la grille.
-        # déduisons-en un alignement de la chaine motsH vers la chaine toksV
-        # On représentera cet alignement sous forme de deux relations.
-        # Une relation de schéma("token", "groupe") et une autre de schéma
-        # ("mot", "groupe"). Les tokens et les mots seront représentés par
-        # leur numéro d’ordre.
-        rel_tg = RELATION("token", "groupe") #Token de transformer -- groupe
-        rel_mg = RELATION("mot", "groupe")   #mot de phrase -- groupe
-        
-        i = 1 #Numéro de token
-        j = 0 #Numéro de mot
-        cumulH = 0
-        cumulV = 0
-        NG = 0 #Numéro de groupe pour l’alignement
-        
-        for H, V in chem:
-            if H==0 or V==0:
-                #Accumulation
-                cumulH += H
-                cumulV += V
-            else:
-                if cumulH > 0 or cumulV > 0:
-                    if cumulH == cumulV:
-                        #distribuons un token pour un mot
-                        rel_tg.add(*[(i+k, NG+k) for k in range(cumulV)])
-                        rel_mg.add(*[(j+k, NG+k) for k in range(cumulH)])
-                        NG += cumulV
-                    elif cumulH > 0:
-                        #alignons l’ensemble des tokens sautés sur l’ensemble des mots sautés
-                        rel_tg.add(*[(i+k, NG) for k in range(cumulV)])
-                        rel_mg.add(*[(j+k, NG) for k in range(cumulH)])
-                        NG += 1
-                    i += cumulV
-                    j += cumulH
-                    cumulH = 0
-                    cumulV = 0
-                assert H == 1
-                rel_tg.add(*[(i+k, NG) for k in range(V)])
-                rel_mg.add((j, NG))
-                i += V
-                j += 1
-                NG += 1
-        if cumulH > 0 or cumulV > 0:
-            if cumulH == cumulV:
-                #distribuons un token pour un mot
-                rel_tg.add(*[(i+k, NG+k) for k in range(cumulV)])
-                rel_mg.add(*[(j+k, NG+k) for k in range(cumulH)])
-                NG += cumulV
-            elif cumulH > 0:
-                #alignons l’ensemble des tokens sautés sur l’ensemble des mots sautés
-                rel_tg.add(*[(i+k, NG) for k in range(cumulV)])
-                rel_mg.add(*[(j+k, NG) for k in range(cumulH)])
-                NG += 1
-            i += cumulV
-            j += cumulH
-            cumulH = 0
-            cumulV = 0
-
-        toksV = (self.tok1,) + tuple(toksV) + (self.tokn,)
+        toksV = toksV[1:-1] #Éliminons les tokens CLS et SEP.
+        rel_tg, rel_mg = aligneur_seq(motsH, toksV, zeroV = 1)
         return rel_tg, rel_mg, toks_transformer
-        # La fonction renvoie la relation Token -- Groupe, la relation mot--groupe et la liste in extenso des tokens du transformer
-        
-
     
 
 def test_fichier_reentrance(fichier):
@@ -778,25 +677,7 @@ def quick_read_amr_file(nom_fichier, dico_snt):
             dico_snt[id] = snt
     return dico_snt
 
-def amr_to_string(amr):
-    liste = ["id", "amr-annotator", "preferred"]
-    resu1 = [("id", amr.id)]
-    resu2 = []
-    for k, v in amr.metadata.items():
-        if k == "id":
-            pass
-        if k in ("tok", "snt", "alignments"):
-            resu2.append((k,v))
-        else:
-            resu1.append((k,v))
-    if not "tok" in amr.metadata and amr.words:
-        resu2.append(("tok", " ".join(amr.words)))
-    resu1.sort(key=lambda x: liste.index(x[0]) if x[0] in liste else len(liste)   )
-    resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
-    resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
-    #resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_string
-    resu = "# " + resu1 + "\n" + resu2 + "\n" + amr.amr_chaine_brute 
-    return resu
+
     
         
 
@@ -821,7 +702,7 @@ def compter_reifications():
         print(k,v)
 
              
-def recenser_relation_opn():
+def recenser_relation_numerotee():
     amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
     doublons = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
 
@@ -831,16 +712,114 @@ def recenser_relation_opn():
     for amrfile in fichiers_amr:
         listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons]
         for AMR in listeG:
-            for s,r,t in AMR.edges_redir():
-                if re.search("^:op\d+$",r):
-                    s = AMR.nodes[AMR.isi_node_mapping[s]]
-                    if not s in dico_opn:
-                        dico_opn[s] = 1
+            idSNT = AMR.id
+            dictmp = dict()
+            for source,r,t in AMR.edges_redir():
+                source = AMR.isi_node_mapping[source]
+                resu = re.search("^:(\D+)(\d+)$",r)
+                if resu:
+                    rel = resu[1]
+                    if rel == "ARG":
+                        continue
+                    chiffre = int(resu[2])
+                    if not rel in dictmp:
+                        dictmp[rel] = dict()
+                    if source in dictmp[rel]:
+                        #dictmp[rel][source] = max(dictmp[rel][source], chiffre)
+                        dictmp[rel][source] += 1
                     else:
-                        dico_opn[s] += 1
-    dico_opn = [(k,v) for k,v in dico_opn.items()]
-    dico_opn.sort(key = lambda x : x[1])
-    return dico_opn
+                        #dictmp[rel][source] = chiffre
+                        dictmp[rel][source] = 1
+            for rel, dico in dictmp.items():
+                #if not rel in dico_opn:
+                #    dico_opn[rel] = dict()
+                rel1 = rel + "_1"
+                reln = rel + "_N"
+                for s, nb in dico.items():
+                        assert nb >= 1
+                        S = AMR.nodes[s]
+                        if nb == 1:
+                            if not rel1 in dico_opn:
+                                dico_opn[rel1] = dict()
+                            if not S in dico_opn[rel1]:
+                                dico_opn[rel1][S] = [idSNT]
+                            else:
+                                dico_opn[rel1][S].append(idSNT)
+                        else:
+                            #S = S + "+"
+                            if not reln in dico_opn:
+                                dico_opn[reln] = dict()
+                            if not S in dico_opn[reln]:
+                                dico_opn[reln][S] = (nb, [idSNT])
+                            else:
+                                nnb, lsm = dico_opn[reln][S]
+                                lsm.append(idSNT)
+                                dico_opn[reln][S] = (max(nnb, nb), lsm)
+    resu0 = dict()
+    resu1 = dict()
+    for rel, dico in dico_opn.items():
+        list_opn = []
+        if rel.endswith("_1"):
+            for k,v in dico.items():
+                list_opn.append((k,len(v)))
+                resu1[rel + "_" + k] = v
+        else:
+            for k,v in dico.items():
+                list_opn.append(("%s"%k, v[0], len(v[1])))
+                resu1[rel + "_" + k] = v[1]
+        
+        list_opn.sort(key = lambda x : x[-1])
+        resu0[rel] = list_opn
+    return resu0, resu1
+
+def construire_html_pour_opN(
+        resu0, resu1,
+        patron = "./observation_op_N_patron.html",
+        fout = "./observation_op_N.html"):
+    prefixe = []
+    suffixe = []
+    with open(patron, "r", encoding="utf-8") as F:
+        etat = 0
+        aremplir = prefixe
+        for ligne in F:
+            ligne = ligne.strip()
+            if etat == 0 and ligne == "<!-- INSÉRER ICI -->":
+                    etat = 1
+                    aremplir = suffixe
+            else:
+                aremplir.append(ligne)
+    prefixe = "\n".join(prefixe)
+    suffixe = "\n".join(suffixe)
+    with open(fout, "w", encoding="utf-8") as F:
+        print(prefixe, file=F)
+        print('\n<div class="gauche">\n', file=F)
+        cpt = 0
+        for K, liste in resu0.items():
+            print("<div>\n<h2>relation %s</h2>\n"%K, file=F)
+            if K.endswith("_1"):
+                for rel, n in liste:
+                    print("<button onclick='FFF_%d.F(event)'>%s: %d</button>  "%(cpt, rel, n), file=F)
+                    cpt += 1
+            else:
+                for rel, n, N in liste:
+                    print("<button onclick='FFF_%d.F(event)'>%s (%d): %d</button> "%(cpt, rel, n, N), file=F)
+                    cpt += 1
+            print("\n</div>\n", file=F)
+        print("\n</div>\n", file=F)
+        print("<script>\n", file=F)
+        cpt = 0
+        for K, liste in resu0.items():
+            for rels in liste:
+                rel = rels[0]
+                nom = "Relation %s, Nœud %s"%(K, rel)
+                idsSNT = resu1[K + "_" + rel]
+                if len(idsSNT) > 50:
+                    idsSNT = random.sample(idsSNT, 50)
+                ligne = "let FFF_%d = new exemples(\"%s\",%s);\n"%(cpt, nom, json.dumps(idsSNT))
+                print(ligne, file=F)
+                cpt += 1
+        print("</script>\n", file=F)
+        print(suffixe, file=F)
 
 
 def yield_AMR_1_par_1(fichier):
@@ -937,25 +916,22 @@ def preparer_alignements(explicit_arg=False, **kwargs):
 
     for amrfile in fichiers_amr:
         #print(amrfile)
-        listeG = [G for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
-        # listeG est une liste remplie d’objets AMR.
+        listeG = [AMR_modif(G) for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
+        # listeG est une liste remplie d’objets AMR_modif (classe dérivée de la classe AMR).
         if explicit_arg:
             listeG = [Explicit.expliciter_AMR(G) for G in listeG]
         amr_liste.extend(listeG)
-        for graphe in listeG:
-            amrid = graphe.id
-            amr_dict[graphe.id] = graphe
+        for amr in listeG:
+            amrid = amr.id
+            amr_dict[amr.id] = amr
             
-            #assert hasattr(graphe, "tokens")
-            graphe.words = graphe.tokens
-            
-            if not "snt" in graphe.metadata:
+            if not "snt" in amr.metadata:
                 if amrid in snt_dict:
-                    graphe.metadata["snt"] = snt_dict[amrid]
+                    amr.metadata["snt"] = snt_dict[amrid]
                 else:
                     #toks = graphe.tokens
-                    toks = graphe.words
-                    graphe.metadata["snt"] = " ".join(toks)
+                    toks = amr.words
+                    amr.metadata["snt"] = " ".join(toks)
 
     
 
@@ -1074,8 +1050,7 @@ def calculer_graphe_toks(SOURCE, compteurs):
 def ecrire_liste(SOURCE, compteurs, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
     with open(fichier_out, "w", encoding="UTF-8") as FF:
         for idSNT, amr, graphe in SOURCE:
-            #print(amr_to_string(graphe.amr), file=FF)
-            print(amr_to_string(amr), file=FF)
+            print(amr.amr_to_string(), file=FF)
             jsn = graphe.jsonifier()
             print(jsn, file=FF)
             print(file=FF)
@@ -1191,4 +1166,4 @@ if __name__ == "__main__":
     
     #essai_AMR_string()
     #construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
-    construire_graphes(fichier_out = "./a_tej.txt", explicit_arg = False)
+    construire_graphes(fichier_out = "./a_tej_2.txt", explicit_arg = False)

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="vivagraph.min.js"></script>
+<script src="vivagraph_factory.js"></script>
+<script src="algebre_relationnelle.js"></script>
+<script>
+let precedent = false;
+let exemples = function(nom, idsSNT){
+	this.cptr = 0;
+	this.maxi = idsSNT.length;
+	this.idsSNT = idsSNT;
+	this.nom = nom;
+	this.F = function(ev){
+		let idSNT = this.idsSNT[this.cptr];
+		this.cptr += 1
+		document.getElementById("titre_page").innerText = this.nom + " phrase " + idSNT + " (N°" + this.cptr + ")";
+		if(this.cptr >= this.maxi)
+		{
+			this.cptr = 0;
+		}
+		let target = ev.target;
+		if (target != precedent)
+		{
+			if(precedent)
+			{
+				precedent.style.background = "";
+			}
+			target.style.background = "red";
+			precedent = target;
+		}
+		envoi(idSNT);
+	};
+};
+</script>
+<style type="text/css" media="screen">
+    html, body { width: 100%; height: 100%;}
+	div.encadre {
+		margin: 30px;
+		border: 3px solid blue;
+	}
+	.droite{
+		float:right;
+	}
+	span.selectV{
+		background-color: #A0D6B4;
+		color: #08A04B;
+	}
+	span.selectR{
+		background-color: MistyRose;
+		color: red;
+	}
+	table, th, td {
+		border: 1px solid;
+	}
+	.gauche {
+		background-color: Lavender;
+		//position: fixed;
+    	//top: 0;
+		height: 100%;
+    	width: 20%;
+		overflow-y: scroll;
+	}
+	.droite {
+		width: 80%;
+		height: 100%;
+		overflow: scroll;
+	}
+</style>
+</head>
+<body>
+<div class="droite">
+<h1 id="titre_page">Observation de relations syntaxiques numérotées</h1>
+<div>
+<!-- <textarea id="texteSaisie" cols="40" rows="10"></textarea>
+<br/>  -->
+<input type="checkbox" id="CBvars" name="CBvars"/>
+<label for="CBvars">Voir variables</label>
+<input type="checkbox" id="CBrac" name="CBrac"/>
+<label for="CBrac">Voir racine</label>
+<input type="checkbox" id="CBrels" name="CBrels"/>
+<label for="CBrels">Redresser rôles</label>
+<input type="checkbox" id="CBxplct" name="CBxplct"/>
+<label for="CBxplct">Expliciter rôles</label>
+<br/>
+
+</div>
+<div id="affichages">
+</div>
+</div>
+
+<!-- INSÉRER ICI -->
+
+<script>
+//let GraphFactory = new Factory();
+let LgraphFactory = new Factory();
+
+
+//let bouton = document.getElementById("voirAMR");
+//let boutonChoix = document.getElementById("choisirAMR");
+//let txtarea = document.getElementById("idSNT");
+//let btnAdj = document.getElementById("voirGrapheAdjoint");
+
+
+
+let affichages = document.getElementById("affichages");
+let CBvars = document.getElementById("CBvars");
+let CBrac = document.getElementById("CBrac")
+let CBrels = document.getElementById("CBrels");
+let CBxplct = document.getElementById("CBxplct");
+
+let fermerDiv = function(evt){
+	let aFermer = evt.srcElement.parentNode;
+	aFermer.remove();
+}
+
+//let VERT = ["#12E193", "#C3FDB8", "#12E193"]
+let VERT = ["#08A04B", "#A0D6B4", "#08A04B"]
+let BLANC = ["black", "white", "black"]
+let ROUGE = ["red", "MistyRose", "red"]
+
+let envoi = function(idSNT){
+	let XOvars = CBvars.checked;
+	let XOrac = CBrac.checked;
+	let XOrels = CBrels.checked;
+	let XOxplct = CBxplct.checked;
+	let xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = function(){
+		if(this.readyState == 4 && this.status == 200)
+		{
+			let codesvg = this.responseText;
+			let repr1, repr2, fcolor;
+			//GraphFactory.effacerGraphe();
+			LgraphFactory.effacerGraphe();
+			affichages.textContent = '';
+			let cont_G1 = document.createElement("td");
+			
+			let frag = document.createDocumentFragment();
+			let fragdiv = document.createElement("div");
+			frag.appendChild(fragdiv);
+			fragdiv.innerHTML = codesvg;
+			let infos_jsn;
+			let dico_aretes = [{}, {}];
+			while(fragdiv.firstChild.childNodes.length > 0)
+			{
+				let noeud = fragdiv.firstChild.firstChild
+				if (noeud.nodeType == 3)
+				{
+					texte = noeud.textContent;
+					infos_jsn = JSON.parse(texte);
+					noeud.remove();
+				}
+				else
+				{
+					cont_G1.appendChild(noeud);
+				}
+			}
+			let tableau = document.createElement("table");
+			let rangee = document.createElement("tr");
+			tableau.appendChild(rangee);
+			rangee.appendChild(cont_G1)
+			affichages.appendChild(tableau);
+			//GraphFactory.setContainer(rangee);
+			
+			if("identAMR" in infos_jsn)
+				txtarea.value = infos_jsn.identAMR;
+			[repr1, fcolor] = alignements(infos_jsn.prefixe, infos_jsn.tokens, infos_jsn.sommets, infos_jsn.dicTokens, infos_jsn.aretes, infos_jsn.triplets);
+			//btnAdj.removeAttribute("disabled");
+			
+			
+		}
+	};
+	if(XOvars)
+		chemin = "X"
+	else
+		chemin = "O"
+	if(XOrac)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOrels)
+		chemin += "X"
+	else
+		chemin += "O"
+	if(XOxplct)
+		chemin += "X"
+	else
+		chemin += "O"
+	chemin = "/LDC_2020_T02/" + idSNT + "_" + chemin + ".html"
+	//chemin = "/LDC_2020_T02/bolt12_12120_6301.8_" + chemin + ".html"
+	xhttp.open("GET", chemin);
+	xhttp.send();
+};
+
+let effacerGrapheAdjoint = function(prefixe, repr2)
+{
+	for(let k in repr2)
+	{
+		let lis = repr2[k];
+		let i = 0;
+		while(i < lis.length)
+		{
+			if(lis[i].hasAttribute("id"))
+			{
+				let iden = lis[i].getAttribute("id");
+				if(iden.startsWith(prefixe + "_adj_"))
+					lis.splice(i,1);
+				else
+					i++;
+			}
+			else
+				i++;
+		}
+	}
+	LgraphFactory.effacerGraphe();
+	LgraphFactory.container.parentNode.remove();
+};
+
+//bouton.addEventListener("click", () => envoi("alea"));
+//boutonChoix.addEventListener("click", () => envoi(txtarea.value));
+
+
+
+let colore_liste_elts = function(liste, kouleur, isEdge=false){
+	let couleur;
+	for(let ielt=0; ielt<liste.length; ielt++)
+	{
+		let elt = liste[ielt];
+		if(! elt.tagName)
+			continue;
+		if(elt.tagName.toUpperCase() == "G")
+		{
+			let sselts;
+			classListe = elt.classList;
+			if (kouleur == null)
+			{
+				if (classListe.contains("ROUGE"))
+					couleur = ["black", "white", "red"];
+				else
+					couleur = BLANC;
+			}
+			else
+				couleur = kouleur;
+			sselts = elt.getElementsByTagName("ellipse");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("text");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("path");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			sselts = elt.getElementsByTagName("polygon");
+			if(sselts.length > 0)
+			{
+				colore_liste_elts(sselts, couleur, classListe.contains("edge"));
+			}
+			sselts = elt.getElementsByTagName("rect");
+			if(sselts.length > 0)
+				colore_liste_elts(sselts, couleur);
+			continue;
+		}
+		if (kouleur == null)
+			couleur = BLANC;
+		else
+			couleur = kouleur;
+		if(elt.tagName.toUpperCase() == "SPAN")
+		{
+			if (couleur[2] == VERT[2])
+				elt.setAttribute("class", "selectV");
+			else if(couleur[2] == ROUGE[2])
+				elt.setAttribute("class", "selectR");
+			else
+				elt.setAttribute("class", "")
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "PATH")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			if(elt.hasAttribute("class") && elt.getAttribute("class") == "inv")
+			{
+				if((couleur[0] == VERT[0])||(couleur[0] == ROUGE[0]))
+				{
+					elt.setAttribute("visibility", "visible");
+				}
+				else
+				{
+					elt.setAttribute("visibility", "hidden");
+				}
+			}
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "ELLIPSE")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "CIRCLE")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "TEXT")
+		{
+			elt.setAttribute("fill", couleur[2]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "POLYGON")
+		{
+			elt.setAttribute("stroke", couleur[0]);
+			if(isEdge)
+				elt.setAttribute("fill", couleur[0]);
+			else
+				elt.setAttribute("fill", couleur[1]);
+			continue;
+		}
+		if (elt.tagName.toUpperCase() == "RECT")
+		{
+			elt.setAttribute("style", "fill:" + couleur[1] + ";stroke-width:1;stroke:" + couleur[0]);
+			continue;
+		}
+	}
+}
+
+
+
+/*
+On a des tokens, (numérotés)
+des aretes entre tokens (identifiés par une chaine "art_i_j")
+des sommets AMR (identifiés par une chaine du type "1.2.3")
+des relations entre sommets AMR. (identifiés par une chaine du type "1.2.3->1.2.3.1")
+
+À chaque token correspond : plusieurs autres tokens, plusieurs sommets AMR (dans la liste eltsLies).
+À chaque sommet AMR correspond : plusieurs autres sommets AMR, plusieurs tokens (dans la liste eltsLies).
+À chaque relation entre sommets AMR correspond : plusieurs arêtes entre tokens. (dans la liste eltsLies).
+
+Chaque élément (token, arete entre tokens, sommet AMR ou relation entre sommet) est représenté par une liste d’éléments SVG : Representants
+*/
+
+
+let alignements = function(prefixe, tokens, tk_utiles, dicTokens, aretes, triplets)
+{
+	let frag = document.createDocumentFragment();
+	let eltsLies = {};
+	let representants = {};
+	let auscult = {};
+	
+	
+	let classe = 0;
+	let Gsommets = [];
+	
+	for(let iii=0; iii<tokens.length; iii+=1)
+	{
+		representants["tk_" + iii] = [];
+		auscult["tk_" + iii] = [];
+		
+		let i = tk_utiles.indexOf(iii);
+		if(i >= 0)
+		{
+			let span = document.createElement("span");
+			let iden = prefixe + "_span_" + i;
+			span.setAttribute("id", iden);
+			let tkcur = tokens[iii]
+			if(tkcur.startsWith("¤"))
+			{
+				span.appendChild(document.createTextNode(tkcur.substr(1)));
+				frag.appendChild(document.createTextNode("~"));
+			}
+			else
+			{
+				span.appendChild(document.createTextNode(tkcur));
+				frag.appendChild(document.createTextNode(" "));
+			}
+			frag.appendChild(span);
+			representants["tk_" + iii].push(span);
+			auscult["tk_" + iii].push(span);
+			let classeCourante;
+			let nouveauBloc = false;
+			for(let idNd of dicTokens[i])
+			{
+				let clef = "sm_" + idNd;
+				if(clef in eltsLies)
+				{
+					classeCourante = eltsLies[clef];
+					break;
+				}
+				else
+				{
+					eltsLies[clef] = classe;
+					classeCourante = classe;
+					nouveauBloc = true;
+				}
+			}
+			eltsLies["tk_" + iii] = classeCourante;
+			if(nouveauBloc)
+				classe += 1;
+		}
+		else
+		{
+			let span = document.createElement("span");
+			span.setAttribute("style", "color: lightGray");
+			let tkcur = tokens[iii]
+			if(tkcur.startsWith("¤"))
+			{
+				span.appendChild(document.createTextNode(tkcur.substr(1)));
+				frag.appendChild(document.createTextNode("~"));
+			}
+			else
+			{
+				span.appendChild(document.createTextNode(tkcur));
+				frag.appendChild(document.createTextNode(" "));
+			}
+			frag.appendChild(span);
+			eltsLies["tk_" + iii] = [[],[]];
+		}
+	}
+	let h3 = document.createElement("h3");
+	h3.appendChild(frag);
+	affichages.prepend(h3);
+	
+	let nbClasses = classe;
+	for(let n=0; n<nbClasses; n+=1)
+	{
+		let lt_ls = [[],[]];
+		for (let i=0; i<tokens.length; i +=1)
+		{
+			let cl = eltsLies["tk_" + i];
+			if(cl == n)
+			{
+				lt_ls[0].push(i);
+			}
+		}
+		for(let sm_s in eltsLies)
+		{
+			if(sm_s.startsWith("sm_"))
+			{
+				let s = sm_s.substr(3);
+				representants[s] = [prefixe + s];
+				auscult[s] = [prefixe + s];
+				let cl = eltsLies[sm_s];
+				if(cl == n)
+				{
+					lt_ls[1].push(s);
+				}
+			}
+		}
+		for(let i of lt_ls[0])
+		{
+			eltsLies["tk_" + i] = [lt_ls[0].filter((x) => x!=i).map((x) => "tk_" + x), lt_ls[1]];
+		}
+		for(let s of lt_ls[1])
+		{
+			eltsLies["sm_" + s] = [lt_ls[1].filter((x) => x!=s), lt_ls[0].map((x) => "tk_" + x)];
+		}
+	}
+	tk_utiles.forEach((s, i) => {representants["tk_" + s].push(prefixe + "_tk_" + s);});
+	tk_utiles.forEach((s, i) => {auscult["tk_" + s].push(prefixe + "_tk_" + s);});
+	for(let art of aretes)
+	{
+		let s, r, c;
+		s = art[0];
+		r = art[1];
+		c = art[2];
+		let ident = prefixe + "_tk_" + tk_utiles[s] + "_tk_" + tk_utiles[c];
+		let idt = "tk_" + tk_utiles[s] + "→tk_" + tk_utiles[c];
+		representants[idt] = [
+			ident,
+			prefixe+ "_tk_" + tk_utiles[s],
+			prefixe+ "_tk_" + tk_utiles[c],
+			prefixe + "_span_" + s,
+			prefixe + "_span_" + c];
+		if((r != "{groupe}")&&(r != "{idem}"))
+		{
+			auscult[idt] = [ident];
+		}
+	}
+	//Relations dans l’AMR.
+	
+	for(let trp of triplets)
+	{
+		let S1 = trp[0];
+		let S2 = trp[1];
+		let ident = S1 + "→" + S2;
+		let idClf = "ARC_" + ident;
+		let Lies1 = eltsLies["sm_" + S1];
+		let Lies2 = eltsLies["sm_" + S2];
+		eltsLies[idClf] = [[],[]];
+		if ((typeof(Lies1) == "undefined") || (typeof(Lies2)=="undefined"))
+		{
+			continue;
+		}
+		if ((Lies1[1].indexOf(S2) >= 0)||(Lies2[1].indexOf(S1) >= 0))
+		{
+			continue;
+		}
+		representants[ident] = [prefixe + S1 + "→" + prefixe + S2, prefixe + S1, prefixe + S2];
+		auscult[ident] = [prefixe + S1 + "→" + prefixe + S2];
+		let toks1 = Lies1[1];
+		let toks2 = Lies2[1];
+		for(let t1 of toks1)
+		{
+			for(let t2 of toks2)
+			{
+				for(let idta of [t1 + "→" + t2, t2 + "→" + t1])
+				{
+					if(idta in auscult)
+					{
+						let id2 = "art_" + idta;
+						if(!(id2 in eltsLies))
+							eltsLies[id2] = [[],[]];
+						for(let a of eltsLies[idClf][1])
+						{
+							eltsLies["art_"+a][0].push(idta);
+							eltsLies[id2][0].push(a);
+						}
+						eltsLies[idClf][1].push(idta);
+						eltsLies[id2][1].push(ident);
+					}
+				}
+			}
+		}
+	}
+	
+	
+	// remplaçons les identifiants par les véritables éléments DOM.
+	for(let l in representants)
+	{
+		representants[l] = representants[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+		representants[l] = representants[l].filter( (x) => x != null);
+	}
+	for(let l in auscult)
+	{
+		auscult[l] = auscult[l].map( (s) => (typeof(s) == "string") ? document.getElementById(s) : s);
+		auscult[l] = auscult[l].filter( (x) => x != null);
+	}
+	
+	
+	let fcolor = function(sclef, type, onoff){
+		let C1, C2;
+		if(onoff)
+		{
+			C1 = VERT;
+			C2 = ROUGE;
+		}
+		else
+		{
+			C1 = null;
+			C2 = null;
+		}
+		let semblables;
+		let correspondants;
+		if(type+sclef in eltsLies)
+		{
+			let lies = eltsLies[type+sclef]
+			semblables = lies[0];
+			correspondants = lies[1];
+		}
+		else
+		{
+			semblables =[];
+			correspondants = [];
+		}
+		for(let x of semblables)
+		{
+			colore_liste_elts(representants[x], C2);
+		}
+		if(sclef in representants)
+			colore_liste_elts(representants[sclef], C1);
+		for(let x of correspondants)
+		{
+			colore_liste_elts(representants[x], C1);
+		}
+	};
+	
+	
+	//réactivité des éléments SVG:
+	for(let clef in eltsLies)
+	{
+		let sclef;
+		let typElt;
+		let lies = eltsLies[clef];
+		if((lies[0].length == 0)&&(lies[1].length == 0))
+			continue;
+		if(clef.startsWith("tk_"))
+		{
+			sclef = clef;
+			typElt = "";
+		}
+		else if(clef.startsWith("sm_"))
+		{
+			sclef = clef.substr(3);
+			typElt = "sm_";
+		}
+		else if(clef.startsWith("ARC_"))
+		{
+			sclef = clef.substr(4);
+			typElt = "ARC_";
+		}
+		else if(clef.startsWith("art_"))
+		{
+			sclef = clef.substr(4);
+			typElt = "art_";
+		}
+		
+		for(let selt of auscult[sclef])
+		{
+			selt.addEventListener("mouseover", () => fcolor(sclef, typElt, true));
+			selt.addEventListener("mouseout", () => fcolor(sclef, typElt, false));
+		}
+	}
+	
+	return [representants, fcolor];
+}
+
+
+
+
+
+</script>
+</body>

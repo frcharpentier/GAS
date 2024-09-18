@@ -2,6 +2,7 @@ import os
 import sys
 import json
 from tqdm import tqdm
+import re
 
 from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
@@ -12,7 +13,7 @@ from algebre_relationnelle import RELATION
 from enchainables import MAILLON
 from outils_alignement import (DICO_ENUM,
     GRAPHE_PHRASE, ALIGNEUR, preparer_alignements,
-    compter_compos_connexes, amr_to_string)
+    compter_compos_connexes)
 
 
 @MAILLON
@@ -165,13 +166,47 @@ def calculer_graphe_toks(SOURCE):
         yield idSNT, amr, graphe
 
 @MAILLON
+def traiter_graphe_toks(SOURCE):
+    conjonctions = {"and": "{and}", "or":"{or}", "slash":"{or}"}
+    for idSNT, amr, graphe in SOURCE:
+        gr = graphe.graphe_toks
+        aelim = gr.s(lambda x: re.match(":op\d+", x.rel))
+        if len(aelim) > 0:
+            sommets_a_elim = [ sss for (sss,) in aelim.p("mot_s")]
+            parents = gr.s(lambda x: x.mot_c in sommets_a_elim).ren("mot_s", "pivot", "rel")
+            desc = gr.s(lambda x: x.mot_s in sommets_a_elim).ren("pivot", "mot_c", "rel2")
+            desc2 = desc.s(lambda x: re.match(":op\d+", x.rel2)).p("pivot", "mot_c")
+            R1 = graphe.SG_mg.p("mot", "groupe").s(lambda x: x.mot in sommets_a_elim)
+            R2 = graphe.SG_sg.p("sommet", "groupe")
+            R3 = (R1*R2).p("mot", "sommet").ren("pivot", "sommet")
+            pivots = RELATION("pivot", "conj")
+            for T in R3:
+                if T.sommet in amr.nodes:
+                    amrn = amr.nodes[T.sommet]
+                    if amrn in conjonctions:
+                        pivots.add((T.pivot, conjonctions[amrn]))
+            
+            cjx_trp = (desc2.ren("pivot", "m1")) * pivots * (desc2.ren("pivot", "m2"))
+            cjx_trp = cjx_trp.p("m1", "m2", "conj").s(lambda x: x.m1 != x.m2)
+
+
+            nvx_trp = (parents*desc2).p("mot_s", "mot_c", "rel")
+            gr = gr.s(lambda x: not(x in parents.table or x in desc.table))
+            gr = gr + nvx_trp
+            gr2 = gr.p("mot_s", "mot_c")
+            cjx_trp = cjx_trp.s(lambda x: not (x.m1, x.m2) in gr2.table)
+            gr = gr + (cjx_trp.ren("mot_s", "mot_c", "rel"))
+            graphe.graphe_toks = gr
+
+        yield idSNT, amr, graphe
+
+@MAILLON
 def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
     NgraphesEcrits = 0
     limNgraphe = -1
     with open(fichier_out, "w", encoding="UTF-8") as FF:
         for idSNT, amr, graphe in SOURCE:
-            #print(amr_to_string(graphe.amr), file=FF)
-            print(amr_to_string(amr), file=FF)
+            print(amr.amr_to_string(), file=FF)
             jsn = graphe.jsonifier()
             print(jsn, file=FF)
             print(file=FF)
@@ -307,8 +342,52 @@ def refaire_probleme():
 {'type': 'relation', 'tokens': [19], 'edges': [['1.2.3.2.1', None, '1.2.3.2.1.1']]}]
 
 
+    AMR = """# ::id bolt12_4474_0751.12 ::amr-annotator SDL-AMR-09 ::preferred 
+# ::alignments 0-1.3 3-1.1.1.1 4-1.1.1 5-1.1 6-1.1.2.2 7-1.1.2.1 8-1.1.2 9-1 10-1.2.1 12-1.2.2.1 13-1.2.2.1 13-1.2.2.1.1 13-1.2.2.1.1.r 13-1.2.2.1.2 13-1.2.2.1.2.r 14-1.2 15-1.2.3.r 17-1.2.3 18-1.2.3.1.r 20-1.2.3.1
+# ::snt Meanwhile, the crowded highways and complicated road traffic cause people to have greater expectations in the development of the subway.
+# ::tok Meanwhile , the crowded highways and complicated road traffic cause people to have greater expectations in the development of the subway .
+(c / cause-01~e.9 
+      :ARG0 (a / and~e.5 
+            :op1 (h / highway~e.4 
+                  :ARG1-of (c2 / crowd-01~e.3)) 
+            :op2 (t / traffic~e.8 
+                  :mod (r / road~e.7) 
+                  :ARG1-of (c3 / complicate-01~e.6))) 
+      :ARG1 (e / expect-01~e.14 
+            :ARG0 (p / person~e.10) 
+            :ARG1 (t2 / thing 
+                  :ARG1-of (h2 / have-degree-91~e.12,13 
+                        :ARG2~e.13 (g / great~e.13) 
+                        :ARG3~e.13 (m / more~e.13))) 
+            :topic~e.15 (d / develop-02~e.17 
+                  :ARG1~e.18 (s / subway~e.20))) 
+      :time (m2 / meanwhile~e.0))"""
+
+    aligs = [{'type': 'subgraph', 'tokens': [0], 'nodes': ['1.3']},
+             {'type': 'subgraph', 'tokens': [3], 'nodes': ['1.1.1.1']},
+             {'type': 'subgraph', 'tokens': [4], 'nodes': ['1.1.1']},
+             {'type': 'subgraph', 'tokens': [5], 'nodes': ['1.1']},
+             {'type': 'subgraph', 'tokens': [6], 'nodes': ['1.1.2.2']},
+             {'type': 'subgraph', 'tokens': [7], 'nodes': ['1.1.2.1']},
+             {'type': 'subgraph', 'tokens': [8], 'nodes': ['1.1.2']},
+             {'type': 'subgraph', 'tokens': [9], 'nodes': ['1']},
+             {'type': 'subgraph', 'tokens': [10], 'nodes': ['1.2.1']},
+             {'type': 'subgraph', 'tokens': [13], 'nodes': ['1.2.2.1.1', '1.2.2.1', '1.2.2.1.2', '1.2.2'], 'edges': [['1.2.2', None, '1.2.2.1'], ['1.2.2.1', None, '1.2.2.1.1'], ['1.2.2.1', None, '1.2.2.1.2']]},
+             {'type': 'subgraph', 'tokens': [14], 'nodes': ['1.2']},
+             {'type': 'subgraph', 'tokens': [17], 'nodes': ['1.2.3']},
+             {'type': 'subgraph', 'tokens': [20], 'nodes': ['1.2.3.1']},
+             {'type': 'relation', 'tokens': [0], 'edges': [['1', None, '1.3']]},
+             {'type': 'relation', 'tokens': [3], 'edges': [['1.1.1', None, '1.1.1.1']]},
+             {'type': 'relation', 'tokens': [5], 'edges': [['1.1', None, '1.1.1'], ['1.1', None, '1.1.2']]},
+             {'type': 'relation', 'tokens': [6], 'edges': [['1.1.2', None, '1.1.2.2']]},
+             {'type': 'relation', 'tokens': [7], 'edges': [['1.1.2', None, '1.1.2.1']]},
+             {'type': 'relation', 'tokens': [9], 'edges': [['1', None, '1.1'], ['1', None, '1.2']]},
+             {'type': 'relation', 'tokens': [14], 'edges': [['1.2', None, '1.2.1'], ['1.2', None, '1.2.2']]},
+             {'type': 'relation', 'tokens': [17], 'edges': [['1.2.3', None, '1.2.3.1'], ['1.2', None, '1.2.3']]}]
+
+
     amr_reader = AMR_Reader()
-    amr = amr_reader.loads(AMR)
+    amr = amr_reader.loads(AMR, link_string=True)
     amr.words = amr.tokens
     idSNT = amr.id
     listAligs = transfo_aligs(amr, aligs)
@@ -318,9 +397,10 @@ def refaire_probleme():
         yield idSNT, listAligs
 
     chaine = F1()
+
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
     chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
-    chaine = chaine >> calculer_graphe_toks()
+    chaine = chaine >> calculer_graphe_toks() >> traiter_graphe_toks()
     chaine = chaine >> ecrire_liste(fichier_out = "./pipo.txt")
 
     chaine.enchainer()
@@ -332,4 +412,4 @@ def refaire_probleme():
 
 if __name__ == "__main__":
     #refaire_probleme()
-    faire_liste_1()
+    faire_liste_1(fichier_out="a_tej_2.txt")
