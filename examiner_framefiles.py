@@ -89,41 +89,47 @@ class EXPLICITATION_AMR:
         else:
             self.dicFrames = None
 
+    def expliciter(self, s, r, t):
+        if r.startswith(":ARG"):
+            reverse = (r.endswith("-of"))
+            ND = t if reverse else s
+            if ND in self.dicFrames:
+                fnd = re.search("ARG(\d+)", r[1:])
+                if not fnd:
+                    ARGn = r[1:]
+                    roles = self.dicFrames[ND]["special"]
+                    if ARGn in roles:
+                        fnd = True
+                    else:
+                        fnd = False
+                else:
+                    ARGn = int(fnd[1])
+                    roles = self.dicFrames[ND]["ARGn"]
+                    lenr = len(roles)
+                    if 0 <= ARGn < lenr :
+                        fnd = True
+                    else:
+                        fnd = False
+                if fnd:
+                    role = roles[ARGn].upper()
+                    role = ":>" + role
+                    if reverse:
+                        role += "-of"
+                    return role
+        return r
+
     def expliciter_AMR(self, amr):
 
         edges_t = []
         transfo = False
         for s,r,t in amr.edges:
             if r.startswith(":ARG"):
-                reverse = (r.endswith("-of"))
-                ND = t if reverse else s
-                ND = amr.nodes[amr.isi_node_mapping[ND]]
-                if ND in self.dicFrames:
-                    fnd = re.search("ARG(\d+)", r[1:])
-                    if not fnd:
-                        ARGn = r[1:]
-                        roles = self.dicFrames[ND]["special"]
-                        if ARGn in roles:
-                            transfo = True
-                            fnd = True
-                        else:
-                            fnd = False
-                    else:
-                        ARGn = int(fnd[1])
-                        roles = self.dicFrames[ND]["ARGn"]
-                        lenr = len(roles)
-                        if 0 <= ARGn < lenr :
-                            transfo = True
-                            fnd = True
-                        else:
-                            fnd = False
-                    if fnd:
-                        role = roles[ARGn].upper()
-                        role = ":>" + role
-                        if reverse:
-                            role += "-of"
-                        edges_t.append((s, role, t))
-                        continue
+                SS = amr.nodes[amr.isi_node_mapping[s]]
+                TT = amr.nodes[amr.isi_node_mapping[t]]
+                RR = self.expliciter(SS,r,TT)
+                if RR != r:
+                    transfo = True
+                    r = RR
             edges_t.append((s,r,t))
         if transfo:
             amr.edges = edges_t

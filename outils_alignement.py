@@ -66,8 +66,69 @@ class AMR_modif(AMR):
         resu1.sort(key=lambda x: liste.index(x[0]) if x[0] in liste else len(liste)   )
         resu1 = " ".join(["::%s %s"%(k,v) for k,v in resu1])
         resu2 = "\n".join(["# ::%s %s"%(k,v) for k,v in resu2])
-        resu = "# " + resu1 + "\n" + resu2 + "\n" + self.amr_chaine_brute 
+        resu = "# " + resu1 + "\n" + resu2 + "\n" + self.amr_chaine_brute
         return resu
+    
+    def isi_edges(self):
+        for s,r,t in self.edges:
+            yield (self.isi_node_mapping[s], r, self.isi_node_mapping[t])
+
+    def isi_edges_redir(self):
+        for s,r,t in self.edges_redir():
+            yield (self.isi_node_mapping[s], r, self.isi_node_mapping[t])
+
+    #def fabriquer_relations(self):
+    #    Rsommets = RELATION("sommet", "variable", "constante")
+    #    Rarcs = RELATION("source", "cible", "relation")
+    #
+    #
+    #    for k, v in self.nodes.items():
+    #        if k in self.variables:
+    #            Rsommets.add((self.isi_node_mapping[k], v, None))
+    #        else:
+    #            Rsommets.add((self.isi_node_mapping[k], None, v))
+    #
+    #    for s, r, t in self.isi_edges():
+    #        Rarcs.add((s, t, r))
+    #
+    #
+    #    self.Rsommets = Rsommets
+    #    self.Rarcs = Rarcs
+
+    def __getattr__(self,item):
+        if item == "rel_sommets":
+            if not hasattr(self, "Rsommets"):
+                #self.fabriquer_relations()
+                Rsommets = RELATION("sommet", "variable", "constante")
+                dico = set()
+                for (s,t,r) in self.rel_arcs:
+                    dico.add(s)
+                    dico.add(t)
+                for nd in dico:
+                    if nd in self.variables:
+                        Rsommets.add((nd, self.nodes[nd], None))
+                    else:
+                        Rsommets.add((nd, None, self.nodes[nd]))
+                self.Rsommets = Rsommets
+            return self.Rsommets
+        elif item == "rel_arcs":
+            if not hasattr(self, "Rarcs"):
+                Rarcs = RELATION("source", "cible", "relation")
+                for s, r, t in self.isi_edges():
+                    Rarcs.add((s, t, r))
+                self.Rarcs = Rarcs
+            return self.Rarcs
+        elif item == "rel_arcs_redir":
+            if not hasattr(self, "Rarcs_redir"):
+                Rarcs_redir = RELATION("source", "cible", "rel_redir")
+                for s, t, r in self.rel_arcs:
+                    if r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
+                        s, t, r = t, s, r[:-len("-of")]
+                    Rarcs_redir.add((s, t, r))
+                self.Rarcs_redir = Rarcs_redir
+            return self.Rarcs_redir
+        else:
+            return super().__getitem__(item)
 
 
 class ALIGNEUR:
@@ -164,13 +225,56 @@ def dresser_liste_doublons(amr_rep):
     return doublons
 
 
-def load_aligs_from_json(json_files, amrs=None):
+def transfo_aligs(amr, jason, explicit=None):
+    egal = lambda x,y: (amr.isi_node_mapping[x] == amr.isi_node_mapping[y])
+    aligs = []
+    elimine = False
+    for a in jason:
+        #type_aligs.add(a["type"])
+        if 'nodes' not in a:
+            a['nodes'] = []
+        if 'edges' not in a:
+            a['edges'] = []
+        for i,e in enumerate(a['edges']):
+            s,r,t = e
+            if r is None:
+                try:
+                    new_e = [e_2 for e_2 in amr.edges if egal(e_2[0],s) and egal(e_2[2],t)]
+                except KeyError:
+                    print('Failed to un-anonymize:', amr.id, e, file=sys.stderr)
+                    elimine = True
+                    break #sortir de for i,e
+                else:
+                    new_e = new_e[0]
+                    a['edges'][i] = [s, new_e[1], t]
+            elif (not explicit is None) and r.startswith(":ARG"):
+                SS = amr.nodes[amr.isi_node_mapping[s]]
+                TT = amr.nodes[amr.isi_node_mapping[t]]
+                RR = explicit.expliciter(SS,r,TT)
+                if RR != r:
+                    a['edges'][i] = [s,RR,t]
+
+                
+        if elimine:
+            break #sortir de for a
+        alig = AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']] if "edges" in a else None)
+        alig.word_ids = alig.tokens
+        del alig.tokens
+        alig.amr = amr
+        aligs.append(alig)
+    if elimine:
+        return []
+    else:
+        return aligs
+
+
+def load_aligs_from_json(json_files, amrs=None, explicit=None):
     if amrs:
         amrs = {amr.id:amr for amr in amrs}
     else:
         raise Exception('To un-anonymize alignments, the parameter "amrs" is required.')
     alignments = dict()
-    type_aligs = set()
+    #type_aligs = set()
     for json_file in json_files:
         with open(json_file, 'r', encoding='utf8') as f:
             aligs = json.load(f)
@@ -185,48 +289,20 @@ def load_aligs_from_json(json_files, amrs=None):
     # On élimine les phrases qui viennent du Petit Prince.
     ids = [k for k in alignments]
     for k in ids:
-        elimine = False
         if not k in amrs:
             print('Failed to un-anonymize: no matching AMR:', k)
             del alignments[k]
             continue
-        amr = amrs[k]
-        egal = lambda x,y: (amr.isi_node_mapping[x] == amr.isi_node_mapping[y])
-        aligs = []
-        for a in alignments[k]:
-            type_aligs.add(a["type"])
-            if 'nodes' not in a:
-                a['nodes'] = []
-            if 'edges' not in a:
-                a['edges'] = []
-            for i,e in enumerate(a['edges']):
-                s,r,t = e
-                if r is None:
-                    try:
-                        new_e = [e_2 for e_2 in amr.edges if egal(e_2[0],s) and egal(e_2[2],t)]
-                    except KeyError:
-                        print('Failed to un-anonymize:', amr.id, e, file=sys.stderr)
-                        elimine = True
-                        break #sortir de for i,e
-                    else:
-                        new_e = new_e[0]
-                        a['edges'][i] = [s, new_e[1], t]
-            if elimine:
-                break #sortir de for a
-            alig = AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']] if "edges" in a else None)
-            alig.word_ids = alig.tokens
-            del alig.tokens
-            alig.amr = amr
-            aligs.append(alig)
-        if elimine:
+        aligs = transfo_aligs(amrs[k], alignments[k], explicit)
+        if len(aligs) == 0:
             del alignments[k]
         else:
             alignments[k] = aligs
     
-    print("Il y a des alignements de %d types différents"%len(type_aligs))
-    print("Voici la liste :")
-    print(type_aligs)
-    print("-----")
+    #print("Il y a des alignements de %d types différents"%len(type_aligs))
+    #print("Voici la liste :")
+    #print(type_aligs)
+    #print("-----")
     return alignments
 
 class AMRSuivant(Exception):
@@ -278,32 +354,9 @@ class GRAPHE_PHRASE:
         
         #self.N = len(self.tokens)
         self.N = len(self.mots)
-        self.transfo_AMR()
-
-    def transfo_AMR(self):
-        sommets = RELATION("sommet", "variable", "constante")
-        arcs = RELATION("source", "cible", "relation")
-        arcs_redir = RELATION("source", "cible", "rel_redir")
-
-        for k, v in self.amr.nodes.items():
-            if k in self.amr.variables:
-                sommets.add((self.amr.isi_node_mapping[k], v, None))
-            else:
-                sommets.add((self.amr.isi_node_mapping[k], None, v))
-
-        for s, r, t in self.amr.edges:
-            s = self.amr.isi_node_mapping[s]
-            t = self.amr.isi_node_mapping[t]
-            arcs.add((s, t, r))
-
-        for s, r, t in self.amr.edges_redir():
-            s = self.amr.isi_node_mapping[s]
-            t = self.amr.isi_node_mapping[t]
-            arcs_redir.add((s, t, r))
-
-        self.amr_sommets = sommets
-        self.amr_arcs = arcs
-        self.amr_arcs_redir = arcs_redir
+        self.amr_sommets = self.amr.rel_sommets
+        self.amr_arcs = self.amr.rel_arcs
+        self.amr_arcs_redir = self.amr.rel_arcs_redir
 
     def ajouter_aligs(self, listAlig, toks_transfo=None, rel_tg=None, rel_mg=None):
         #toks_transfo est la liste in extenso des tokens du transformer
@@ -320,24 +373,48 @@ class GRAPHE_PHRASE:
         REN_aG = RELATION("source", "cible", "relation", "type", "G") # réentrance arête -- groupe
 
         id_groupe = 0
+
+        amr_nodes = self.amr_sommets.p("sommet")
         
         for a in listAlig: ## Construction des tables relationnelles
             if a.type == "subgraph":
-                SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
-                SG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
+                #SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                #SG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
+                a_nodes = [self.amr.isi_node_mapping[sommet] for sommet in a.nodes]
+                a_nodes = [s for s in a_nodes if (s,) in amr_nodes.table]
+                if len(a_nodes) > 0:
+                    SG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                    SG_sG.add(*[(sommet, "G%d"%id_groupe) for sommet in a_nodes])
                 id_groupe += 1
             elif a.type == "dupl-subgraph":
-                DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
-                DSG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
+                #DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                #DSG_sG.add(*[(self.amr.isi_node_mapping[sommet], "G%d"%id_groupe) for sommet in a.nodes])
+                a_nodes = [self.amr.isi_node_mapping[sommet] for sommet in a.nodes]
+                a_nodes = [s for s in a_nodes if (s,) in amr_nodes.table]
+                if len(a_nodes) > 0:
+                    DSG_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                    DSG_sG.add(*[(sommet, "G%d"%id_groupe) for sommet in a_nodes])
                 id_groupe += 1
             elif a.type == "relation":
-                REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
-                REL_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, "G%d"%id_groupe) for s,r,c in a.edges])
-                id_groupe += 1
+                #REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                #REL_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, "G%d"%id_groupe) for s,r,c in a.edges])
+                #id_groupe += 1
+                a_edges = [(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r) for s,r,c in a.edges]
+                a_edges = [(s,c,r) for s,c,r in a_edges if (s,c,r) in self.amr_arcs.table]
+                if len(a_edges) > 0:
+                    REL_mG.add(*[(mot, "G%d"%id_groupe) for mot in a.word_ids])
+                    REL_aG.add(*[(s,c,r, "G%d"%id_groupe) for s,c,r in a_edges])
+                    id_groupe += 1
             elif a.type.startswith("reentrancy"):
-                REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.word_ids])
-                REN_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, a.type, "G%d"%id_groupe) for s,r,c in a.edges])
-                id_groupe += 1
+                #REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.word_ids])
+                #REN_aG.add(*[(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r, a.type, "G%d"%id_groupe) for s,r,c in a.edges])
+                #id_groupe += 1
+                a_edges = [(self.amr.isi_node_mapping[s], self.amr.isi_node_mapping[c], r) for s,r,c in a.edges]
+                a_edges = [(s,c,r) for s,c,r in a_edges if (s,c,r) in self.amr_arcs.table]
+                if len(a_edges) > 0:
+                    REN_mG.add(*[(mot, a.type, "G%d"%id_groupe) for mot in a.word_ids])
+                    REN_aG.add(*[(s,c,r, a.type, "G%d"%id_groupe) for s,c,r in a_edges])
+                    id_groupe += 1
 
         if toks_transfo is None:
             self.SG_mg = SG_mG.ren("mot", "groupe")
@@ -895,7 +972,7 @@ def preparer_alignements(explicit_arg=False, **kwargs):
 
 
     amr_reader = AMR_Reader()
-    aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
+    
     if explicit_arg:
         Explicit = EXPLICITATION_AMR()
         Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
@@ -939,11 +1016,19 @@ def preparer_alignements(explicit_arg=False, **kwargs):
     #monamr = amr_dict["DF-199-192821-670_2956.4"]
 
     print("%d graphes AMR au total."%len(amr_liste))
-    alignements = load_aligs_from_json([
-        fichier_sous_graphes,
-        fichier_relations,
-        fichier_reentrances],
-        amr_liste)
+    if explicit_arg:
+        alignements = load_aligs_from_json([
+            fichier_sous_graphes,
+            fichier_relations,
+            fichier_reentrances],
+            amr_liste,
+            Explicit)
+    else:
+        alignements = load_aligs_from_json([
+            fichier_sous_graphes,
+            fichier_relations,
+            fichier_reentrances],
+            amr_liste)
     # alignements est un dico dont les clés sont les identifiants de phrase
     # et dont les valeurs sont des listes de dico d’alignements
     # un dico d’alignements est un dico avec les clés type,
@@ -952,168 +1037,9 @@ def preparer_alignements(explicit_arg=False, **kwargs):
     return alignements
     
 
-@MAILLON
-def iterer_alignements(SOURCE, alignements):
-    print(" *** DÉBUT ***")
 
-    for idSNT, listAlig in alignements.items():
-        yield idSNT, listAlig
-
-
-
-
-@MAILLON
-def filtrer_non_connexe(SOURCE, compteurs):
-    # Un examen des alignements a montré que quelques alignements se font vers une portion de l’AMR non-connexe.
-    # On va simplement éliminer les AMR concernés
-    for idSNT, listAlig in SOURCE:
-        for a in listAlig:
-            if a.type in ("subgraph", "dupl-subgraph"):
-                N = compter_compos_connexes(a.edges)
-                if N > 1:
-                    print("AMR %s, tokens %s, %d composantes"%(idSNT, str([a.amr.words[tt] for tt in a.word_ids]), N))
-                    compteurs["non-connexes"] += 1
-                    break #sortir de la boucle for a
-        else:
-            # Code exécuté si la boucle for a in listAlig s’est exécutée sans interruption break.
-            yield idSNT, listAlig
     
         
-@MAILLON
-def iterer_graphe(SOURCE):
-    aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
-    for idSNT, listAlig in SOURCE:
-        amr = listAlig[0].amr
-        mots_amr = amr.words
-        snt = amr.metadata["snt"]
-
-        graphe = GRAPHE_PHRASE(amr)
-        #if amr.id == "bolt12_10474_1831.9":
-        #    pass
-
-        trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(mots_amr, snt)
-        #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
-        # et toks_transfo est la liste in extenso des tokens du transformer
-        graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
-
-        yield idSNT, amr, graphe
-
-@MAILLON
-def filtrer_SG_dedoubles(SOURCE, compteurs):
-    for idSNT, amr, graphe in SOURCE:
-        if len(graphe.DSG_sg) > 0:
-            compteurs["nb_amr_ssgrphes_dedoubles"] += 1
-            continue #On saute les AMRs qui possèdent des sous-graphes dédoublés.
-        yield idSNT, amr, graphe
-
-
-@MAILLON
-def filtrer_reentrance(SOURCE, compteurs):
-    for idSNT, amr, graphe in SOURCE:
-        if len(graphe.REN_ag) > 0:
-            compteurs["nb_amr_reentrance"] += 1
-
-        if not graphe.verifier_reentrance():
-            compteurs["nb_amr_erreurs_reentrances"] += 1
-            #Éliminons ces AMR problématiques
-            continue
-
-        yield idSNT, amr, graphe
-
-@MAILLON
-def filtrer_anaphore(SOURCE, compteurs):
-    autorises = ["reentrancy:repetition", "reentrancy:coref"] #"reentrancy:primary"]
-    for idSNT, amr, graphe in SOURCE:
-        mentions = graphe.REN_ag.select(lambda x: (x.type in autorises))
-        if len(mentions) > 0:
-            compteurs["nb_amr_anaphore"] += 1
-        
-        try:
-            graphe.traiter_reentrances()
-        except AssertionError:
-            compteurs["nb_exceptions_reentrances"] += 1
-            continue
-
-        yield idSNT, amr, graphe
-
-@MAILLON
-def calculer_graphe_toks(SOURCE, compteurs):
-    for idSNT, amr, graphe in SOURCE:
-        ok = graphe.calculer_graphe_toks()
-        if not ok:
-            compteurs["nb_pbs_relations"] += 1
-            continue
-        yield idSNT, amr, graphe
-
-
-@MAILLON
-def ecrire_liste(SOURCE, compteurs, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
-    with open(fichier_out, "w", encoding="UTF-8") as FF:
-        for idSNT, amr, graphe in SOURCE:
-            print(amr.amr_to_string(), file=FF)
-            jsn = graphe.jsonifier()
-            print(jsn, file=FF)
-            print(file=FF)
-            compteurs["NgraphesEcrits"] += 1
-            if compteurs["limNgraphe"] > 0 and compteurs["NgraphesEcrits"] > compteurs["limNgraphe"]:
-                break
-
-    print("TERMINÉ.")
-    #print("Nombre d’AMR alignés au total : %d"%len(compteurs["alignements"]))
-    print("Nombres d’AMR à sous-graphes dédoublés : %d"%(compteurs["nb_amr_ssgrphes_dedoubles"]))
-    #print("Nombres prbs dans les coréférences : %d"%nb_coref_probleme)
-    print("Nombres d’AMR à réentrance : %d"%(compteurs["nb_amr_reentrance"]))
-    print("Nombres d’AMR à anaphore : %d"%(compteurs["nb_amr_anaphore"]))
-    print("Nombres d’AMR à erreurs dans les réentrances : %d"%(compteurs["nb_amr_erreurs_reentrances"]))
-    print("Nombres d’exceptions dans les réentrances : %d"%(compteurs["nb_exceptions_reentrances"]))
-    print("Nombre de problèmes dans les relations : %d"%(compteurs["nb_pbs_relations"]))
-    
-    print()
-    print("Nb d’AMR restants écrits: %d"%(compteurs["NgraphesEcrits"]))
-
-                
-def construire_graphes(fichier_out = "./AMR_et_graphes_phrases_2.txt", explicit_arg = False):
-    compteurs = {
-    "non-connexes" : 0,
-    "nb_amr_ssgrphes_dedoubles" : 0,
-    #"nb_coref_probleme" : 0,
-    "nb_amr_erreurs_reentrances" : 0,
-    "nb_exceptions_reentrances" : 0,
-    "nb_amr_reentrance" : 0,
-    "nb_amr_anaphore" : 0,
-    "nb_pbs_relations" : 0,
-
-    #"graphes_phrases" : [],
-    "limNgraphe" : -1, #500
-    "NgraphesEcrits" : 0,
-    }
-
-    kwargs = dict()
-    prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
-    kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
-    kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
-    kwargs["fichier_relations"] = prefixe_alignements + "relation_alignments.json"
-    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
-    snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
-    kwargs["doublons"] = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
-    # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
-    # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
-    # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
-    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
-    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
-    
-
-    alignements = preparer_alignements(**kwargs)
-    chaine = iterer_alignements(alignements)
-    chaine = chaine >> filtrer_non_connexe(compteurs) >> iterer_graphe()
-    chaine = chaine >> filtrer_SG_dedoubles(compteurs) >> filtrer_reentrance(compteurs)
-    chaine = chaine >> filtrer_anaphore(compteurs) >> calculer_graphe_toks(compteurs)
-    chaine = chaine >> ecrire_liste(compteurs, fichier_out = fichier_out)
-
-    chaine.enchainer()
-
-
-
     
             
 AMR_problematique = """
@@ -1166,4 +1092,5 @@ if __name__ == "__main__":
     
     #essai_AMR_string()
     #construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
-    construire_graphes(fichier_out = "./a_tej_2.txt", explicit_arg = False)
+    #construire_graphes(fichier_out = "./a_tej_2.txt", explicit_arg = False)
+    pass

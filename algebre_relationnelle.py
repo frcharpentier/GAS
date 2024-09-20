@@ -68,6 +68,23 @@ class RELATION:
     
     def __mul__(self, rel2):
         return self.join(rel2)
+    
+    def compter(self, *clef):
+        assert all(s in self.sort for s in clef)
+        srtc = tuple(clef) + ("CPT",)
+        indices = [self.sort.index(s) for s in clef]
+        dico = dict()
+        for T in self.table:
+            tpl = tuple(T[i] for i in indices)
+            if not tpl in dico:
+                dico[tpl] = 1
+            else:
+                dico[tpl] += 1
+        resu = RELATION(*srtc)
+        resu.table = [resu.nuplet(*(k+(v,))) for k, v in dico.items()]
+        return resu
+
+
 
     def proj(self, *sort):
         assert all(s in self.sort for s in sort)

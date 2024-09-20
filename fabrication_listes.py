@@ -4,16 +4,15 @@ import json
 from tqdm import tqdm
 import re
 
-from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader
-from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
-from amr_utils.alignments import AMR_Alignment
 from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
 from algebre_relationnelle import RELATION
 from enchainables import MAILLON
-from outils_alignement import (DICO_ENUM,
+from outils_alignement import (AMR_modif,
     GRAPHE_PHRASE, ALIGNEUR, preparer_alignements,
-    compter_compos_connexes)
+    compter_compos_connexes, transfo_aligs)
+
+from strategies_syntaxe import definir_strategie
 
 
 @MAILLON
@@ -21,6 +20,15 @@ def iterer_alignements(SOURCE, alignements):
     print(" *** DÉBUT ***")
 
     for idSNT, listAlig in tqdm(alignements.items()):
+        yield idSNT, listAlig
+
+@MAILLON
+def filtrer_vides(SOURCE):
+    #filtrer les amrs réduits à un sommet, sans arête.
+    for idSNT, listAlig in SOURCE:
+        amr = listAlig[0].amr
+        if len(amr.edges) == 0:
+            continue
         yield idSNT, listAlig
 
 @MAILLON
@@ -41,6 +49,9 @@ def filtrer_sous_graphes(SOURCE):
 
 @MAILLON
 def filtrer_ss_grf_2(SOURCE):
+    # Éliminer les alignements vers les sous-graphes AMR
+    # Où des mots différents sont alignés à des sommets différents
+    # Du sous-graphe
     for idSNT, listAlig in SOURCE:
         amr = listAlig[0].amr
         eliminer = []
@@ -72,10 +83,21 @@ def iterer_graphe(SOURCE):
         #if amr.id == "bolt12_10474_1831.9":
         #    pass
 
+        
+        if not snt.startswith(" "):
+            snt = " " + snt
+        # On ajoute un espace au début pour améliorer la tokenisation
+
         trf_grp, amr_grp, toks_transfo = aligneur.aligner_seq(mots_amr, snt)
         #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
         # et toks_transfo est la liste in extenso des tokens du transformer
         graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
+
+        #if idSNT == "bolt12_632_6428.3":
+        #    print("iterer_graphes : ")
+        #    for T in amr.rel_arcs:
+        #        print(T)
+        #    print("############")
 
         yield idSNT, amr, graphe
 
@@ -116,6 +138,8 @@ def filtrer_anaphore(SOURCE):
         graphe.anaphores_mg = RELATION(*(graphe.REN_mg.sort))
         graphe.anaphores_ag = RELATION(*(graphe.REN_ag.sort))
         if len(graphe.REN_ag) == 0:
+            #if idSNT == "bolt12_632_6428.3":
+            #    print("filtrer_anaphore : sortie ici")
             yield idSNT, amr, graphe
             continue
         toks = graphe.tokens
@@ -153,6 +177,11 @@ def filtrer_anaphore(SOURCE):
             graphe.anaphores_ag = graphe.anaphores_ag.s(lambda x: not(x.groupe in interdits))
             #print("%s : Anaphores corrigées."%idSNT)
     
+        #if idSNT == "bolt12_632_6428.3":
+        #    print("filtrer_anaphore : ")
+        #    for T in amr.rel_arcs:
+        #        print(T)
+        #    print("############")
 
         yield idSNT, amr, graphe
         
@@ -200,6 +229,92 @@ def traiter_graphe_toks(SOURCE):
 
         yield idSNT, amr, graphe
 
+
+
+
+@MAILLON
+def traiter_opN(SOURCE):
+    def decompose(rel):
+        resu = re.search("^:(\D+)(\d+)$", rel)
+        if resu is None:
+            return False
+        else:
+            return resu[1]
+    for idSNT, listAlig in SOURCE:
+        amr = listAlig[0].amr
+        gr = amr.rel_arcs
+        aelim = RELATION("source", "label_s", "cible", "rel_N", "rel")
+        for s,t,r in gr:
+            rel = decompose(r)
+            if rel and not rel == "ARG":
+                #lbl = amr.nodes[amr.isi_node_mapping[s]]
+                lbl = amr.nodes[s]
+                if lbl == "and":
+                    pass
+                aelim.add((s, lbl, t, r, rel))
+        
+        
+        if len(aelim) > 0:
+            sommets_pivot = aelim.compter("source", "label_s", "rel")
+            for src, lbl, rel, cpt in sommets_pivot:
+                clef = "%s_%s_%s"%(lbl, rel, ("N" if (cpt > 1) else "1"))
+                (elim_ascen, elim_syntax, elim_descen,
+                 distr_parents, distr_enfants,
+                 modif_syntax, conj) = definir_strategie(clef)
+                if (all(b == False for b in (elim_ascen, elim_syntax, elim_descen,
+                            distr_parents, distr_enfants,
+                            modif_syntax, conj))):
+                    continue
+                R = gr.s(lambda x: x.source == src)
+                syntax = RELATION("pivot", "cible", "rel_N", "rel")
+                descendants = RELATION("pivot", "cible", "rel")
+                for s,t,r in R:
+                    rel = decompose(r)
+                    if rel:
+                        syntax.add((s,t,r,rel))
+                    else:
+                        descendants.add((s,t,r))
+                parents = gr.s(lambda x: x.cible == src).ren("source", "pivot", "rel")
+                trp_a_elim = RELATION("source", "cible", "relation")
+                trp_a_ajou = RELATION("source", "cible", "relation")
+                if elim_ascen:
+                    trp_a_elim.add(*[(s,t,r) for s,t,r in parents])
+                if elim_syntax:
+                    trp_a_elim.add(*[(s,t,r) for s,t,r,_ in syntax])
+                if elim_descen:
+                    trp_a_elim.add(*[(s,t,r) for s,t,r in descendants])
+                if distr_parents:
+                    R = (parents * (syntax.p("pivot", "cible"))).p("source", "cible", "rel")
+                    trp_a_ajou.add(*[(s,t,r) for s,t,r in R])
+                if distr_enfants:
+                    R = syntax.p("pivot", "cible").ren("pivot", "source")
+                    R = (R * descendants).p("source", "cible", "rel")
+                    trp_a_ajou.add(*[(s,t,r) for s,t,r in R])
+                if modif_syntax:
+                    if type(modif_syntax) is dict:
+                        syn = modif_syntax["syn"]
+                        reverse = modif_syntax["reverse"]
+                    else:
+                        syn = modif_syntax
+                        reverse = False
+                    if reverse:
+                        trp_a_ajou.add(*[(t,s, syn) for s,t,_,_ in syntax])
+                    else:
+                        trp_a_ajou.add(*[(s,t, syn) for s,t,_,_ in syntax])
+                if conj:
+                    R = syntax.p("pivot", "cible")
+                    R = (R.ren("pivot", "m1")) * (R.ren("pivot", "m2"))
+                    R = (R.p("m1","m2")).s(lambda x: x.m1 != x.m2)
+                    trp_a_ajou.add(*[(m1,m2,conj) for m1,m2 in R])
+
+                gr = gr.s(lambda x: not x in trp_a_elim)
+                gr = gr.add(*trp_a_ajou)
+                amr.rel_arcs = gr
+
+        yield idSNT, listAlig
+
+
+
 @MAILLON
 def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
     NgraphesEcrits = 0
@@ -228,13 +343,14 @@ def faire_liste_1(fichier_out="a_tej.txt"):
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
     # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
-    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
-    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
+    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)][:1]
+    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)][:1]
     
 
     alignements = preparer_alignements(explicit_arg=True, **kwargs)
-    chaine = iterer_alignements(alignements)
+    chaine = iterer_alignements(alignements) >> filtrer_vides()
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
+    chaine = chaine >> traiter_opN()
     chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
     chaine = chaine >> calculer_graphe_toks()
     chaine = chaine >> ecrire_liste(fichier_out = fichier_out)
@@ -262,40 +378,6 @@ def faire_dico_aligs():
                 alignments[k].extend(v)
 
     return alignments
-
-
-def transfo_aligs(amr, jason):
-    egal = lambda x,y: (amr.isi_node_mapping[x] == amr.isi_node_mapping[y])
-    aligs = []
-    elimine = False
-    for a in jason:
-        if 'nodes' not in a:
-            a['nodes'] = []
-        if 'edges' not in a:
-            a['edges'] = []
-        for i,e in enumerate(a['edges']):
-            s,r,t = e
-            if r is None:
-                try:
-                    new_e = [e_2 for e_2 in amr.edges if egal(e_2[0],s) and egal(e_2[2],t)]
-                except KeyError:
-                    print('Failed to un-anonymize:', amr.id, e)
-                    elimine = True
-                    break #sortir de for i,e
-                else:
-                    new_e = new_e[0]
-                    a['edges'][i] = [s, new_e[1], t]
-        if elimine:
-            break #sortir de for a
-        alig = AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']] if "edges" in a else None)
-        alig.word_ids = alig.tokens
-        del alig.tokens
-        alig.amr = amr
-        aligs.append(alig)
-    if elimine:
-        return []
-    else:
-        return aligs
 
 
 def refaire_probleme():
@@ -342,6 +424,48 @@ def refaire_probleme():
 {'type': 'relation', 'tokens': [19], 'edges': [['1.2.3.2.1', None, '1.2.3.2.1.1']]}]
 
 
+    AMR = """# ::id bolt12_632_6428.3 ::amr-annotator SDL-AMR-09 ::preferred 
+# ::alignments 0-1 1-1.1.1.3 4-1.1.1.4 5-1.1.1 6-1.1.1.3 10-1.1.1.2.1 11-1.1.1.2.1.1 12-1.1.1.2.1.1.1.r 13-1.1.1.2.1.1.1.1 14-1.1.1.2.1.1.1 15-1.1.1.2.2 16-1.1.1.2 17-1.1.1.2.3 17-1.1.1.2.3.r
+# ::snt So we have to frequently ask ourselves: is the law enacted by this country really useful?
+# ::tok So we have to frequently ask ourselves : is the law enacted by this country really useful ?
+(c2 / cause-01~e.0 
+      :ARG1 (o / obligate-01 
+            :ARG2 (a / ask-01~e.5 
+                  :ARG0 w 
+                  :ARG1 (u / useful-05~e.16 
+                        :ARG1 (l / law~e.10 
+                              :ARG1-of (e / enact-01~e.11 
+                                    :ARG0~e.12 (c / country~e.14 
+                                          :mod (t / this~e.13)))) 
+                        :ARG1-of (r / real-04~e.15) 
+                        :polarity~e.17 (a2 / amr-unknown~e.17)) 
+                  :ARG2 (w / we~e.1,6) 
+                  :ARG1-of (f / frequent-02~e.4))))"""
+    
+    aligs = [{'type': 'subgraph', 'tokens': [0], 'nodes': ['1']},
+{'type': 'subgraph', 'tokens': [1], 'nodes': ['1.1.1.3']},
+{'type': 'subgraph', 'tokens': [2, 3], 'nodes': ['1.1']},
+{'type': 'subgraph', 'tokens': [4], 'nodes': ['1.1.1.4']},
+{'type': 'subgraph', 'tokens': [5], 'nodes': ['1.1.1']},
+{'type': 'subgraph', 'tokens': [10], 'nodes': ['1.1.1.2.1']},
+{'type': 'subgraph', 'tokens': [11], 'nodes': ['1.1.1.2.1.1']},
+{'type': 'subgraph', 'tokens': [13], 'nodes': ['1.1.1.2.1.1.1.1']},
+{'type': 'subgraph', 'tokens': [14], 'nodes': ['1.1.1.2.1.1.1']},
+{'type': 'subgraph', 'tokens': [15], 'nodes': ['1.1.1.2.2']},
+{'type': 'subgraph', 'tokens': [16], 'nodes': ['1.1.1.2']},
+{'type': 'subgraph', 'tokens': [17], 'nodes': ['1.1.1.2.3']},
+{'type': 'reentrancy:primary', 'tokens': [5], 'edges': [['1.1.1', ':ARG0', '1.1.1.3']]},
+{'type': 'reentrancy:coref', 'tokens': [6], 'edges': [['1.1.1', ':ARG2', '1.1.1.3']]},
+{'type': 'relation', 'tokens': [0], 'edges': [['1', None, '1.1']]},
+{'type': 'relation', 'tokens': [2, 3], 'edges': [['1.1', None, '1.1.1']]},
+{'type': 'relation', 'tokens': [4], 'edges': [['1.1.1', None, '1.1.1.4']]},
+{'type': 'relation', 'tokens': [5], 'edges': [['1.1.1', ':ARG0', '1.1.1.3'], ['1.1.1', None, '1.1.1.2'], ['1.1.1', ':ARG2', '1.1.1.3']]},
+{'type': 'relation', 'tokens': [11], 'edges': [['1.1.1.2.1', None, '1.1.1.2.1.1'], ['1.1.1.2.1.1', None, '1.1.1.2.1.1.1']]},
+{'type': 'relation', 'tokens': [13], 'edges': [['1.1.1.2.1.1.1', None, '1.1.1.2.1.1.1.1']]},
+{'type': 'relation', 'tokens': [15], 'edges': [['1.1.1.2', None, '1.1.1.2.2']]},
+{'type': 'relation', 'tokens': [16], 'edges': [['1.1.1.2', None, '1.1.1.2.1']]},
+{'type': 'relation', 'tokens': [17], 'edges': [['1.1.1.2', None, '1.1.1.2.3']]}]
+
     AMR = """# ::id bolt12_4474_0751.12 ::amr-annotator SDL-AMR-09 ::preferred 
 # ::alignments 0-1.3 3-1.1.1.1 4-1.1.1 5-1.1 6-1.1.2.2 7-1.1.2.1 8-1.1.2 9-1 10-1.2.1 12-1.2.2.1 13-1.2.2.1 13-1.2.2.1.1 13-1.2.2.1.1.r 13-1.2.2.1.2 13-1.2.2.1.2.r 14-1.2 15-1.2.3.r 17-1.2.3 18-1.2.3.1.r 20-1.2.3.1
 # ::snt Meanwhile, the crowded highways and complicated road traffic cause people to have greater expectations in the development of the subway.
@@ -386,11 +510,18 @@ def refaire_probleme():
              {'type': 'relation', 'tokens': [17], 'edges': [['1.2.3', None, '1.2.3.1'], ['1.2', None, '1.2.3']]}]
 
 
+
+
     amr_reader = AMR_Reader()
+    Explicit = EXPLICITATION_AMR()
+    Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
     amr = amr_reader.loads(AMR, link_string=True)
+    amr = AMR_modif(amr)
     amr.words = amr.tokens
+    amr = Explicit.expliciter_AMR(amr)
+    
     idSNT = amr.id
-    listAligs = transfo_aligs(amr, aligs)
+    listAligs = transfo_aligs(amr, aligs, Explicit)
 
     @MAILLON
     def F1(S):
@@ -399,8 +530,9 @@ def refaire_probleme():
     chaine = F1()
 
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
+    chaine = chaine >> traiter_opN()
     chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
-    chaine = chaine >> calculer_graphe_toks() >> traiter_graphe_toks()
+    chaine = chaine >> calculer_graphe_toks()
     chaine = chaine >> ecrire_liste(fichier_out = "./pipo.txt")
 
     chaine.enchainer()
@@ -412,4 +544,4 @@ def refaire_probleme():
 
 if __name__ == "__main__":
     #refaire_probleme()
-    faire_liste_1(fichier_out="a_tej_2.txt")
+    faire_liste_1(fichier_out="./AMR_et_graphes_phrases_explct.txt")
