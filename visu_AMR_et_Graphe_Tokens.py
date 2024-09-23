@@ -85,7 +85,7 @@ def make_propbank_frames_dictionary():
     #global propbank_frames_dictionary
 
     Explicit = EXPLICITATION_AMR()
-    Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
+    Explicit.dicFrames, Explicit.dicAMRadj = EXPLICITATION_AMR.transfo_pb2va_tsv()
 
 
 
@@ -333,7 +333,10 @@ def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
         )
     for src, r, tgt in aretes:
         ident = "%s_tk_%d_tk_%d"%(prefixe, tk_utiles[src], tk_utiles[tgt])
-        if r=="{groupe}":
+        if r.startswith("?"):
+            edgL = r[1:]
+            G.add_edge("tk_%d"%src, "tk_%d"%tgt, label=edgL, id=ident, fontcolor="red", **{"class":"ROUGE"})
+        elif r=="{groupe}":
             if src < tgt:
                 G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="blue", dir="none")
         elif r == "{idem}":
@@ -342,9 +345,9 @@ def drawSentGraph(prefixe, toks, tk_utiles, aretes, G):
         elif r == "{ne_pas_classer}":
             if src < tgt:
                 G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
-        elif r == "{and}":
+        elif r in ["{and}", "{or}", "{and_or}", "{inter}"]:
             if src < tgt:
-                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="red", dir="none")
+                G.add_edge("tk_%d"%src, "tk_%d"%tgt, id=ident, style="dashed", color="green", dir="none")
         else:
             edgL = r[1:] if r.startswith(":") else r
             G.add_edge("tk_%d"%src, "tk_%d"%tgt, label=edgL, id=ident)
@@ -379,6 +382,8 @@ def calc_tooltip(dicors):
     ARGn.extend((k,v) for k,v in dicors["special"].items())
     ARGn = ["%s: %s"%(x,r) for x,r in ARGn if x != r]
     tooltip = "\n".join(ARGn)
+    if "idNode" in dicors:
+        tooltip = dicors["idNode"] + "\n" + tooltip
     return tooltip
 
 
@@ -404,6 +409,7 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
         
         if label in Explicit.dicFrames:
             dicors = Explicit.dicFrames[label]
+            dicors["idNode"] = iden
             tooltip = calc_tooltip(dicors)
             if tooltip:
                 argus["tooltip"] = tooltip
@@ -458,8 +464,8 @@ def drawAMR(amr, voir_variables=False, voir_racine=False, reverse_roles=False, c
     else:
         aretes = amr.edges
     for id1, rol, id2 in aretes:
-        edgL = rol[1:] if rol.startswith(":") else rol
-        texte_rouge = (rol.startswith(":ARG") or rol.startswith(":>ARG"))
+        edgL = rol[1:] if rol[0] in ":?" else rol
+        texte_rouge = (rol.startswith(":ARG") or rol.startswith("?ARG") or rol.startswith(":>ARG"))
         if id2 in amr.variables:
             triplet = (rol, id1, id2)
             idarete = "%s→%s"%(prefixe+id1,prefixe+id2)

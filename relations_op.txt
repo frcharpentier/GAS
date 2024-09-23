@@ -1,0 +1,335 @@
+('time+2', 1)
+('abreast', 1)
+('mainland', 1)
+('fraction', 1)
+('ratio+2', 1)
+('everyone', 1)
+('product+2', 1)
+('almost+2', 1)
+('side', 1)
+('countless', 1)
+('great', 1)
+('final', 1)
+('minus', 1)
+('thing+2', 1)
+('circa', 1)
+('fee', 1)
+('of-and-beyond', 1)
+('type+3', 1)
+('recent', 1)
+('onwards', 1)
+('at-least+2', 1)
+('yet', 1)
+('thus-far', 1)
+('under+2', 1)
+('machine', 1)
+('yes', 1)
+('upper', 1)
+('exact', 1)
+('amr-choice', 1)
+('shoulder', 1)
+('oh', 1)
+('thus', 1)
+('advent', 1)
+('anytime', 1)
+('matter+2', 1)
+('fan', 1)
+('backward', 1)
+('norm', 1)
+('into+2', 1)
+('many+2', 1)
+('center', 1)
+('bottom', 1)
+('only+2', 1)
+('all', 1)
+('besides', 1)
+('manner', 1)
+('level+2', 1)
+('moreover+2', 1)
+('it', 1)
+('government-organization', 1)
+('proponent', 1)
+('income+2', 1)
+('hard', 1)
+('well', 1)
+('sum', 1)
+('lifetime', 1)
+('less-then', 1)
+('with', 1)
+('area', 1)
+('moment', 1)
+('buddy', 1)
+('elsewhere', 1)
+('particular', 1)
+('above+2', 1)
+('weekday', 1)
+('date-entity', 1)
+('hybrid+2', 1)
+('always+2', 1)
+('figure', 1)
+('surface', 1)
+('illusion', 1)
+('freak', 1)
+('rest', 1)
+('dear', 1)
+('version', 1)
+('countermeasure', 1)
+('majority', 1)
+('regardless', 1)
+('trench', 1)
+('umpteen', 1)
+('quarter', 1)
+('halfway', 1)
+('structure+3', 1)
+('sometimes', 1)
+('location', 1)
+('once+2', 1)
+('also', 1)
+('kind', 1)
+('value-interval', 1)
+('week', 1)
+('power-of+2', 1)
+('quotient-of+2', 1)
+('root-of+2', 1)
+('logarithm-of+2', 1)
+('also+2', 1)
+('upstream', 1)
+('away+2', 1)
+('park', 1)
+('park+2', 1)
+('company+2', 1)
+('southward+2', 1)
+('category', 1)
+('club+2', 1)
+('whenever', 1)
+('television+2', 1)
+('west', 1)
+('behind+2', 1)
+('child+2', 1)
+('problem+3', 1)
+('midst', 1)
+('chief', 1)
+('about+2', 1)
+('bout', 1)
+('inter', 1)
+('corner', 1)
+('total', 1)
+('category+2', 1)
+('regard', 1)
+('pan', 1)
+('southernmost', 1)
+('as-well+2', 1)
+('sideline', 1)
+('southeast', 1)
+('role', 1)
+('east', 1)
+('warrant', 1)
+('squadron', 1)
+('virtual', 1)
+('statue', 1)
+('outside+2', 1)
+('just', 2)
+('sometime', 2)
+('like', 2)
+('ever', 2)
+('especially', 2)
+('upwards', 2)
+('lot', 2)
+('example', 2)
+('again', 2)
+('way', 2)
+('again+2', 2)
+('times', 2)
+('nor+2', 2)
+('inside+2', 2)
+('slice', 2)
+('last', 2)
+('afterwards', 2)
+('after-all', 2)
+('location+4', 2)
+('by+2', 2)
+('about-to', 2)
+('thing', 2)
+('every', 2)
+('within+2', 2)
+('difference-of+2', 2)
+('minimum', 2)
+('below+2', 2)
+('perhaps', 2)
+('rampant', 2)
+('post', 2)
+('atop', 2)
+('apart', 2)
+('at', 2)
+('most', 2)
+('amr-unknown+2', 2)
+('sub', 2)
+('point', 2)
+('already', 2)
+('amid', 2)
+('relative-position+3', 2)
+('amidst', 2)
+('round', 2)
+('right', 2)
+('ordinal-entity', 2)
+('end', 2)
+('upside', 2)
+('area+9', 2)
+('width', 2)
+('more', 2)
+('from+2', 2)
+('nearby', 2)
+('soon', 2)
+('series', 2)
+('court', 2)
+('in-excess-of', 3)	PREP
+('eve', 3)
+('person+2', 3)
+('either', 3)	
+('period', 3)
+('any', 3)	MOD
+('either+2', 3)	|CONJ
+('further', 3)	MOD
+('word', 3)
+('until+2', 3)
+('time', 3)
+('before+2', 3)
+('even-if+3', 3)
+('across+2', 3)	
+('level', 3)
+('ratio-of', 3)	PREP
+('mid', 3)	MOD
+('somewhere', 3)
+('half', 3)	MOD
+('south', 3)	MOD
+('distance-quantity', 3)
+('probable', 4)	MOD
+('underneath', 4)	PREP
+('after+2', 4)
+('while', 4)	PREP
+('too', 4)	MOD
+('no-more-than', 4)	PREP
+('year', 4)
+('to', 4)	PREP
+('amongst', 4)	PREP
+('aside', 4)
+('top', 4)	MOD
+('beside', 4)	PREP
+('multiple+2', 4)
+('aboard', 4)
+('even', 5)	PREP
+('person', 5)
+('for-all', 5)	PREP
+('for', 5)	PREP
+('through+5', 5)
+('now', 5)	MOD
+('plus', 5)	PREP
+('around+2', 5)
+('next', 5)	MOD
+('type', 5)
+('wake', 5)
+('so-far', 6)	MOD
+('then', 6)	
+('in-time', 6)
+('here', 6)
+('upon', 6)
+('without', 6)
+('far', 6)
+('beneath', 7)	PREP
+('since+2', 7)
+('onto', 8)	PREP
+('till', 9)	PREP
+('towards', 9)	PREP
+('toward', 9)	PREP
+('both+4', 9)	&CONJ
+('only', 10)	MOD
+('close-to', 10)	PREP
+('as', 10)	PREP
+('at-most', 11)	MOD
+('near', 11)	MOD
+('alongside', 11)	PREP
+('as-much-as', 12)	PREP
+('roughly', 12)	MOD
+('even-as', 12)	PREP
+('up', 13)
+('et', 13)
+('middle', 15)	MOD
+('on', 16)	PREP
+('back', 16)
+('sum-of+3', 17)	&CONJ
+('once', 18)	PREP
+('as-many-as', 18)	PREP
+('score-entity+2', 19)
+('value-interval+2', 19)	bCONJ
+('versus+2', 20)	vCONJ
+('out', 21)	
+('as-far-as', 21)	PREP
+('ahead', 22)	MOD
+('past', 23)	MOD
+('as-soon-as', 24)	PREP
+('even-when', 24)	PREP
+('out-of', 24)	PREP
+('within', 24)	PREP
+('among', 25)	PREP
+('throughout', 26)	PREP
+('into', 27)	PREP
+('as-of', 28)
+('and-or+5', 30)	|CONJ
+('away', 33)	MOD
+('all-over', 33)	PREP
+('down', 34)	PREP
+('prior', 36)	MOD
+('below', 37)	PREP
+('next-to', 39)	PREP
+('or', 39)	
+('in-front-of', 41)	PREP
+('between', 44)	PREP
+('ratio-of+2', 44)	
+('from', 46)	PREP
+('many', 47)	MOD
+('almost', 50)	MOD
+('product-of+2', 50)	
+('couple', 52)	MOD
+('inside', 55)	PREP
+('some', 56)	MOD
+('off', 57)	PREP
+('through', 58)	PREP
+('along', 67)	PREP
+('less-than', 67)	PREP
+('as-long-as', 72)	PREP
+('against', 74)	PREP
+('nearly', 76)	MOD
+('above', 76)	PREP
+('early', 78)	MOD
+('late', 86)	MOD
+('several', 89)	MOD
+('behind', 96)	PREP
+('beyond', 96)	PREP
+('by', 104)	PREP
+('outside', 104)	PREP
+('amr-choice+4', 111)	|CONJ
+('approximately', 119)	MOD
+('across', 121)	PREP
+('even-if', 126)	PREP
+('under', 131)	PREP
+('up-to', 137)	PREP
+('date-interval+2', 179)	bCONJ
+('few', 192)	MOD
+('relative-position', 199)	PREP
+('at-least', 237)	MOD
+('until', 276)	PREP
+('around', 278)	PREP
+('and', 284)
+('over', 317)	PREP
+('slash+8', 336)	|CONJ
+('about', 339)	PREP
+('between+4', 365)	bCONJ
+('more-than', 369)	PREP
+('since', 416)	PREP
+('multiple', 803)	MOD
+('before', 1222)	PREP
+('after', 1356)	PREP
+('or+8', 2929)	|CONJ
+('name+24', 16596)	&CONJ
+('and+19', 22856)	&CONJ
+('name', 35481)	PREP

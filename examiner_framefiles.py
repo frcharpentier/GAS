@@ -5,6 +5,7 @@ import re
 import csv
 import json
 import random
+from traiter_AMR_adjectifs import generateur_candidats_txt
 
 def faire_roles_en_91():
     with open("C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames/AMR-UMR-91-rolesets.xml",
@@ -88,9 +89,10 @@ class EXPLICITATION_AMR:
                 self.dicFrames = json.load(F)
         else:
             self.dicFrames = None
+        self.dicAMRadj = None
 
     def expliciter(self, s, r, t):
-        if r.startswith(":ARG"):
+        if r.startswith(":ARG") or r.startswith("?ARG"):
             reverse = (r.endswith("-of"))
             ND = t if reverse else s
             if ND in self.dicFrames:
@@ -116,6 +118,24 @@ class EXPLICITATION_AMR:
                     if reverse:
                         role += "-of"
                     return role
+                else:
+                    return "?" + r[1:]
+            elif self.dicAMRadj and ND in self.dicAMRadj:
+                argus = self.dicAMRadj[ND]
+                try:
+                    if reverse:
+                        assert r[1:-3] == argus["domain"]
+                    else:
+                        assert r[1:] == argus["domain"]
+                except:
+                    return "?" + r[1:]
+                else:
+                    if reverse:
+                        return ":mod"
+                    else:
+                        return ":domain"
+            else:
+                return "?" + r[1:]
         return r
 
     def expliciter_AMR(self, amr):
@@ -123,7 +143,7 @@ class EXPLICITATION_AMR:
         edges_t = []
         transfo = False
         for s,r,t in amr.edges:
-            if r.startswith(":ARG"):
+            if r.startswith(":ARG")  or r.startswith("?ARG"):
                 SS = amr.nodes[amr.isi_node_mapping[s]]
                 TT = amr.nodes[amr.isi_node_mapping[t]]
                 RR = self.expliciter(SS,r,TT)
@@ -136,10 +156,15 @@ class EXPLICITATION_AMR:
         return amr
     
     @staticmethod
-    def transfo_pb2va_tsv(fichiers = ["../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv", "./UMR_91_rolesets.tsv"]):
+    def transfo_pb2va_tsv(fichiers = ["../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv", "./UMR_91_rolesets.tsv"], fichierAdj="./adjectifs_AMR.txt"):
         prems = True
         resu = {}
+        dicoAdj = {}
         f = lambda x: int(x[2]) if x[2] is not None else -1
+        if fichierAdj is not None:
+            for adj, numero, argus in generateur_candidats_txt(fichierAdj):
+                k = "%s-%02d"%(adj, numero)
+                dicoAdj[k] = argus
         for fichier in fichiers:
             print("ouverture de %s"%fichier)
             with open(fichier, "r", encoding="utf-8") as F:
@@ -182,7 +207,7 @@ class EXPLICITATION_AMR:
                                     "ARGn" : argus,
                                     "special" : speciaux}
                     (vaframe,) + tuple(argus)
-        return resu
+        return resu, dicoAdj
 
     @staticmethod
     def make_json_from_propbank_github(repertoire=None, fichier_91="AMR-UMR-91-rolesets.xml", fichier_corr = None, fichier_out=None):

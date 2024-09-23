@@ -17,14 +17,16 @@ from strategies_syntaxe import definir_strategie
 
 @MAILLON
 def iterer_alignements(SOURCE, alignements):
-    print(" *** DÉBUT ***")
-
+    """Génération de listes idSNT, listeAlignements. L’AMR est membre de chacun des éléments de la liste d’alignements.
+    """
+    #print(" *** DÉBUT ***")
     for idSNT, listAlig in tqdm(alignements.items()):
         yield idSNT, listAlig
 
 @MAILLON
 def filtrer_vides(SOURCE):
-    #filtrer les amrs réduits à un sommet, sans arête.
+    """Éliminer les amrs réduits à un sommet, sans arête.
+    """
     for idSNT, listAlig in SOURCE:
         amr = listAlig[0].amr
         if len(amr.edges) == 0:
@@ -33,6 +35,8 @@ def filtrer_vides(SOURCE):
 
 @MAILLON
 def filtrer_sous_graphes(SOURCE):
+    """Éliminer les alignements à des sous-graphes non connexes.
+    """
     for idSNT, listAlig in SOURCE:
         eliminer = []
         for i, a in enumerate(listAlig):
@@ -49,9 +53,8 @@ def filtrer_sous_graphes(SOURCE):
 
 @MAILLON
 def filtrer_ss_grf_2(SOURCE):
-    # Éliminer les alignements vers les sous-graphes AMR
-    # Où des mots différents sont alignés à des sommets différents
-    # Du sous-graphe
+    """Éliminer les alignements vers les sous-graphes AMR où des mots différents sont alignés à des sommets différents du sous-graphe
+    """
     for idSNT, listAlig in SOURCE:
         amr = listAlig[0].amr
         eliminer = []
@@ -73,6 +76,8 @@ def filtrer_ss_grf_2(SOURCE):
 
 @MAILLON
 def iterer_graphe(SOURCE):
+    """Générer des tuples idSNT, amr, G, où G est un objet de la classe GRAPHE, c’est-à-dire un objet qui intègre toutes les arêtes et les alignements au format relationnel
+    """
     aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
     for idSNT, listAlig in SOURCE:
         amr = listAlig[0].amr
@@ -80,9 +85,6 @@ def iterer_graphe(SOURCE):
         snt = amr.metadata["snt"]
 
         graphe = GRAPHE_PHRASE(amr)
-        #if amr.id == "bolt12_10474_1831.9":
-        #    pass
-
         
         if not snt.startswith(" "):
             snt = " " + snt
@@ -92,12 +94,6 @@ def iterer_graphe(SOURCE):
         #trf-grp est la relation num_token-groupe, amr_grp est la relation num_mot--groupe,
         # et toks_transfo est la liste in extenso des tokens du transformer
         graphe.ajouter_aligs(listAlig, toks_transfo, trf_grp, amr_grp)
-
-        #if idSNT == "bolt12_632_6428.3":
-        #    print("iterer_graphes : ")
-        #    for T in amr.rel_arcs:
-        #        print(T)
-        #    print("############")
 
         yield idSNT, amr, graphe
 
@@ -133,34 +129,22 @@ def filtrer_anaphore_0(SOURCE):
 
 @MAILLON
 def filtrer_anaphore(SOURCE):
+    """Élimination des anaphores problématiques
+    """
     autorises = ["reentrancy:repetition", "reentrancy:coref"] #, "reentrancy:primary"]
     for idSNT, amr, graphe in SOURCE:
         graphe.anaphores_mg = RELATION(*(graphe.REN_mg.sort))
         graphe.anaphores_ag = RELATION(*(graphe.REN_ag.sort))
         if len(graphe.REN_ag) == 0:
-            #if idSNT == "bolt12_632_6428.3":
-            #    print("filtrer_anaphore : sortie ici")
             yield idSNT, amr, graphe
             continue
         toks = graphe.tokens
         settoks = set(m for (m, _) in graphe.SG_mg)
         toks_libres = [not t in settoks for t in range(graphe.N)]
-        #liste_toks_libres = [toks[i] if v else "" for i, v in enumerate(toks_libres)]
         
-        #libres2 = [True] * graphe.N
-
-        #primaires = REL_ren.select(lambda x: x.type == "reentrancy:primary")
         graphe.anaphores_mg = graphe.REN_mg.select(lambda x: (x.type in autorises))
         graphe.anaphores_ag = graphe.REN_ag.select(lambda x: (x.type in autorises))#.proj("cible", "type", "groupe").rmdup()
-        #mots = graphe.anaphores_mg.proj("mot").rmdup()
-        #if len(mots) == 0:
-        #    yield idSNT, amr, graphe
-        #    continue
-
-        #for (t,) in mots:
-        #    if not toks_libres[t]:
-        #        print("Certaines anaphores utilisent des mots déjà reliés à des sommets de l’AMR")
-        #        break
+        
 
 
         anaph = (graphe.anaphores_mg.p("mot", "groupe") * graphe.anaphores_ag.p("cible", "groupe")).p("mot", "cible", "groupe")
@@ -176,64 +160,26 @@ def filtrer_anaphore(SOURCE):
             graphe.anaphores_mg = graphe.anaphores_mg.s(lambda x: not(x.groupe in interdits))
             graphe.anaphores_ag = graphe.anaphores_ag.s(lambda x: not(x.groupe in interdits))
             #print("%s : Anaphores corrigées."%idSNT)
-    
-        #if idSNT == "bolt12_632_6428.3":
-        #    print("filtrer_anaphore : ")
-        #    for T in amr.rel_arcs:
-        #        print(T)
-        #    print("############")
+
 
         yield idSNT, amr, graphe
         
 
 @MAILLON
 def calculer_graphe_toks(SOURCE):
+    """Calcul du graphe entre les tokens du transformer
+    """
     for idSNT, amr, graphe in SOURCE:
         ok = graphe.calculer_graphe_toks()
         if not ok:
             continue
         yield idSNT, amr, graphe
 
-@MAILLON
-def traiter_graphe_toks(SOURCE):
-    conjonctions = {"and": "{and}", "or":"{or}", "slash":"{or}"}
-    for idSNT, amr, graphe in SOURCE:
-        gr = graphe.graphe_toks
-        aelim = gr.s(lambda x: re.match(":op\d+", x.rel))
-        if len(aelim) > 0:
-            sommets_a_elim = [ sss for (sss,) in aelim.p("mot_s")]
-            parents = gr.s(lambda x: x.mot_c in sommets_a_elim).ren("mot_s", "pivot", "rel")
-            desc = gr.s(lambda x: x.mot_s in sommets_a_elim).ren("pivot", "mot_c", "rel2")
-            desc2 = desc.s(lambda x: re.match(":op\d+", x.rel2)).p("pivot", "mot_c")
-            R1 = graphe.SG_mg.p("mot", "groupe").s(lambda x: x.mot in sommets_a_elim)
-            R2 = graphe.SG_sg.p("sommet", "groupe")
-            R3 = (R1*R2).p("mot", "sommet").ren("pivot", "sommet")
-            pivots = RELATION("pivot", "conj")
-            for T in R3:
-                if T.sommet in amr.nodes:
-                    amrn = amr.nodes[T.sommet]
-                    if amrn in conjonctions:
-                        pivots.add((T.pivot, conjonctions[amrn]))
-            
-            cjx_trp = (desc2.ren("pivot", "m1")) * pivots * (desc2.ren("pivot", "m2"))
-            cjx_trp = cjx_trp.p("m1", "m2", "conj").s(lambda x: x.m1 != x.m2)
-
-
-            nvx_trp = (parents*desc2).p("mot_s", "mot_c", "rel")
-            gr = gr.s(lambda x: not(x in parents.table or x in desc.table))
-            gr = gr + nvx_trp
-            gr2 = gr.p("mot_s", "mot_c")
-            cjx_trp = cjx_trp.s(lambda x: not (x.m1, x.m2) in gr2.table)
-            gr = gr + (cjx_trp.ren("mot_s", "mot_c", "rel"))
-            graphe.graphe_toks = gr
-
-        yield idSNT, amr, graphe
-
-
-
 
 @MAILLON
 def traiter_opN(SOURCE):
+    """Transformation du graphe des AMR afin d’éliminer les relations syntaxiques du type :op_N
+    """
     def decompose(rel):
         resu = re.search("^:(\D+)(\d+)$", rel)
         if resu is None:
@@ -316,13 +262,15 @@ def traiter_opN(SOURCE):
 
 
 @MAILLON
-def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
+def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"): #, explicit_arg=False):
+    """Création du fichier final
+    """
     NgraphesEcrits = 0
     limNgraphe = -1
     with open(fichier_out, "w", encoding="UTF-8") as FF:
         for idSNT, amr, graphe in SOURCE:
             print(amr.amr_to_string(), file=FF)
-            jsn = graphe.jsonifier()
+            jsn = graphe.jsonifier() #explicit_arg)
             print(jsn, file=FF)
             print(file=FF)
             NgraphesEcrits += 1
@@ -330,8 +278,9 @@ def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"):
                 break
 
 
-def faire_liste_1(fichier_out="a_tej.txt"):
+def construire_graphes(fichier_out="a_tej.txt"):
 
+    explicit_arg = True
     kwargs = dict()
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
     kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
@@ -343,18 +292,18 @@ def faire_liste_1(fichier_out="a_tej.txt"):
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
     # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
-    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)][:1]
-    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)][:1]
+    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]  #[:1]
+    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]  #[:1]
     
 
-    alignements = preparer_alignements(explicit_arg=True, **kwargs)
+    alignements = preparer_alignements(explicit_arg=explicit_arg, **kwargs)
     chaine = iterer_alignements(alignements) >> filtrer_vides()
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
     chaine = chaine >> traiter_opN()
     chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
     chaine = chaine >> calculer_graphe_toks()
-    chaine = chaine >> ecrire_liste(fichier_out = fichier_out)
-
+    chaine = chaine >> ecrire_liste(fichier_out = fichier_out) #, explicit_arg=explicit_arg)
+    print("\n%s\n"%chaine.docu)
     chaine.enchainer()
 
 
@@ -514,7 +463,7 @@ def refaire_probleme():
 
     amr_reader = AMR_Reader()
     Explicit = EXPLICITATION_AMR()
-    Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
+    Explicit.dicFrames, Explicit.dicAMRadj = EXPLICITATION_AMR.transfo_pb2va_tsv()
     amr = amr_reader.loads(AMR, link_string=True)
     amr = AMR_modif(amr)
     amr.words = amr.tokens
@@ -544,4 +493,4 @@ def refaire_probleme():
 
 if __name__ == "__main__":
     #refaire_probleme()
-    faire_liste_1(fichier_out="./AMR_et_graphes_phrases_explct.txt")
+    construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt")

@@ -5,7 +5,7 @@ from amr_utils.alignments import AMR_Alignment
 from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
 from aligneur_seq import aligneur_seq
 from algebre_relationnelle import RELATION
-from enchainables import MAILLON
+
 import re
 import os
 import sys
@@ -247,13 +247,12 @@ def transfo_aligs(amr, jason, explicit=None):
                 else:
                     new_e = new_e[0]
                     a['edges'][i] = [s, new_e[1], t]
-            elif (not explicit is None) and r.startswith(":ARG"):
+            elif (not explicit is None) and (r.startswith(":ARG") or r.startswith("?ARG")):
                 SS = amr.nodes[amr.isi_node_mapping[s]]
                 TT = amr.nodes[amr.isi_node_mapping[t]]
                 RR = explicit.expliciter(SS,r,TT)
                 if RR != r:
                     a['edges'][i] = [s,RR,t]
-
                 
         if elimine:
             break #sortir de for a
@@ -638,7 +637,7 @@ class GRAPHE_PHRASE:
         self.graphe_toks = graphe_toks
         return True
     
-    def jsonifier(self):
+    def jsonifier(self): #, explicit_arg=False):
         jsn = dict()
         #jsn["mots"] = self.mots
         jsn["tokens"] = self.tokens
@@ -666,7 +665,11 @@ class GRAPHE_PHRASE:
         dictok = [dico[sommets[i]] for i in range(NS)]
         aretes = []
         for (s,c,r) in self.graphe_toks:
-            s,c = corresp[s], corresp[c] 
+            s,c = corresp[s], corresp[c]
+            #if explicit_arg:
+            #    if r.startswith(":ARG")  or r.startswith("?ARG"):
+            #        # ARGn non résolu
+            #        r = "?" + r[1:]
             aretes.append((s,r,c))
         aretes.sort()
         jsn["sommets"] = sommets
@@ -975,7 +978,7 @@ def preparer_alignements(explicit_arg=False, **kwargs):
     
     if explicit_arg:
         Explicit = EXPLICITATION_AMR()
-        Explicit.dicFrames = EXPLICITATION_AMR.transfo_pb2va_tsv()
+        Explicit.dicFrames, Explicit.dicAMRadj = EXPLICITATION_AMR.transfo_pb2va_tsv()
 
     amr_liste = []
     # amr_liste sera une liste remplie d’objets AMR

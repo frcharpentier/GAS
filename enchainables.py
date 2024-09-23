@@ -9,6 +9,11 @@ import types
 class MAILLON(object):
     def __init__(self, fonction):
         self.fonction = fonction
+        self.docu = fonction.__doc__
+        if self.docu is None:
+            self.docu = "Chaînon non documenté."
+        else:
+            self.docu = self.docu.strip()
         self.nom = fonction.__name__
         
 
@@ -20,6 +25,7 @@ class MAILLON(object):
     def __rshift__(self, C2):
         # Cette fonction sert à la surcharge de l’opérateur >>
         C2.argus[0]=self
+        C2.docu = self.docu + "\n#######\n" + C2.docu
         return C2
 
     def __iter__(self):
