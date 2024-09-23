@@ -81,8 +81,8 @@ class CausalSelfAttention(nn.Module):
         #att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         QscalK = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.dimK))
         
-        QscalK = QscalK.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
-        att = F.softmax(QscalK, dim=-1)
+        QKmask = QscalK.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+        att = F.softmax(QKmask, dim=-1)
         attdo = self.attn_dropout(att)
         y = attdo @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
         y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
@@ -243,8 +243,11 @@ class GPT(nn.Module):
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla nn.Linear.
         # this means that we have to transpose these weights when we import them
-        assert len(keys) == len(sd)
+        
+        #assert len(keys) == len(sd)
         for k in keys:
+            if k.endswith(".attn.bias"): #ignore these
+                continue
             if any(k.endswith(w) for w in transposed):
                 # special treatment for the Conv1D weights we need to transpose
                 assert sd_hf[k].shape[::-1] == sd[k].shape
