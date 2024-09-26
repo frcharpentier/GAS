@@ -124,6 +124,8 @@ class AMR_modif(AMR):
                 for s, t, r in self.rel_arcs:
                     if r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
                         s, t, r = t, s, r[:-len("-of")]
+                    elif r == ":domain":
+                        s,t,r = t, s, ":mod"
                     Rarcs_redir.add((s, t, r))
                 self.Rarcs_redir = Rarcs_redir
             return self.Rarcs_redir
@@ -132,26 +134,65 @@ class AMR_modif(AMR):
 
 
 class ALIGNEUR:
-    def __init__(self, nom_modele, ch_debut = "", ch_suite = "##", tok1 = None, tokn = None):
+    @staticmethod
+    def detecter_params(tknz):
+        tok_cls = tknz.cls_token
+        tok_sep = tknz.sep_token
+        mot = "pytrzmlkjhgfdsqnbvcxw"
+        # On met un mot très long qui n’existe pas, pour être sûr qu’il sera découpé
+        # en plusieurs symboles.
+
+        toks = tknz.convert_ids_to_tokens(tknz(" "+mot).input_ids)
+        
+        if tok_cls is None:
+            tok1 = toks[0]
+            tok2 = toks[1]
+        else:
+            assert toks[0] == tok_cls
+            tok1 = toks[1]
+            tok2 = toks[2]
+        
+        assert "p" in tok1
+        pos = tok1.find("p")
+        assert mot.startswith(tok1[pos:])
+        if pos == 0:
+            ch_debut = ""
+        else:
+            ch_debut = tok1[:pos]
+        mot = mot[len(tok1)-pos:]
+        lettre = mot[0]
+        assert lettre in tok2
+        pos = tok2.find(lettre)
+        assert mot.startswith(tok2[pos:])
+        if pos == 0:
+            ch_suite = ""
+        else:
+            ch_suite = tok2[:pos]
+
+        return ch_debut, ch_suite, tok_cls, tok_sep
+        
+
+
+    def __init__(self, nom_modele, TOK1 = None, TOKN = None):
         # ch_debut est la chaine qui préfixe les tokens qui constituent le début d’un mot.
         # généralement, il s’agit d’une chaine vide. Pour RoBERTa, il s’agit de "Ġ" (bizarre)
         # ch_suite est la chaine qui préfixe les tokens qui consituent la suite d’un mot
         # déjà commencé. Pour BERT, il s’agit de "##"
 
-        assert len(ch_debut) == 0 or len(ch_suite)==0
-
         self.nom_modele = nom_modele
+        self.tokenizer = AutoTokenizer.from_pretrained(nom_modele)
+        ch_debut, ch_suite, tok1, tokn = ALIGNEUR.detecter_params(self.tokenizer)
         self.ch_debut = ch_debut
         self.ch_suite = ch_suite
-        self.tokenizer = AutoTokenizer.from_pretrained(nom_modele)
-        if tok1 == None:
-            self.tok1 = self.tokenizer.cls_token
-        else:
+        
+        if TOK1 == None:
             self.tok1 = tok1
-        if tokn == None:
-            self.tokn = self.tokenizer.sep_token
         else:
+            self.tok1 = TOK1
+        if TOKN == None:
             self.tokn = tokn
+        else:
+            self.tokn = TOKN
 
     def aligner_seq(self, motsH, phrase):
         toks_nums = [x for x in self.tokenizer(phrase).input_ids]

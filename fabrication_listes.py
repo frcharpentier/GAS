@@ -75,10 +75,10 @@ def filtrer_ss_grf_2(SOURCE):
         
 
 @MAILLON
-def iterer_graphe(SOURCE):
+def iterer_graphe(SOURCE, nom_modele):
     """Générer des tuples idSNT, amr, G, où G est un objet de la classe GRAPHE, c’est-à-dire un objet qui intègre toutes les arêtes et les alignements au format relationnel
     """
-    aligneur = ALIGNEUR("roberta-base", ch_debut="Ġ", ch_suite="")
+    aligneur = ALIGNEUR(nom_modele)
     for idSNT, listAlig in SOURCE:
         amr = listAlig[0].amr
         mots_amr = amr.words
@@ -262,13 +262,16 @@ def traiter_opN(SOURCE):
 
 
 @MAILLON
-def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt"): #, explicit_arg=False):
+def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt", model_name=None): #, explicit_arg=False):
     """Création du fichier final
     """
     NgraphesEcrits = 0
     limNgraphe = -1
     with open(fichier_out, "w", encoding="UTF-8") as FF:
+        if model_name is not None:
+            print("# ::model_name %s"%model_name, file=FF)
         for idSNT, amr, graphe in SOURCE:
+            #print(idSNT)
             print(amr.amr_to_string(), file=FF)
             jsn = graphe.jsonifier() #explicit_arg)
             print(jsn, file=FF)
@@ -282,6 +285,7 @@ def construire_graphes(fichier_out="a_tej.txt"):
 
     explicit_arg = True
     kwargs = dict()
+    nom_modele = "roberta-base"
     prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
     kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
     kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
@@ -292,17 +296,17 @@ def construire_graphes(fichier_out="a_tej.txt"):
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
     # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
-    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]  #[:1]
-    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]  #[:1]
+    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)] #[:1]
+    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)] #[:1]
     
 
     alignements = preparer_alignements(explicit_arg=explicit_arg, **kwargs)
     chaine = iterer_alignements(alignements) >> filtrer_vides()
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
     chaine = chaine >> traiter_opN()
-    chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
+    chaine = chaine >> iterer_graphe(nom_modele) >> filtrer_anaphore()
     chaine = chaine >> calculer_graphe_toks()
-    chaine = chaine >> ecrire_liste(fichier_out = fichier_out) #, explicit_arg=explicit_arg)
+    chaine = chaine >> ecrire_liste(fichier_out = fichier_out, model_name=nom_modele) #, explicit_arg=explicit_arg)
     print("\n%s\n"%chaine.docu)
     chaine.enchainer()
 
@@ -459,6 +463,12 @@ def refaire_probleme():
              {'type': 'relation', 'tokens': [17], 'edges': [['1.2.3', None, '1.2.3.1'], ['1.2', None, '1.2.3']]}]
 
 
+    AMR = """# ::id nw.chtb_0325.10 ::date 2012-12-29T22:53:20 ::annotator SDL-AMR-09 ::preferred
+# ::snt ( End )
+# ::save-date Sat Dec 29, 2012 ::file nw_chtb_0325_10.txt
+(e / end-01)"""
+
+    aligs = [{'type': 'subgraph', 'tokens': [1], 'nodes': ['1']}]
 
 
     amr_reader = AMR_Reader()
@@ -480,7 +490,7 @@ def refaire_probleme():
 
     chaine = chaine >> filtrer_sous_graphes() >> filtrer_ss_grf_2()
     chaine = chaine >> traiter_opN()
-    chaine = chaine >> iterer_graphe() >> filtrer_anaphore()
+    chaine = chaine >> iterer_graphe("roberta-base") >> filtrer_anaphore()
     chaine = chaine >> calculer_graphe_toks()
     chaine = chaine >> ecrire_liste(fichier_out = "./pipo.txt")
 

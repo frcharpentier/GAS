@@ -1,0 +1,537 @@
+abominable-02    ARG0#: entity deeming arg1 abominable  ARG1: snowman, or other deplorable thing
+acceptable-02    ARG0: acceptor  ARG1#: thing accepted  ARG2: accepted from  ARG3: attribute
+accessible-02    ARG0: accessor  ARG1#: thing accessed
+accountable-02    ARG0#: perpetrator, accountable person  ARG1: role or crime, accountable for what?  ARG2: judge
+actual-02    ARG1#: actual thing  ARG2: what arg1 is an actual instantiation of
+addictive-02    ARG0#: addictive substance  ARG1: addictive to whom? addicted entity
+admirable-02    ARG0: admirer  ARG1#: target of admiration
+adorable-02    ARG0: perceiver  ARG1#: cutie pie
+advanced-02    ARG1#: progressive entity  ARG2: domain
+advisable-02    ARG1#: prudent, wise thing
+effective-04    ARG0#: cause  ARG1: domain in which arg0 is effective; outcome effected
+affordable-03    ARG0: entity able to pay for arg1  ARG1#: commodity priced attainably  ARG2: price
+agreeable-02    ARG0: affable entity, agreeable person  ARG1#: what is agreed to, agreeable to what?
+allergic-01    ARG1#: sufferer, allergic one  ARG2: cause of allergy
+allowable-04    ARG0#: allower  ARG1: action allowed (may require concatenation)
+amendable-02    ARG0: amender, corrector  ARG1#: thing amended  ARG2: secondary predication on arg1
+answerable-02    ARG1#: perpetrator, answerable one  ARG2: role or crime, answerable for what?  ARG3: judge, answerable to whom?
+applicable-05    ARG0: agent  ARG1#: applicable thing  ARG2: applicable to
+approachable-03    ARG0#: approacher  ARG1: entity that is easy to approach
+appropriate-02    ARG1#: suitable thing  ARG2: suited to
+arbitrary-02    ARG1#: thing that is determined by chance  ARG2: whom it is arbitrary to, perceiver of arbtrariness
+arguable-03    ARG0: arguer  ARG1#: argument  ARG2: audience
+arousable-02    ARG0: causer  ARG1#: entity aroused
+attainable-02    ARG0: attainable to whom?  reacher  ARG1#: attainable thing, reached
+attributable-02    ARG0#: attributor  ARG1: thing attributed, attribute  ARG2: attributed to (benefactive?)
+audible-02    ARG0#: hearer  ARG1: thing that can be heard
+authentic-02    ARG1#: real entity (concatenation may be required)
+available-02    ARG1#: available to whom/what? entity having access to arg2  ARG2: thing that is available
+average-03    ARG1#: moderately skilled entity  ARG2: skill
+average-04    ARG0: agent of computation  ARG1#: average entity  ARG2: numerical value  ARG3: scale
+awesome-02    ARG0#: skilled entity  ARG1: at what (skill)
+awesome-03    ARG1#: beneficial thing  ARG2: beneficiary
+bankrupt-01    ARG0: causer  ARG1#: person bankrupt
+beautiful-02    ARG1#: beautiful thing
+believable-02    ARG0: believer  ARG1#: belief  ARG2: secondary predication on arg1
+good-02    ARG1#: generally positive/pleasing entity  ARG2: recipient/target of good behavior
+good-03    ARG1#: skilled entity  ARG2: skill
+good-04    ARG1#: beneficial thing  ARG2: beneficiary
+good-07    ARG1#: thing that is still good, adequate, usable, valid
+good-08    ARG1#: dependable entity  ARG2: commodity arg1 is "good for"
+black-04    ARG0: cause of blackness  ARG1#: thing that is black in color  ARG2: specific part of arg1, if also mentioned
+black-05    ARG1#: entity identifying as black, racially
+black-06    ARG1#: macabre thing  ARG2: specific aspect of arg1 that is dark
+black-07    ARG1#: thing that is illegal
+blanchable-03    ARG0: causer of paleness  ARG1#: thing becoming pale
+blind-02    ARG0: cause of blindness  ARG1#: blind one  ARG2: blind to what? specific thing arg1 cannot see
+brave-02    ARG0#: brave one  ARG1: fearsome activity faced
+bright-02    ARG0: light source, light itself (default if you can't tell)  ARG1#: location illuminated
+bright-03    ARG1#: smarty-pants
+brilliant-01    ARG1#: smartie, brilliant one  ARG2: skill, brilliant at what?
+brilliant-02    ARG1#: bright thing
+broad-02    ARG1#: broad thing  ARG2: specific aspect of arg1 that is broad (if in addition)
+bulky-02    ARG1#: entity that is bulky  ARG2: what arg1 is full of, creating bulkiness
+busy-01    ARG1#: engaged, occupied thing  ARG2: busy with what?
+busy-02    ARG1#: Headache-inducing pattern
+capable-01    ARG1#: capable entity  ARG2: skill, capable of/at what?
+cautious-02    ARG0: careful one  ARG1#: cautious of what? regarding what?
+characteristic-02    ARG1#: possessor of quality, characteristic of whom (should come SECOND)  ARG2: quality, characteristic itself (should come FIRST)
+cheap-02    ARG1#: inexpensive thing  ARG3: cost of cheap thing
+classy-02    ARG1#: classy entity
+clean-04    ARG1#: location clean  ARG3: impurities/contraband/deviations not present
+clear-06    ARG0: Cause of clarification, evidence/facts  ARG1#: Thing that is clear, obvious  ARG2: whom it is obvious to
+clear-07    ARG1#: thing that is translucent
+clear-08    ARG1#: thing that is clear, open  ARG2: dirt, obstructions
+clear-09    ARG0: thing avoiding something else  ARG1#: thing avoided
+clever-01    ARG1#: smartie, clever one  ARG2: skill, clever at what?
+cloudy-02    ARG0: causer, agent  ARG1#: cloudy thing  ARG2: cloud, instrument
+cold-01    ARG1#: thing with few degrees (temperature-wise)
+cold-02    ARG0: agent of cold behavior  ARG1#: cold behavior/actions  ARG2: target of cold behavior
+cold-03    ARG0: perceiver, bloodhound, search party  ARG1#: trail
+comfortable-02    ARG0#: comforter, comfortable thing  ARG1: patient, comforted, comfortable to whom?
+commendable-02    ARG0: entity giving praise  ARG1#: entity being praised  ARG2: praised for what (if in addition to arg1)
+comparable-02    ARG0: agent, entity doing the comparing  ARG1#: first item (or all) in comparison  ARG2: second item
+comparable-03    ARG1#: first item (or all) that are similar  ARG2: second item
+competent-01    ARG1#: entity that is good at something, competent one  ARG2: competent in/at
+complete-01    ARG0#: finisher  ARG1: task, action coming to an end
+complete-02    ARG1#: entity that is complete
+complete-03    ARG1#: comprehensive entity  ARG2: thing included
+conducive-01    ARG1#: conducive thing  ARG2: favorable/contributing towards
+confident-01    ARG1#: self-assured entity, confident one  ARG2: assured thing or outcome, confident of what?
+consensual-02    ARG1#: thing exhibiting concurrent sensory response
+consequential-01    ARG1#: thing that's consequential  ARG2: To whom, what does it have import?
+consistent-01    ARG1#: topic, theme  ARG2: compared with
+consistent-02    ARG1#: action that is regularly done
+constructive-02    ARG0: affirming entity/act  ARG1#: entity built up, affirmed
+cool-04    ARG1#: trendy thing
+cool-05    ARG0#: unfriendly entity  ARG1: recipient/target of unfriendly behavior
+cool-06    ARG1#: thing with fewer degrees (cool temp-wise)
+correct-02    ARG1#: correct entity
+corrupt-01    ARG0: agent/cause  ARG1#: entity corrupted  ARG2: instrument  ARG3: specific aspect of arg1 being corrupted
+crappy-02    ARG1#: generally crappy entity
+crappy-03    ARG1#: unskilled entity  ARG2: non-skill
+crappy-04    ARG1#: harmful thing  ARG2: anti-beneficiary
+crazy-02    ARG0: liker  ARG1#: liked
+crazy-03    ARG1#: crazy entity/act (may involve concatenation)
+criminal-03    ARG0: agent, legislative body  ARG1#: crime  ARG2: criminal
+critical-02    ARG1#: thing that is crucial  ARG2: situation that arg1 is critical to  ARG3: beneficiary
+critical-03    ARG1#: entity in critical condition
+culpable-01    ARG1#: entity worthy of blame  ARG2: for what
+curious-01    ARG0: stimulus-- what intrigues arg1  ARG1#: curious/intrigued entity
+curious-02    ARG1#: thing that is strange
+damp-03    ARG1#: location that is slightly wet  ARG2: liquid
+dark-02    ARG1#: thing that doesn't reflect light  ARG2: specific part of arg1, if also mentioned
+dark-03    ARG1#: macabre thing  ARG2: specific aspect of arg1 that is macabre
+debatable-02    ARG0: debater  ARG1#: topic debated  ARG2: opponent
+deep-02    ARG1#: deep thing  ARG2: extending/located where
+deep-03    ARG1#: entity rich in meaning  ARG2: meaning/complexity arg1 is rich in
+deep-04    ARG1#: thing low in pitch
+deep-05    ARG1#: aesthetically rich thing
+deformable-02    ARG0: agent, reshaper  ARG1#: thing being deformed  ARG2: end state
+deniable-02    ARG0#: denier  ARG1: thing denied  ARG2: hearer
+deplorable-02    ARG0#: loather  ARG1: thing that is loathe
+desirable-02    ARG0: wanter  ARG1#: wanted
+desperate-02    ARG0#: desperate one  ARG1: desparate for/to what
+detestable-02    ARG0: hater  ARG1#: hated
+direct-02    ARG1#: straight thing
+dirty-02    ARG0: agent, cause of dirtiness  ARG1#: dirty thing  ARG2: dirt itself, with which arg1 becomes dirty
+discernable-02    ARG0#: perceiver  ARG1: entity able to be seen
+distant-02    ARG0: causer of distance  ARG1#: first distant thing  ARG2: second thing, distant from what
+dizzy-02    ARG0: causer of dizziness  ARG1#: dizzy entity
+doable-10    ARG0: doer  ARG1#: done
+dubious-02    ARG0#: skeptic  ARG1: hard to believe thing
+dreadful-02    ARG1#: generally awful thing  ARG2: target of awfulness
+dreadful-03    ARG1#: unskilled entity  ARG2: non-skill
+dreadful-04    ARG1#: unbeneficial thing  ARG2: non-beneficiary
+dry-04    ARG1#: unadorned thing
+dry-05    ARG1#: thing low in residual sugar
+dry-06    ARG1#: strong drink
+dry-07    ARG1#: location/entity abstaining  ARG2: mention of alcohol
+dry-08    ARG0#: cause of dryness  ARG1: moistureless thing  ARG2: liquid/moisture that is lacking
+due-01    ARG0#: ower  ARG1: recipient, entity owed/expecting arg2  ARG2: thing expected, owed
+due-02    ARG0#: cause, stimulus  ARG1: thing caused, experiencer
+due-03    ARG1#: thing that is scheduled  ARG2: what arg1 is scheduled to do
+dull-02    ARG0: boring thing  ARG1#: boring to whom?
+dull-03    ARG0: causer of not-sharpness  ARG1#: not sharp thing
+dull-04    ARG0: causer of dullness  ARG1#: thing getting dull
+dumpy-02    ARG1#: dumpy entity
+eager-01    ARG0: beaver, eager entity  ARG1#: desired thing or outcome, eager for what?
+earnest-01    ARG1#: self-earnest entity  ARG2: earnest about/in what?
+easy-05    ARG1#: thing that is easy (may require concatenation)
+edgy-04    ARG1#: entity pushing the envelope
+edgy-05    ARG0#: cause/stimulus of edginess  ARG1: high-strung entity
+efficient-01    ARG1#: efficient entity  ARG2: action/effect accomplished
+electoral-03    ARG1#: thing that is related
+electoral-04    ARG0#: elector, voter
+electable-05    ARG0: voters  ARG1#: entity elected  ARG2: position elected to
+bold-02    ARG0#: brave, forward one  ARG1: brave action
+bold-03    ARG1#: bold typeface
+emotional-02    ARG0#: thing exhibiting emotion
+empty-02    ARG0: causal agent  ARG1#: container  ARG2: substance
+enjoyable-02    ARG0: enjoyer  ARG1#: thing enjoyed
+sure-02    ARG0: believer  ARG1#: belief
+enthusiastic-03    ARG0: stimulus of enthusiasm  ARG1#: excited entity
+equal-01    ARG1#: focus of equation  ARG2: other side of equation  ARG3: attribute, quality, domain in which two things are equal
+equal-02    ARG1#: entity up to the task  ARG2: the task
+excessive-02    ARG1#: thing that's excessive  ARG2: specific attribute of arg1 that's excessive
+excellent-02    ARG1#: superb thing  ARG2: target, entity excellent behavior is directed at
+excellent-03    ARG1#: beneficial, healthful thing  ARG2: beneficiary
+exclusive-02    ARG0#: exclusive entity/location/organization  ARG1: elite group reserved for  ARG2: group excluded
+exempt-01    ARG0: releaser, agent  ARG1#: entity exempted  ARG2: entity exempted from
+explicit-02    ARG1#: overly graphic thing
+explicit-03    ARG0#: causer of clarification  ARG1: thing becoming clearer  ARG2: explained to
+extensive-03    ARG1#: patient, thing that is extended  ARG2: EXT, degree, by how much  ARG3: start point  ARG4: end point
+fair-01    ARG0: agent of fair action  ARG1#: fair action, thing that is inherently just  ARG2: affected entity
+fair-02    ARG1#: pleasing thing/condition
+fair-03    ARG1#: light entity  ARG2: specific body part of arg1, if also mentioned
+fair-04    ARG1#: mediocre entity
+fake-02    ARG1#: counterfeit thing
+familiar-02    ARG0: overly personal one  ARG1#: target of familiarity
+fantastic-02    ARG1#: generally fantastic entity (may require concatenation)  ARG2: target of fantastic behavior
+fantastic-03    ARG1#: skilled entity  ARG2: skill
+fantastic-04    ARG1#: beneficial thing  ARG2: beneficiary
+fashionable-02    ARG1#: entity in fashion
+fat-03    ARG1#: fat one, full container  ARG2: the fat, contents
+full-09    ARG1#: complete thing, container  ARG2: thing container, what you are full of
+full-10    ARG1#: conceited entity  ARG2: self-referential (of _self)
+fine-02    ARG1#: small thing  ARG2: measurment, extent
+fine-03    ARG1#: elegant thing
+fine-04    ARG1#: thing that is alright  ARG2: perceiver, entity deeming something alright.
+fiery-06    ARG0: stimulus, impassioned about what?  ARG1#: experiencer, impassioned person.
+flat-03    ARG1#: fizzless substance
+flat-04    ARG1#: dull surface
+flat-05    ARG1#: note that is slightly low
+flat-06    ARG1#: flat thing
+flexible-03    ARG1#: adaptable thing  ARG2: adapted-to, circumstances
+flexible-04    ARG0: causal agent  ARG1#: thing being bent  ARG2: instrument  ARG3: end shape
+focal-02    ARG1#: focal thing  ARG2: location
+foggy-02    ARG1#: explicit location that is foggy (copular subject, not empty 'it')
+foggy-03    ARG1#: entity with poor mental clarity/understanding  ARG2: thing poorly understood/remembered
+foreseeable-02    ARG0#: foreseer  ARG1: forecast
+fortunate-01    ARG0#: giver of luck (rare- see examples)  ARG1: receiver/haver of luck  ARG2: lucky experience/situation-- result of luck
+free-03    ARG1#: thing that costs nothing  ARG2: "of charge" or similar
+free-04    ARG1#: free entity  ARG2: free from (former chains/burden)  ARG3: resulting freedom (to do what)
+frequent-02    ARG1#: thing that occurs often
+fresh-03    ARG0: impertinent one  ARG1#: subject matter  ARG2: target of impertinent behavior
+fresh-04    ARG0: the fresh-maker, causer of freshness  ARG1#: fresh entity  ARG2: Instrument or Manner if separate from arg 0
+friendly-01    ARG1#: friendly entity  ARG2: target of friendship
+funny-02    ARG0: experiencer  ARG1#: amusing thing (concatenate if necessary)
+funny-03    ARG0: experiencer  ARG1#: strange/suspicious thing
+gagworthy-02    ARG0: causer of gagging, agent  ARG1#: entity gagged
+general-02    ARG1#: common thing  ARG2: entities sharing arg 1, common to
+generous-01    ARG0#: giver, generous person  ARG1: recipient of thing given, generous to whom  ARG2: given thing, generous with what
+glad-02    ARG0: stimulus, pleaser (about what)  ARG1#: glad one
+gracious-02    ARG0: kind, gracious entity  ARG1#: topic, action of graciousness  ARG2: target of graciousness
+gray-02    ARG0: causer of grayness  ARG1#: gray thing
+green-02    ARG0: causer of greenness  ARG1#: green thing
+green-03    ARG1#: environmentally friendly thing
+gross-03    ARG1#: Income, thing that is complete
+gross-04    ARG0: viewer  ARG1#: thing viewed
+gross-05    ARG1#: disgusting thing  ARG2: perceiver of grossness, gross to whom?
+gross-06    ARG1#: Flagrant thing
+guilty-01    ARG1#: perpetrator, guilty party  ARG2: role or crime, guilty of what?
+handy-01    ARG1#: skilled entity  ARG2: skill (tool, action)
+handy-02    ARG1#: useful, close at hand thing
+happy-01    ARG0: agent/cause/stimulus of happiness  ARG1#: experiencer of happiness  ARG2: what arg0 did to create arg1's happiness (if all present)
+happy-02    ARG1#: thing bringing luck  ARG2: beneficiary
+harmful-02    ARG0#: causer of damage, stimulus  ARG1: entity damaged  ARG2: instrument
+harsh-02    ARG1#: harsh entity  ARG2: target of harshness
+hazardous-02    ARG0: entity risking, at risk  ARG1#: thing risked
+hot-03    ARG1#: hottie
+hot-04    ARG0#: stimulus  ARG1: emotionally agitated entity
+hot-05    ARG1#: hot thing (temperature-wise)
+high-02    ARG1#: entity in the upper ranges  ARG2: the upper ranges of what (domain)
+high-03    ARG0: cause of elation  ARG1#: elated entity
+high-04    ARG0#: intoxicant  ARG1: stoner
+helpful-04    ARG0: helpful entity  ARG1#: project helped  ARG2: beneficiary
+honest-01    ARG0: honest Abe  ARG1#: about what subject matter; the truth  ARG2: listener
+honorable-03    ARG1#: honorable entity
+hopeful-02    ARG0#: thing that inspires hope  ARG1: entity offered hope
+hopeful-03    ARG0#: hoper  ARG1: thing hoped (for)
+hopeless-01    ARG1#: entity not feeling hope  ARG2: activity, issue that arg1 has no hope for
+hopeless-02    ARG1#: non-skilled entity  ARG2: non-skill
+hurtful-03    ARG0: entity causing damage  ARG1#: entity experiencing hurt/damage  ARG2: instrument (if in addition to arg0)  ARG3: benefactive
+hypothetical-02    ARG1#: theory, hypothesis
+ideal-02    ARG0: entity holding arg1 as perfect  ARG1#: perfect thing  ARG2: perfect for what; suited for
+identical-01    ARG1#: original, first identical thing  ARG2: compared to, second identical thing, identical to what?
+ignorant-02    ARG1#: unknowledgeable entity  ARG2: subject matter arg1 is unwaware of
+imaginable-02    ARG0: imaginer  ARG1#: imaginable
+important-01    ARG1#: important thing (may require concatenation  ARG2: to whom/what; beneficiary
+indifferent-01    ARG1#: indifferent entity  ARG2: scorned thing, indifferent to what?
+indispensable-01    ARG1#: needed entity, indispensible thing  ARG2: beneficiary, indispensible to/for whom or what?
+individualistic-01    ARG1#: individual
+furious-02    ARG0: causer of anger  ARG1#: angry entity
+innocent-01    ARG1#: entity that is innocent  ARG2: role or crime, innocent from/of/in what?
+intelligent-01    ARG1#: smartie, intelligent entity  ARG2: skill, intelligent in/at what?
+intense-02    ARG1#: intense thing  ARG2: specific aspect of arg1 that is intense (if in addition)
+internal-02    ARG1#: internal thing  ARG2: thing arg1 is on the inside of
+intimate-02    ARG1#: feeler/knower, first intimate entity  ARG2: target of intimacy, intimate with whom/what?
+irritable-02    ARG0#: Stimulus  ARG1: experiencer
+jealous-01    ARG0#: jealous entity  ARG1: carefully guarded possession
+jealous-02    ARG0#: jealous entity  ARG1: entity who has what arg1 wants  ARG2: what arg1 wants
+keen-02    ARG1#: enthusiast, keen entity  ARG2: target of enthusiasm, keen on what?
+last-02    ARG1#: last one (may require concatenation)
+laughable-03    ARG1#: foolish thing  ARG2: to whom it is foolish
+legal-02    ARG1#: legal thing
+legal-02    ARG1#: legal thing
+legitimate-02    ARG0#: cause of legitimacy  ARG1: entity legitimized
+less-02    ARG1#: thing that is less  ARG2: thing that is more  ARG3: less of what
+less-03    ARG1#: Topic  ARG2: Comment that is NOT quite true of Arg1
+liable-01    ARG1#: legally-bound/liable entity  ARG2: cause of liability  ARG3: potentially required action  ARG4: benefactive
+liable-02    ARG1#: predictable entity  ARG2: likely action
+liberal-02    ARG1#: politically/socially liberal entity
+liberal-03    ARG1#: entity giving generously  ARG2: generous with what, thing given generously
+light-05    ARG1#: light-hearted entity  ARG2: aspect of arg1 that is particularly light-hearted (if in addition)
+light-06    ARG1#: non-heavy entity  ARG2: aspect of arg1 that isn't heavy (if in addition)
+light-07    ARG1#: thing reflecting more light  ARG2: aspect of arg1 that is bright/pale (if in addition)
+livable-07    ARG1#: place that is suitable to be lived in
+alive-08    ARG0#: living entity
+local-02    ARG1#: entity belonging to a particular area  ARG2: the particular area
+loose-03    ARG1#: free entity  ARG2: source
+loose-04    ARG0#: causer of looseness  ARG1: non-compact substance (may be abstract)  ARG2: instrument of loosening, if in addition to arg0
+low-02    ARG0: cause of depression  ARG1#: entity in low spirits
+low-03    ARG1#: low entity/action (may require concatenation)
+low-04    ARG1#: entity in the lower ranges  ARG2: the lower ranges of what (domain)  ARG3: actual measurment
+loyal-01    ARG1#: entity that is loyal  ARG2: recipient of loyalty
+mad-02    ARG1#: crazy entity/action (may require concatenation)
+mad-03    ARG0: liker  ARG1#: liked
+mad-04    ARG0: causer of anger  ARG1#: angry entity  ARG2: angry at arg0 for what (if separate from arg0)
+major-02    ARG1#: great/important thing
+malignant-02    ARG1#: tumor/tissue  ARG2: cancer or other disease  ARG3: medical patient
+manageable-03    ARG0: manager  ARG1#: thing managed
+manageable-04    ARG0: entity just scraping by  ARG1#: deed accomplished
+manifest-01    ARG1#: thing appearing  ARG2: reflexive pronoun  ARG3: medium of appearance
+marginal-02    ARG1#: marginal thing  ARG2: domain  ARG3: actual measurment
+marginal-03    ARG1#: unskilled entity  ARG2: skill
+meaningful-05    ARG0: agent, element containing or conveying meaning  ARG1#: thing meant, explanation  ARG2: meant for/to
+measurable-03    ARG0#: measurer  ARG1: thing measured  ARG2: yardstick, standard of measurement  ARG3: measurement, value
+minimal-02    ARG0: causer of smallness  ARG1#: minimal thing
+minor-01    ARG1#: lesser entity  ARG2: greater entit
+minor-02    ARG1#: minor
+moderate-03    ARG0: agent  ARG1#: moderate entity  ARG2: specific aspect of arg1 that is moderate
+modern-02    ARG0#: modernizer  ARG1: thing being modernized
+moral-02    ARG1#: moral entity
+moveable-06    ARG0: mover  ARG1#: thing moved  ARG2: destination  ARG3: specific aspect of arg1 moving
+narrow-02    ARG1#: thing that is narrow
+natural-02    ARG1#: talent, thing that is innate  ARG2: to who, beneficiary
+natural-03    ARG1#: nature born entity
+necessary-02    ARG1#: essential thing (may require concatenation)  ARG2: necessary for/to what; dependent on arg1
+negative-01    ARG1#: test or patient, thing evaluated  ARG2: thing disconfirmed; thing that is absent
+negative-02    ARG0#: cause of badness; undesirable thing  ARG1: malefactive; person hurt by negative events or situation
+negative-03    ARG0#: entity expressing negative sentiment  ARG1: target of negative sentiment/feedback  ARG2: cause of negative feedback, complaint
+negative-05    ARG1#: quantity, value or rate which is less than zero  ARG2: domain or property quantified
+negative-06    ARG1#: thing with a negative charge  ARG2: charge itself, extent of negativity
+nervous-01    ARG1#: nervous entity  ARG2: cause of nerves, nervous about/at what?
+neutral-02    ARG0#: entity without strong feelings  ARG1: indifferent about or towards
+new-01    ARG1#: new object
+new-02    ARG1#: entity that seems new  ARG2: person/place for whom arg1 is new; experiencer of newness
+nice-01    ARG1#: nice entity  ARG2: beneficiary, target of nice behavior
+normal-02    ARG1#: normal thing  ARG2: specific aspect of arg1 that is normal  ARG3: specific measurement, numerical reading of normalcy
+noteworthy-03    ARG0#: entity noting as remarkable  ARG1: entity under scrutiny  ARG2: why is it notable?
+notable-04    ARG0: entity taking note  ARG1#: notable thing  ARG2: what arg1 is notable for
+noticeable-02    ARG0: noticer  ARG1#: thing that can be noticed
+notorious-01    ARG1#: infamous/notorious entity  ARG2: role or crime, notorious for/as what?
+objectionable-02    ARG0: objector  ARG1#: objectionable thing
+obscure-02    ARG0: agent, causer  ARG1#: entity obscured  ARG2: obscured from
+obvious-01    ARG1#: obvious thing  ARG2: viewer, obvious to whom?
+open-04    ARG0#: giver, open one  ARG1: info, feelings, etc  ARG2: recipient
+open-05    ARG1#: open-minded, accepting one  ARG2: input accepted
+open-06    ARG1#: spacious place  ARG2: space accessed  (open to what space)
+open-07    ARG1#: thing that is available  ARG2: available for what action  ARG3: available to whom
+open-08    ARG1#: vulnerable thing  ARG2: vulnerable to what
+open-09    ARG0#: agent/causer of opening  ARG1: thing/place open for passage/entry (door, business, etc)  ARG2: instrument  ARG3: benefactive; entity free to enter/pass
+opposite-01    ARG1#: first entity in opposition (opposite thing)  ARG2: second in opposition (opposite from what?)  ARG3: dimension of opposition (opposite in what regard?)
+orderly-04    ARG0: agent creating order  ARG1#: neat, ordered thing
+outrageous-02    ARG0: wild entity  ARG1#: entity deeming arg1 outrageous
+pale-03    ARG1#: entity described as pale  ARG2: specific aspect of arg1 that is pale
+partial-01    ARG1#: partial entity  ARG2: partial to what?
+peculiar-01    ARG1#: peculiar thing  ARG2: peculiar to whom?
+perfect-02    ARG1#: perfect thing  ARG2: suited for
+permissive-02    ARG0#: allower  ARG1: action, thing allowed  ARG2: extracted allowed-agent
+permissible-03    ARG0: allower  ARG1#: action, thing allowed  ARG2: extracted allowed-agent
+personal-02    ARG1#: private thing  ARG2: individual it is private/pertaining to
+persuasive-02    ARG0#: persuasive entity  ARG1: entity persuaded  ARG2: idea/action arg1 is persuaded into
+pissed-04    ARG1#: drunk one  ARG2: on what
+pitiful-02    ARG1#: pitiful entity
+pleasant-02    ARG1#: pleasant thing  ARG2: pleasant to/for whom?
+poisonous-03    ARG1#: entity susceptible to poison  ARG2: poison
+polite-01    ARG1#: polite entity or action  ARG2: polite to whom?
+political-02    ARG0#: politician  ARG1: political action, issue, thing
+popular-02    ARG1#: popular entity  ARG2: audience, popular among/with whom?
+possessive-02    ARG1#: token expressing the genitive
+possessive-03    ARG0: owner  ARG1#: possession
+possible-01    ARG1#: thing that is possible
+powerful-02    ARG1#: powerful entity/action (may require concatenation)  ARG2: what the power is used for-- secondary action
+practical-02    ARG1#: thing in practice
+practical-03    ARG1#: practical entity  ARG2: practical to/for whom?
+predictable-02    ARG0: forecaster  ARG1#: forecast
+preferable-02    ARG0: chooser, agent  ARG1#: entity chosen  ARG2: entity compared to
+preferential-03    ARG0: chooser, agent  ARG1#: entity chosen  ARG2: entity compared to
+present-02    ARG1#: entity present  ARG2: where
+presentable-03    ARG0: presenter  ARG1#: thing given  ARG2: given to  ARG3: secondary attribute of thing given
+presumptuous-02    ARG0#: forward entity or action
+private-02    ARG1#: personal thing  ARG2: person arg1 is particular to
+private-03    ARG1#: private enterprise
+productive-03    ARG0: producer  ARG1#: product  ARG2: created from, material  ARG3: benefactive
+proficient-01    ARG1#: proficient entity  ARG2: proficient at/in what?
+profitable-02    ARG0#: entity making money  ARG1: source  ARG2: the profit itself, amount
+progressive-02    ARG1#: ideologically progressive entity  ARG2: domain in which progressive ideas apply
+prohibitive-02    ARG0#: Discouraging, prohibitive thing  ARG1: Theme (action or object being discouraged)  ARG2: Attribute of Arg0 that discourages, when separate
+prone-01    ARG1#: likely undergoer  ARG2: undergone
+prone-02    ARG1#: face down entity
+protective-02    ARG0#: protector  ARG1: protected  ARG2: danger  ARG3: instrument
+public-02    ARG1#: public entity  ARG2: audience arg1 is available to
+punishable-02    ARG0: punisher, agent  ARG1#: punished  ARG2: punished-for  ARG3: mention of punishment itself
+pure-02    ARG0: cause, agent  ARG1#: contaminated thing, containing impurities  ARG2: impurities/contaminants
+quick-02    ARG1#: non-volitional speedy thing/action (may require concatenation)
+quiet-04    ARG1#: quiet entity  ARG2: quiet about what?
+radical-02    ARG1#: radical entity
+rare-02    ARG1#: uncommon thing
+rare-03    ARG1#: meat
+rational-02    ARG1#: logical entity (may require concatenation)
+rational-03    ARG1#: rational number
+reactionary-02    ARG0: conservative entity  ARG1#: opposed-to  ARG2: reaction
+ready-02    ARG0: preparer  ARG1#: entity made ready  ARG2: ready for
+realistic-03    ARG1#: realistic thing  ARG2: realistic for who/what
+real-04    ARG1#: actual thing
+real-05    ARG1#: number
+reasonable-02    ARG1#: reasonable entity/act (may require concatenation)
+recyclable-02    ARG0#: recycler  ARG1: garbage  ARG2: shiny new product
+regrettable-02    ARG0: regretter  ARG1#: regrettable
+regular-02    ARG1#: thing occuring regularly  ARG2: specific activity/aspect of arg1 that occurs regularly (if in addition)  ARG3: measurement of the period
+regular-03    ARG1#: ordinary thing
+relative-05    ARG1#: entity being compared  ARG2: quality  ARG3: point of comparison, relative to what/whom?
+releasable-02    ARG0: releaser  ARG1#: thing released  ARG2: released from
+relevant-01    ARG1#: thing that's relevant  ARG2: relevant to what?
+reluctant-01    ARG0#: Reluctant individual  ARG1: Reluctant to do what?
+reliable-02    ARG0: relier  ARG1#: reliable entity  ARG2: for what purpose
+remarkable-02    ARG0: entity taking note  ARG1#: remarkable thing
+remarkable-03    ARG1#: indicator  ARG2: condition or outcome indicated
+removable-02    ARG0: agent of removal  ARG1#: thing removed  ARG2: source, removed from
+reproducible-02    ARG0: agent of reproduction  ARG1#: entity reproduced
+respiratory-02    ARG1#: thing that relates to breath
+responsive-02    ARG0: readily responding thing  ARG1#: responsive to what?
+responsible-01    ARG0: responsible party, causer  ARG1#: responsible for what, caused thing
+responsible-02    ARG1#: entity/act characterized as worthy or inspiring of trust
+responsible-03    ARG0: entity entrusted with a role  ARG1#: role, responsibility  ARG2: responsible to whom?
+returnable-07    ARG0: giver  ARG1#: thing given back  ARG2: recipient
+rid-01    ARG0: entity removing  ARG1#: thing being removed  ARG2: removed from
+ridiculous-02    ARG1#: ridiculous entity  ARG2: for what reason
+righteous-07    ARG1#: righteous entity  ARG2: domain of righteousness
+ripe-02    ARG1#: fruit (or other)  ARG2: ready for what
+risky-02    ARG0: entity risking something  ARG1#: risky action undertaken  ARG2: thing in jeopardy, asset that could be lost, or negative outcome risked
+romantic-02    ARG0: perceiver  ARG1#: idealized thing
+romantic-03    ARG0: romancer (may be animate, inanimate, or actions)  ARG1#: recipient of romantic acts
+rough-04    ARG1#: bumpy, unrefined thing
+rough-05    ARG1#: difficult thing (may require concatenation)
+rubbery-02    ARG0: agent, causer  ARG1#: patient
+sad-02    ARG0: causer of sadness  ARG1#: sad entity  ARG2: instrument
+safe-01    ARG0#: activity, thing that is not dangerous  ARG1: entity protected, not in danger  ARG2: protected from, danger avoided
+same-01    ARG1#: first same thing  ARG2: second same thing, thing being compared to  ARG3: domain in which args 0, 1 are the same
+satisfactory-03    ARG1#: satisfactory entity  ARG2: skill/domain
+saveable-05    ARG0#: entity not spending  ARG1: money, amount not spend  ARG2: beneficiary  ARG3: cause/reason/source of savings
+saveable-06    ARG0#: hero  ARG1: victim  ARG2: peril
+saveable-07    ARG0: hoarder  ARG1#: hoard  ARG2: for what purpose, goal
+scary-03    ARG0#: scary entity  ARG1: scared entity  ARG2: instrument  ARG3: intensifier, extent
+scrupulous-02    ARG1#: scrupulous one  ARG2: about what, in doing what
+secure-02    ARG0: maker  ARG1#: thing secured  ARG2: instrument
+sensitive-03    ARG0#: sensitive soul  ARG1: thing sensed, sensitive to/of what?
+separate-02    ARG0#: entity causing separation  ARG1: thing being divided  ARG2: source, separated from
+serious-01    ARG1#: serious entity  ARG2: serious about what?
+serious-02    ARG1#: grave thing/condition
+severable-02    ARG1#: entity severed  ARG2: from what
+sexy-02    ARG1#: sexy beast
+sharp-02    ARG0: sharpener, agent/cause of sharpness  ARG1#: sharp thing
+short-05    ARG1#: thing with heavy fat content
+short-06    ARG1#: entity not having enough  ARG2: what arg1 doesn't have enough of, amount short  ARG3: goal arg1 is short of reaching
+short-07    ARG1#: entity that isn't long  ARG2: domain in which arg1 isn't long
+short-08    ARG0: entity behaving bruskly  ARG1#: subject matter  ARG2: target of brusk behavior
+shy-03    ARG1#: entity not having enough/attained a goal  ARG2: amount shy  ARG3: goal
+shy-04    ARG0#: shy one  ARG1: afraid of
+sick-02    ARG1#: gruesome thing
+sick-03    ARG1#: cool thing
+sick-04    ARG0: stimulus arg1 is tired of  ARG1#: experiencer of sick and tiredness
+sick-05    ARG0#: illness, affliction  ARG1: patient (haha)
+significant-02    ARG1#: thing that is notable
+simple-02    ARG1#: easy/uncomplicated thing (may require concatenation)
+simple-03    ARG1#: childlike one
+single-02    ARG1#: what there is 1 instance of  ARG2: aspect of arg1 that is singular
+single-03    ARG1#: unmarried/unattached entity
+skillful-01    ARG1#: skill holder, skillful entity  ARG2: skill, skillful at/in what?
+sleepy-06    ARG0: causer of sleepiness  ARG1#: sleepy entity  ARG2: cognate object (sleepiness)
+slow-04    ARG1#: not very smart one  ARG2: domain in which arg1 is slow/unskilled
+slow-05    ARG0#: agent/cause of slowness  ARG1: entity in slow motion (may require concatenation)
+smart-04    ARG1#: sytlish thing
+smart-05    ARG1#: pace being described
+smart-06    ARG1#: intelligent agent/action (may require concatenation)  ARG2: skill area (smart at)
+smooth-06    ARG1#: bumpless entity
+smooth-04    ARG1#: rico suave (agent/action, may require concatenation)
+social-03    ARG0#: social entity/action (may require concatenation)
+soft-02    ARG0: causer of softness  ARG1#: soft thing
+solid-02    ARG0: causer of solidity  ARG1#: solid entity
+sorry-01    ARG1#: apologizer, sorry entity  ARG2: crime, sorry for what?
+special-02    ARG1#: thing that is unique, possibly cherished  ARG2: entity cherishing, holding arg1 as unique
+specific-02    ARG1#: unique thing  ARG2: unique to what/whom
+speedy-03    ARG0#: causer of fast motion  ARG1: entity in motion
+stable-03    ARG1#: stable entity  ARG2: position/attribute held in equilibrium
+stanced-15    ARG1#: entity having a leg position  ARG2: characteristic of the leg position
+sterile-02    ARG1#: sterile location/entity  ARG2: new life
+stiff-02    ARG1#: stiff thing
+stiff-04    ARG0#: what one is stiff in the face of; opponent  ARG1: entity or activity showing toughness
+strong-02    ARG1#: stong entity
+subject-01    ARG0#: causer  ARG1: induced experiencer  ARG2: procedure
+subject-02    ARG1#: likely undergoer  ARG2: thing often undergone
+subjective-03    ARG1#: subjective entity  ARG2: perceiver
+suitable-04    ARG1#: suitable thing  ARG2: suitable for what/whom?
+superior-01    ARG1#: superior entity  ARG2: superior to what/whom?
+surgical-02    ARG1#: surgical entity
+suspicious-02    ARG0#: suspecter  ARG1: thing or event viewed suspiciously  ARG2: act expressing suspicion, often a glance
+suspicious-03    ARG1#: thing or event acting in ways that evoke suspicion
+sustainable-03    ARG0: agent  ARG1#: thing continuing
+sustainable-04    ARG0#: entity suffering a loss  ARG1: the loss
+sweet-03    ARG1#: entity being nice  ARG2: target of niceness
+sweet-04    ARG0: causer of sweetness  ARG1#: sweet thing  ARG2: explicit instrument
+sweet-05    ARG1#: awesome thing
+synchronous-02    ARG0: cause, agent  ARG1#: first thing synchronized  ARG2: second thing, if separate
+teary-06    ARG1#: entity filled with tears
+tense-03    ARG0: causer of tightening  ARG1#: thing tightening
+terrible-01    ARG1#: terrible entity  ARG2: target of terrible behavior
+terrible-02    ARG1#: unskilled entity  ARG2: non-skill
+terrible-03    ARG1#: unbeneficial thing  ARG2: beneficiary
+thankful-02    ARG0: thanker  ARG1#: thanked  ARG2: for what?
+thick-02    ARG1#: crowded location (the forest)  ARG2: crowded with what; close together components (the trees)
+thick-03    ARG1#: dense thing, or thing with a wide diameter  ARG2: more specific aspect of arg1 that is thick/dense (if in addition)
+thick-04    ARG1#: not very smart one (may require concatenation)
+thick-05    ARG1#: first entity (or all)  ARG2: second entity (or 'each other')
+thin-03    ARG0: agent  ARG1#: thin entity  ARG2: component parts of arg1 that aren't close together
+tolerable-02    ARG0#: tolerator  ARG1: tolerated
+touchy-09    ARG0: stimulus, what arg1 is touchy about  ARG1#: touchy one
+touchy-10    ARG0: entity who wont' stop touching things  ARG1#: entity touched  ARG2: instrument (if in addition to arg0)
+tough-02    ARG1#: difficult entity (may require concatenation)  ARG2: entity experiencing difficulty brought by arg1
+tough-03    ARG0: strong entity  ARG1#: target of tough behavior  ARG2: grounds
+tough-04    ARG1#: hardy thing
+transient-02    ARG1#: thing passing  ARG2: location, space traversed
+treatable-06    ARG0: doctor  ARG1#: patient  ARG2: illness or injury  ARG3: instrument (treatment)
+tricky-02    ARG1#: difficult thing (may require concatenation)
+true-01    ARG1#: truthful thing  ARG2: attributive; pertaining to what
+true-02    ARG1#: consistent, on target thing  ARG2: consistent with what, target
+true-03    ARG1#: loyal one  ARG2: target of loyalty
+trustworthy-03    ARG0: truster  ARG1#: entity worthy of trust  ARG2: what arg1 upholds, preserves, carries through with
+typical-02    ARG1#: usual thing  ARG2: entity arg1 is typical for/of
+understandable-02    ARG0#: understander  ARG1: thing that can be understood  ARG2: understood as; secondary predication on arg1
+uneasy-01    ARG0: agent, cause of unease  ARG1#: entity actually feeling uneasy  ARG2: cause, uneasy about what? (non-agentive)
+unique-01    ARG1#: unique thing, cause of uniqueness  ARG2: possessor of unique attribute, if separate from arg1  ARG3: comparison set; unique amongst what?  ARG4: reason why it is unique
+upset-01    ARG0: agent of upsetting  ARG1#: upset entity  ARG2: instrument
+urban-02    ARG1#: urban entity
+useful-05    ARG0: beneficiary  ARG1#: thing offering benefit  ARG2: for what purpose
+utilitarian-02    ARG1#: utilitarian entity
+valid-02    ARG1#: valid entity  ARG2: valid for what use
+valuable-03    ARG0: entity establishing value  ARG1#: commodity being valued  ARG2: value
+vile-02    ARG1#: vile entity
+voluntary-02    ARG0#: entity volunteering, voluntary agent  ARG1: thing offered  ARG2: recipient
+vulnerable-01    ARG1#: entity at risk  ARG2: risk, vulnerable to  ARG3: the vulnerability itself
+awake-03    ARG1#: (former) sleeper  ARG2: sleep (oft metaphorical)  ARG3: thing awoken to, outside reality
+warm-06    ARG0: agent of warm behavior  ARG1#: warm behavior  ARG2: target of warm behavior
+warm-07    ARG0#: causer of warmth  ARG1: warm thing (not 'it', if refering to empty weather pronoun)
+wasteful-02    ARG0: destroyer  ARG1#: thing wasted  ARG2: instrument of wasting/ destruction, wasted on/doing what (if separate from arg0)
+weak-02    ARG1#: unskilled/weak entity  ARG2: skill, intensity lacked
+western-02    ARG1#: entity identified as western
+western-03    ARG1#: entity identified as of the old west
+wide-02    ARG1#: wide entity  ARG2: specific aspect of arg1 that is wide (if in addition)
+wonderful-03    ARG1#: wonderful thing  ARG2: beneficiary, wonderful to whom?
+wonderful-04    ARG1#: skilled entity  ARG2: skilled at
+wonderful-05    ARG1#: thing that is beneficial  ARG2: beneficial for whom, what?
+worrisome-03    ARG0#: worrisome symptom  ARG1: entity experiencing worry  ARG2: the condition/outcome possibly indicated by arg0
+bad-02    ARG1#: unskilled, inffective entity  ARG2: non-skill
+bad-03    ARG1#: expired thing
+bad-04    ARG1#: harmful thing  ARG2: anti-beneficiary
+bad-05    ARG1#: extensive thing
+bad-07    ARG0#: causer of badness, worsening  ARG1: generally negative, displeasing entity
+worth-01    ARG1#: thing having value  ARG2: value (amount)  ARG3: entity recognizing value
+worth-02    ARG1#: worthy thing  ARG2: worthy of what
+wrong-02    ARG1#: thing that is not as it should be, morally/legally bad  ARG2: attributive: wrong with regards to what/whom
+wrong-03    ARG1#: unsuitable thing  ARG2: unsuited to
+wrong-04    ARG1#: entity who is mistaken  ARG2: inaccurate proposition, thought, wrong about what
+yellow-02    ARG0: causer of yellow coloration  ARG1#: thing becoming yellow
+yellow-03    ARG1#: coward
+zealous-01    ARG1#: zealous entity  ARG2: zeal applied to, zealous for what or in which domain(s)?
