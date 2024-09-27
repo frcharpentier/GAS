@@ -6,6 +6,7 @@ import struct
 import torch
 from torch_geometric.data import Dataset, download_url
 from torch_geometric.data import Data
+import torch_geometric.transforms as TRF
 from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict
 from enchainables import MAILLON
@@ -58,65 +59,65 @@ def liste_roles(nom_fichier):
     #print(dict(dico))
 
 #Le dico suivant a été fait en exécutant la fonction liste_roles
-dico_roles = OrderedDict( [ (':accompanier', (569,0)),
-    (':age', (1135,1)),
-    (':>AGENT', (125945,2)),
+dico_roles = OrderedDict( [ (':accompanier', (569,)),
+    (':age', (1135,)),
+    (':>AGENT', (125945,)),
     (':>ARG0', (2,None)),
     (':>ARG2', (3,None)),
-    (':>ASSET', (1283,3)),
-    (':>ATTRIBUTE', (14329,4)),
-    (':beneficiary', (1371,5)),
-    (':>BENEFICIARY', (7998,5)),
-    (':>CAUSE', (1573,6)),
-    (':>CO-AGENT', (2030,7)),
-    (':>CO-PATIENT', (513,8)),
-    (':>CO-THEME', (9280,9)),
-    (':>CONCESSION', (1140,10)),
-    (':concession', (1713,10)),
-    (':condition', (3670,11)),
-    (':>CONDITION', (1562,11)),
-    (':conj-as-if', (24,12)),
-    (':consist-of', (1386,13)),
+    (':>ASSET', (1283,)),
+    (':>ATTRIBUTE', (14329,)),
+    (':beneficiary', (1371,)),
+    (':>BENEFICIARY', (7998,)),
+    (':>CAUSE', (1573,)),
+    (':>CO-AGENT', (2030,)),
+    (':>CO-PATIENT', (513,)),
+    (':>CO-THEME', (9280,)),
+    (':>CONCESSION', (1140,)),
+    (':concession', (1713,)),
+    (':condition', (3670,)),
+    (':>CONDITION', (1562,)),
+    (':conj-as-if', (24,)),
+    (':consist-of', (1386,)),
     (':day', (1,None)),
     (':dayperiod', (38,None)),
     (':decade', (1,None)),
-    (':degree', (5623,14)),
-    (':>DESTINATION', (6178,15)),
-    (':destination', (575,15)),
-    (':direction', (1188,16)),
-    (':duration', (2922,17)),
-    (':example', (2914,18)),
-    (':>EXPERIENCER', (15572,19)),
-    (':extent', (455,20)),
-    (':>EXTENT', (1877,20)),
-    (':frequency', (1380,21)),
-    (':>FREQUENCY', (23,21)),
-    (':>GOAL', (7218,22)),
-    (':>IDIOM', (744,23)),
-    (':>INSTRUMENT', (2714,24)),
-    (':instrument', (787,24)),
+    (':degree', (5623,)),
+    (':>DESTINATION', (6178,)),
+    (':destination', (575,)),
+    (':direction', (1188,)),
+    (':duration', (2922,)),
+    (':example', (2914,)),
+    (':>EXPERIENCER', (15572,)),
+    (':extent', (455,)),
+    (':>EXTENT', (1877,)),
+    (':frequency', (1380,)),
+    (':>FREQUENCY', (23,)),
+    (':>GOAL', (7218,)),
+    (':>IDIOM', (744,)),
+    (':>INSTRUMENT', (2714,)),
+    (':instrument', (787,)),
     (':li', (852,None)),
-    (':location', (21913,25)),
-    (':>LOCATION', (5104,25)),
-    (':manner', (8095,26)),
-    (':>MANNER', (101,26)),
-    (':>MATERIAL', (322,27)),
-    (':medium', (2055,28)),
-    (':mod', (121338,29)),
-    (':>MOD', (413,29)),
-    (':mode', (1455,30)),
-    (':month', (34,31)),
-    (':name', (4569,32)),
+    (':location', (21913,)),
+    (':>LOCATION', (5104,)),
+    (':manner', (8095,)),
+    (':>MANNER', (101,)),
+    (':>MATERIAL', (322,)),
+    (':medium', (2055,)),
+    (':mod', (121338,)),
+    (':>MOD', (413,)),
+    (':mode', (1455,)),
+    (':month', (34,)),
+    (':name', (4569,)),
     (':op1', (18,None)),
-    (':ord', (1254,33)),
-    (':part', (6322,34)),
-    (':>PART', (141,34)),
-    (':path', (401,35)),
-    (':>PATIENT', (29132,36)),
+    (':ord', (1254,)),
+    (':part', (6322,)),
+    (':>PART', (141,)),
+    (':path', (401,)),
+    (':>PATIENT', (29132,)),
     (':polarity', (18501,None)),
     (':>POLARITY', (96,None)),
     (':polite', (203,None)),
-    (':poss', (16093,37)),
+    (':poss', (16093,)),
     (':prep-against', (152,None)),
     (':prep-along-with', (9,None)),
     (':prep-amid', (5,None)),
@@ -137,37 +138,37 @@ dico_roles = OrderedDict( [ (':accompanier', (569,0)),
     (':prep-under', (138,None)),
     (':prep-with', (295,None)),
     (':prep-without', (41,None)),
-    (':>PRODUCT', (2754,38)),
-    (':purpose', (5417,39)),
-    (':>PURPOSE', (487,39)),
-    (':quant', (13804,40)),
-    (':range', (54,41)),
-    (':>RECIPIENT', (9893,42)),
-    (':>RESULT', (14792,42)),
-    (':scale', (101,43)),
-    (':>SOURCE', (5986,44)),
-    (':source', (2604,44)),
-    (':>STIMULUS', (11294,45)),
-    (':subevent', (350,46)),
-    (':subset', (3,47)),
-    (':>THEME', (121792,48)),
-    (':time', (30960,49)),
-    (':>TIME', (419,49)),
+    (':>PRODUCT', (2754,)),
+    (':purpose', (5417,)),
+    (':>PURPOSE', (487,)),
+    (':quant', (13804,)),
+    (':range', (54,)),
+    (':>RECIPIENT', (9893,)),
+    (':>RESULT', (14792,)),
+    (':scale', (101,)),
+    (':>SOURCE', (5986,)),
+    (':source', (2604,)),
+    (':>STIMULUS', (11294,)),
+    (':subevent', (350,)),
+    (':subset', (3,)),
+    (':>THEME', (121792,)),
+    (':time', (30960,)),
+    (':>TIME', (419,)),
     (':timezone', (326,None)),
-    (':topic', (5436,50)),
-    (':>TOPIC', (14119,50)),
+    (':topic', (5436,)),
+    (':>TOPIC', (14119,)),
     (':unit', (107,None)),
-    (':>VALUE', (2168,51)),
-    (':value', (340,51)),
+    (':>VALUE', (2168,)),
+    (':value', (340,)),
     (':weekday', (26,None)),
     (':year', (9,None)),
-    ('{and_or}', (2358,52)),
-    ('{and}', (140798,53)),
-    ('{groupe}', (1117630,54)),
-    ('{idem}', (41628,55)),
-    ('{inter}', (1214,56)),
-    ('{or}', (11339,57)),
-    ('{syntax}', (10258,58))  ]
+    ('{and_or}', (2358,)),
+    ('{and}', (140798,)),
+    ('{groupe}', (1117630,)),
+    ('{idem}', (41628,)),
+    ('{inter}', (1214,)),
+    ('{or}', (11339,)),
+    ('{syntax}', (10258,))  ]
 )
 
 def traiter_dico_roles():
@@ -178,6 +179,51 @@ def traiter_dico_roles():
         cumul += n
         dico[id] = (lis, cumul)
     return dico
+
+class FusionElimination(TRF.BaseTransform):
+    def __init__(self):
+        self.dico = dict()
+        self.index = None
+        self.garder = None
+        self.liste = [] # Une liste de liste de roles synonymes
+        self.eliminer = False
+
+    def forward(self, data):
+        data.y1 = self.index[data.y1]
+        if self.eliminer:
+            data.msk_y1 = data.msk_y1 & self.garder[data.y1]
+        return data
+
+class MergeSemblables(TRF.BaseTransform):
+    def __init__(self, dictnr, mapfunc):
+        self.dico = dict()
+        self.liste_tch = torch.zeros((len(dictnr),), dtype=torch.int16)
+        self.liste = [] # Une liste de liste de roles synonymes
+        dico = dict()
+        NN = 0
+        for i, k in enumerate(dictnr):
+            fk = mapfunc(k)
+            if fk in dico:
+                n = dico[fk]
+                self.liste[n].append(k)
+            else:
+                n = NN
+                dico[fk] = n
+                self.liste.append([k])
+            self.liste_tch[i]=n
+            self.dico[k]= n
+    
+    def forward(self, data):
+        data.y1 = self.liste_tch[data.y1]
+        return data
+
+
+class GarderClasses(TRF.BaseTransform):
+    def __init__(self, dictnr, liste_a_garder):
+       self.garder = liste_a_garder
+       self.liste_tch
+
+
 
 class AligDataset(Dataset):
     def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None):
@@ -233,9 +279,10 @@ class AligDataset(Dataset):
                             #jsn["model_name"] = model_name
                             #print(idSNT)
                             attn.compute_attn_tensor(jsn["tokens"])
+                            data_attn = attn.data_att.astype(np.float16)
                             idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(
                                 len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
-                                attn.data_att, self.liste_roles
+                                data_attn, self.liste_roles
                             )
                             if nb_graphes == 0:
                                 #Écrire les dtypes des tableaux

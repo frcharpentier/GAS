@@ -12,7 +12,7 @@ from transformers import utils as transfo_utils
 from minbert.model import BERT, param_translation
 from mingpt.model import GPT
 
-def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True):
+def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, typ=np.float64):
     Nadj = ntokens*(ntokens-1)//2
     # Nombre de sommets du graphe adjoint du graphe complet
     degAdj = 2*ntokens - 4
@@ -22,19 +22,19 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
     adja = [[False for j in range(i+1,ntokens)] for i in range(ntokens-1)]
     # matrice d’adjacence du graphe normal (pas adjoint)
     if bilin:
-        grfSig = np.zeros((Nadj, dim, 2))
+        grfSig = np.zeros((Nadj, dim, 2), dtype=descr.dtype)
         # Signal sur le graphe adjoint
     else:
-        grfSig = np.zeros((Nadj, dim))
+        grfSig = np.zeros((Nadj, dim), dtype=descr.dtype)
         # Signal sur le graphe adjoint
 
-    edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int64)
+    edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int32)
     # matrice d’adjacence du graphe adjoint au format "edge_index"
 
 
 
     idAdj = []
-    roles = np.zeros((Nadj,), dtype=np.int16)
+    roles = np.zeros((Nadj,), dtype=np.int8)
     sens = np.zeros((Nadj,), dtype=np.int8)
     msk_sens = np.zeros((Nadj,),dtype="bool")
     msk_roles = np.zeros((Nadj,),dtype="bool")
