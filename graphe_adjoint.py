@@ -12,7 +12,7 @@ from transformers import utils as transfo_utils
 from minbert.model import BERT, param_translation
 from mingpt.model import GPT
 
-def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
+def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True):
     Nadj = ntokens*(ntokens-1)//2
     # Nombre de sommets du graphe adjoint du graphe complet
     degAdj = 2*ntokens - 4
@@ -34,7 +34,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
 
 
     idAdj = []
-    roles = []
+    roles = np.zeros((Nadj,), dtype=np.int16)
     sens = np.zeros((Nadj,), dtype=np.int8)
     msk_sens = np.zeros((Nadj,),dtype="bool")
     msk_roles = np.zeros((Nadj,),dtype="bool")
@@ -44,15 +44,30 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
         assert S != C
         I,J = (S,C) if S<C else (C,S)
         J = J-I-1
-        if r.startswith("{") and r.endswith("}"):
-            # Relations sans direction comme {groupe}, {idem}, {inter}...
-            adjc = adja[I][J]
-            if not ( (adjc == False) or adjc == (C,r,S)):
-                adja[I][J] = (S,"?ARG0",C)
-        elif adja[I][J] == False:
-            adja[I][J] = (S,r,C)
+        adjc = adja[I][J]
+        if adjc == False:
+            if r.startswith("{") and r.endswith("}"):
+                # Relations sans direction comme {groupe}, {idem}, {inter}...
+                adja[I][J] = (None, r, None)
+            else:
+                adja[I][J] = (S,r,C)
         else:
-            adja[I][J] = (S,"?ARG0",C)
+            ss, rr, cc = adjc
+            if r.startswith("{") and r.endswith("}"):
+                if r == rr:
+                    adja[I][J] = (None, r, None) #Relation mais pas de sens
+                else:
+                    adja[I][J] = (None, None, None) #Ni relation ni sens
+            else:
+                if ss == S and cc == C:
+                    sss, ccc = S, C
+                else:
+                    sss, ccc = (None, None) #Pas de sens
+                if rr == r:
+                    rrr = r
+                else:
+                    rrr = None #Pas de relation
+                adja[I][J] = (sss, rrr, ccc)
         
 
     idxattr = 0
@@ -69,30 +84,34 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
             
             arete = adja[s][CC]
             if arete == False:
-                roles.append("")
+                roles[idxattr] = 0
                 msk_roles[idxattr] = False
                 msk_sens[idxattr] = False
+                # Ni relation ni sens à prédire pour ce nœud.
             else:
                 source, r, cible = arete
-                assert source == s or source == c
-                assert cible == c or cible == s
-                if r.startswith("{") and r.endswith("}"):
+                assert source == s or source == c or source == None
+                assert cible == c or cible == s or cible == None
+                if source == None:
                     # Relations sans direction comme {groupe}, {idem}, {inter}...
                     msk_sens[idxattr] = False
                     # Pas de sens particulier à prédire
                 elif source == s:
                     sens[idxattr] = 1.
                     msk_sens[idxattr] = True
+                    # Prédire le sens
                 else:
                     sens[idxattr] = 0.
                     msk_sens[idxattr] = True
-                if r.startswith("?"):
+                if r == None or r.startswith("?"):
                     # Si le rôle est un rôle ?ARGn non résolu :
-                    roles.append("")
+                    roles[idxattr] = 0
                     msk_roles[idxattr] = False
+                    # Pas de relation à prédire
                 else:
-                    roles.append(r)
+                    roles[idxattr] = liste_roles.index(r)
                     msk_roles[idxattr] = True
+                    # Prédire la relation
             idxattr += 1
 
     # Construction de la matrice d’adjacence au format "edge_index" :
