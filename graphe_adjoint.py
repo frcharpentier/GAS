@@ -28,14 +28,14 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
         grfSig = np.zeros((Nadj, dim))
         # Signal sur le graphe adjoint
 
-    edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int8)
+    edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int64)
     # matrice d’adjacence du graphe adjoint au format "edge_index"
 
 
 
     idAdj = []
     roles = []
-    sens = np.zeros((Nadj,), dtype=np.float32)
+    sens = np.zeros((Nadj,), dtype=np.int8)
     msk_sens = np.zeros((Nadj,),dtype="bool")
     msk_roles = np.zeros((Nadj,),dtype="bool")
 
@@ -47,10 +47,13 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
         if r.startswith("{") and r.endswith("}"):
             # Relations sans direction comme {groupe}, {idem}, {inter}...
             adjc = adja[I][J]
-            assert (adjc == False) or adjc == (C,r,S)
+            if not ( (adjc == False) or adjc == (C,r,S)):
+                adja[I][J] = (S,"?ARG0",C)
+        elif adja[I][J] == False:
+            adja[I][J] = (S,r,C)
         else:
-            assert adja[I][J] == False
-        adja[I][J] = (S,r,C)
+            adja[I][J] = (S,"?ARG0",C)
+        
 
     idxattr = 0
     for s in range(ntokens-1):
@@ -123,7 +126,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, bilin=True):
                     ii += 1
 
 
-    return idAdj, grfSig, edge_idx, roles, sens
+    return idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens
         
 
     
@@ -384,10 +387,16 @@ def test3():
               [2, ":>THEME", 3], [2, "{groupe}", 0], [2, "{groupe}", 1],
               [3, ":mod", 5], [5, ":>THEME", 4]]
     
+    jsn = {"tokens": ["\u00a4<s>", "The", "lack", "or", "serious", "shortage", "of", "intermediate", "layers", "of", "Party", "organizations", "and", "units", "between", "the", "two", "has", "resulted", "in", "its", "inability", "to", "consider", "major", "issues", "with", "endless", "minor", "issues", "on", "hand", "\u00a4,", "such", "that", "even", "if", "it", "is", "highly", "capable", "\u00a4,", "it", "won", "\u00a4't", "last", "long", "\u00a4,", "as", "it", "will", "be", "dragged", "down", "by", "numerous", "petty", "things", "\u00a4.", "\u00a4</s>"], "sommets": [2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 18, 20, 21, 23, 24, 25, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 39, 40, 44, 45, 46, 48, 52, 53, 55, 56, 57], "dicTokens": [["1.1.1"], ["1.1.2.3"], ["1.1.2"], ["1.1.1.2.1"], ["1.1.1.2"], ["1.1.1.2.2.3"], ["1.1.1.2.2.1"], ["1.1.1.2.2.2"], ["1.1.1.1"], ["1.1.1.1.1", "1.1.1.1.1.1"], ["1.2.3"], ["1"], ["1.1.1.2.2.3"], ["1.2.3.2"], ["1.2.2"], ["1.2.2.2.1"], ["1.2.2.2"], ["1.2.3.1.2"], ["1.2.3.1.1"], ["1.2.3.1"], ["1.2"], ["1.2"], ["1.3"], ["1.3"], ["1.3.1.4"], ["1.3.1.4"], ["1.2.1"], ["1.3.1.2.2"], ["1.3.1.2"], ["1.3.1.1"], ["1.3.1"], ["1.3.1.3"], ["1.3.1.5"], ["1.3.1.5.1"], ["1.3.1.5.1.3"], ["1.3.1.5.1.1.1"], ["1.3.1.5.1.1.2"], ["1.3.1.5.1.1"]], "aretes": [[0, ":>AGENT", 9], [0, ":>THEME", 4], [0, "{or}", 2], [2, ":mod", 1], [2, "?ARG2", 4], [2, "{or}", 0], [4, ":mod", 3], [5, ":mod", 28], [5, ":part", 6], [5, ":part", 7], [5, "{idem}", 12], [6, ":part", 4], [6, "{and}", 7], [7, ":part", 4], [7, "{and}", 6], [8, "{syntax}", 9], [9, ":mod", 2], [10, ":>ATTRIBUTE", 19], [10, ":location", 13], [11, ":>GOAL", 20], [11, ":>GOAL", 21], [11, ":>THEME", 0], [11, ":>THEME", 2], [12, ":mod", 28], [12, ":part", 6], [12, ":part", 7], [12, "{idem}", 5], [14, ":>AGENT", 5], [14, ":>AGENT", 12], [14, ":>THEME", 16], [14, ":mod", 20], [14, ":mod", 21], [16, ":mod", 15], [19, ":mod", 18], [19, ":quant", 17], [20, ":condition", 10], [20, ":polarity", 26], [20, "{groupe}", 21], [21, ":condition", 10], [21, ":polarity", 26], [21, "{groupe}", 20], [22, ":>AGENT", 11], [22, ":>RESULT", 30], [22, "{groupe}", 23], [23, ":>AGENT", 11], [23, ":>RESULT", 30], [23, "{groupe}", 22], [24, "{groupe}", 25], [24, "{syntax}", 28], [25, "{groupe}", 24], [25, "{syntax}", 28], [28, ":degree", 27], [30, ":>DESTINATION", 31], [30, ":>THEME", 28], [30, ":concession", 28], [30, ":polarity", 29], [31, "?ARG1", 28], [32, ":>AGENT", 33], [32, ":>RESULT", 30], [33, ":>AGENT", 37], [33, ":>DESTINATION", 34], [33, ":>THEME", 28], [37, ":mod", 36], [37, ":quant", 35]]}
+
+    tokens = jsn["tokens"]
+    sommets = jsn["sommets"]
+    aretes = jsn["aretes"]
+    
     attn = TRANSFORMER_ATTENTION()
     attn.select_modele("minbert://roberta-base")
     attn.compute_attn_tensor(tokens)
-    idAdj, grfSig, edge_idx, roles, sens = faire_graphe_adjoint(len(tokens), sommets, aretes, attn.data_att)
+    idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(len(tokens), sommets, aretes, attn.data_att)
     pass
 
 if __name__ == "__main__":
