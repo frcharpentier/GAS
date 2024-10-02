@@ -11,6 +11,7 @@ from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict
 from enchainables import MAILLON
 from tqdm import tqdm
+from inspect import isfunction
 
 
 @MAILLON
@@ -181,47 +182,257 @@ def traiter_dico_roles():
     return dico
 
 class FusionElimination(TRF.BaseTransform):
-    def __init__(self):
-        self.dico = dict()
-        self.index = None
-        self.garder = None
-        self.liste = [] # Une liste de liste de roles synonymes
-        self.eliminer = False
+    def __init__(self, index=None, noms_classes=None, effectifs=None, alias=None):
+        if index is None:
+            index=[i for i, _ in enumerate(dico_roles)]
+            if noms_classes is None:
+                noms_classes = [[k] for k in dico_roles]
+            if effectifs is None:
+                effectifs = [v[0] for _,v in dico_roles.items()]
+            if alias is None:
+                alias = [k for k in dico_roles]
+
+        assert type(index) in (list, tuple)
+        self.nb_classes = 1+max(index)
+        assert all(idx in index for idx in range(self.nb_classes))
+
+        self.index = index
+        if any(idx < 0 for idx in index):
+            self.eliminer = True
+            self.agarder = [idx >=0 for idx in index]
+        else:
+            self.agarder = None
+            self.eliminer = False
+
+        
+        if noms_classes:
+            self.noms_classes = noms_classes
+        else:
+            self.noms_classes = None
+        if effectifs:
+            self.effectifs = effectifs
+        else:
+            self.effectifs = None
+        if alias:
+            self.alias = alias
+        else:
+            self.alias = None
+            
+    def __getitem__(self, clef):
+        # syntaxe : machin["al#12"] : pour obtenir l’alias de la 12e classe
+        # machin["ef@PATIENT"] : pour obtenir l’effectif de la classe nommée "PATIENT"
+        # machin["li@AGENT"] : pour obtenir la liste de toutes les classes fusionnées avec la classe nommée AGENT
+        # machin["no@THEME"] : pour obtenir le numéro de la classe nommée THÈME.
+        assert type(clef) is str
+        assert len(clef) > 3 and clef[:2] in ("al", "ef", "li", "no") and clef[2] in "#@"
+        if clef.startswith("al"):
+            table = self.alias
+        elif clef.startswith("ef"):
+            table = self.effectifs
+        elif clef.startswith("li"):
+            table = self.noms_classes
+        if clef[2] == "#":
+            i = int(clef[3:])
+        elif clef[2] == "@":
+            klef = clef[3:]
+            if klef in self.alias:
+                i = self.alias.index(klef)
+            else:
+                for i, li in enumerate(self.noms_classes):
+                    if klef in li:
+                        break
+                else:
+                    raise KeyError
+        if clef.startswith("no"):
+            return i
+        else:
+            return table[i]
+    
+
+    def __setitem__(self, clef, valeur):
+        # Uniquement pour définir un alias ou un effectif.
+        assert type(clef) is str
+        assert len(clef) > 3 and clef[:2] in ("al", "ef") and clef[2] in "#@"
+        if clef.startswith("al"):
+            table = self.alias
+        elif clef.startswith("ef"):
+            table = self.effectifs
+        if clef[2] == "#":
+            i = int(clef[3:])
+        elif clef[2] == "@":
+            klef = clef[3:]
+            if klef in self.alias:
+                i = self.alias.index(klef)
+            else:
+                for i, li in enumerate(self.noms_classes):
+                    if klef in li:
+                        break
+                else:
+                    raise KeyError
+        table[i] = valeur
+
+    def eliminer(self, *args):
+        N = 0
+        index = []
+        alias = []
+        noms_classes = []
+        effectifs = []
+        if isfunction(args[0]):
+            f = args[0]
+            for i, idx in enumerate(self.index):
+                if idx == -1:
+                    index.append(-1)
+                    continue
+                al = self.alias[idx]
+                ef = self.effectifs[idx]
+                li = self.noms_classes[idx]
+                dico = {"no": i, "al": al, "ef":ef, "li":li}
+                if not f(dico):
+                    #garder
+                    index.append(N)
+                    alias.append(al)
+                    noms_classes.append(li)
+                    effectifs.append(ef)
+                    N += 1
+                else:
+                    #Éliminer
+                    index.append(-1)
+                    
+        else:
+            for i, idx in enumerate(self.index):
+                if idx == -1:
+                    index.append(-1)
+                    continue
+                al = self.alias[idx]
+                ef = self.effectifs[idx]
+                li = self.noms_classes[idx]
+                if not al in args:
+                    #garder
+                    index.append(N)
+                    alias.append(al)
+                    noms_classes.append(li)
+                    effectifs.append(ef)
+                    N += 1
+                else:
+                    #Éliminer
+                    index.append(-1)
+                    
+        #return FusionElimination(self.noms_classes, index, self.effectifs, self.alias)
+        return FusionElimination(index, noms_classes, effectifs, alias)
+
+
+    def garder(self, *args):
+        N = 0
+        index = []
+        alias = []
+        noms_classes = []
+        effectifs = []
+        if isfunction(args[0]):
+            f = args[0]
+            for i, idx in enumerate(self.index):
+                if idx < 0:
+                    index.append(-1)
+                    continue
+                al = self.alias[idx]
+                ef = self.effectifs[idx]
+                li = self.noms_classes[idx]
+                if f({"no": i, "al": al, "ef":ef, "li":li}):
+                    #garder
+                    index.append(N)
+                    alias.append(al)
+                    noms_classes.append(li)
+                    effectifs.append(ef)
+                    N += 1
+                else:
+                    #Éliminer
+                    index.append(-1)
+                    
+        else:
+            for i, idx in enumerate(self.index):
+                if idx < 0:
+                    index.append(-1)
+                    continue
+                al = self.alias[idx]
+                ef = self.effectifs[idx]
+                li = self.noms_classes[idx]
+                if al in args:
+                    #garder
+                    index.append(N)
+                    alias.append(al)
+                    noms_classes.append(li)
+                    effectifs.append(ef)
+                    N += 1
+                else:
+                    #Éliminer
+                    index.append(-1)
+                    
+        #return FusionElimination(self.noms_classes, index, self.effectifs, self.alias)
+        return FusionElimination(index, noms_classes, effectifs, alias)
+                    
+
+    def fusionner(self, *args):
+        if isfunction(args[0]):
+            f = args[0]
+            dico0 = {}
+            for i, idx in enumerate(self.index):
+                if idx < 0:
+                    continue
+                al = self.alias[idx]
+                ef = self.effectifs[idx]
+                li = self.noms_classes[idx]
+                truc = f({"no": i, "al": al, "ef":ef, "li":li})
+                if truc in dico0:
+                    if al != truc:
+                        dico0[truc].add(al)
+                elif truc == al:
+                    dico0[truc] = set()
+                else:
+                    dico0[truc] = set([al])
+            listeargus = [ list(v)+ [k] for k,v in dico0.items()]
+            
+
+        else:
+            listeargus = args
+        dico = {}
+        index = []
+        alias = []
+        noms_classes = []
+        effectifs = []
+        N = 0
+        for i, idx in enumerate(self.index):
+            if idx == -1:
+                index.append(-1)
+                continue
+            al = self.alias[idx]
+            ef = self.effectifs[idx]
+            li = self.noms_classes[idx]
+            if al in dico:
+                idy = dico[al]
+                index.append(idy)
+                noms_classes[idy].extend(self.noms_classes[idx])
+                effectifs[idy] += self.effectifs[idx]
+            else:
+                for lis in listeargus:
+                    if al in lis:
+                        for elt in lis:
+                            dico[elt] = N
+                        alias.append(lis[-1])
+                        break
+                index.append(N)
+                noms_classes.append([elt for elt in self.noms_classes[idx]])
+                effectifs.append(self.effectifs[idx])
+                N += 1
+        #resu = FusionElimination(self.noms_classes, index, self.effectifs)
+        #resu.alias = [T[-1] for T in listeargus]
+        return FusionElimination(index, noms_classes, effectifs, alias)  
 
     def forward(self, data):
         data.y1 = self.index[data.y1]
         if self.eliminer:
-            data.msk_y1 = data.msk_y1 & self.garder[data.y1]
-        return data
-
-class MergeSemblables(TRF.BaseTransform):
-    def __init__(self, dictnr, mapfunc):
-        self.dico = dict()
-        self.liste_tch = torch.zeros((len(dictnr),), dtype=torch.int16)
-        self.liste = [] # Une liste de liste de roles synonymes
-        dico = dict()
-        NN = 0
-        for i, k in enumerate(dictnr):
-            fk = mapfunc(k)
-            if fk in dico:
-                n = dico[fk]
-                self.liste[n].append(k)
-            else:
-                n = NN
-                dico[fk] = n
-                self.liste.append([k])
-            self.liste_tch[i]=n
-            self.dico[k]= n
-    
-    def forward(self, data):
-        data.y1 = self.liste_tch[data.y1]
+            data.msk_y1 = data.msk_y1 & self.agarder[data.y1]
         return data
 
 
-class GarderClasses(TRF.BaseTransform):
-    def __init__(self, dictnr, liste_a_garder):
-       self.garder = liste_a_garder
-       self.liste_tch
 
 
 
@@ -259,6 +470,12 @@ class AligDataset(Dataset):
         nb_graphes = 0
         attn = TRANSFORMER_ATTENTION()
         pbar = tqdm(total = total_graphes)
+
+        # Test du format des floats
+        T = torch.ones((1,), dtype=torch.bfloat16)*1000/3
+        buf = T.to(dtype=torch.float32).numpy().tobytes()[2:4]
+        assert buf == bytes([0xa7, 0x43])
+
         with open(self.processed_paths[0], "wb") as FF:
             with open(self.nom_fichier, "r", encoding="utf-8") as F:
                 depart = True
@@ -279,51 +496,76 @@ class AligDataset(Dataset):
                             #jsn["model_name"] = model_name
                             #print(idSNT)
                             attn.compute_attn_tensor(jsn["tokens"])
-                            data_attn = attn.data_att.astype(np.float16)
+                            data_attn = attn.data_att.astype(np.float32)
+                            nbtokens = len(jsn["tokens"])
+                            Nadj = nbtokens*(nbtokens-1)//2
                             idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(
                                 len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
                                 data_attn, self.liste_roles
                             )
+                            sh1, dimension, deux = grfSig.shape
+                            assert deux == 2
+                            #assert dim == dimension
+                            assert sh1 == Nadj
+                            assert (Nadj,) == roles.shape
+                            assert (Nadj,) == sens.shape
+                            assert (Nadj,) == msk_roles.shape
+                            assert (Nadj,) == msk_sens.shape
+                            dtyp_grfSig = repr(grfSig.dtype)
+                            assert dtyp_grfSig.startswith("dtype(")
+                            dtyp_grfSig = dtyp_grfSig[7:-2]
+                            assert dtyp_grfSig in ["float64", "float32"]
+                            if dtyp_grfSig == "float64":
+                                grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float64)
+                            elif dtyp_grfSig == "float32":
+                                grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float32)
+                            grfSig = grfSig.to(dtype=torch.bfloat16).to(dtype=torch.float32)
+                            # conversion au format bfloat16, et reconversion au format float32 (pour gérer l’arrondi.)
+                            bufgrfSig = grfSig.numpy().tobytes()
+                            lenBuf = len(bufgrfSig)
+                            assert lenBuf%2 == 0
+                            bufgrfSig = b"".join(bufgrfSig[i:i+2] for i in range(2, lenBuf, 4))
+                            # conversion au format bfloat16 "à la main" par troncature.
                             if nb_graphes == 0:
-                                #Écrire les dtypes des tableaux
-                                self.dtyp_grfSig = grfSig.dtype
-                                dtyp_grfSig = repr(grfSig.dtype).encode("ascii")
-                                FF.write(dtyp_grfSig + b"\n")
+                                #Écrire la dimension des embeddings
+                                FF.write(b"%d"%dimension + b"\n")
 
+                                #Écrire le dtype du tableau edge_index
                                 self.dtyp_edge_idx = edge_idx.dtype
                                 dtyp_edge_idx = repr(edge_idx.dtype).encode("ascii")
                                 FF.write(dtyp_edge_idx + b"\n")
 
+                                #Écrire le dtype du tableau des roles
                                 self.dtyp_roles = roles.dtype
                                 dtyp_roles = repr(roles.dtype).encode("ascii")
                                 FF.write(dtyp_roles + b"\n")
-
-                                self.dtyp_sens = sens.dtype
-                                dtyp_sens = repr(sens.dtype).encode("ascii")
-                                FF.write(dtyp_sens + b"\n")
-
-                                self.dtyp_msk_roles = msk_roles.dtype
-                                dtyp_msk_roles = repr(msk_roles.dtype).encode("ascii")
-                                FF.write(dtyp_msk_roles + b"\n")
-
-                                self.dtyp_msk_sens = msk_sens.dtype
-                                dtyp_msk_sens = repr(msk_sens.dtype).encode("ascii")
-                                FF.write(dtyp_msk_sens + b"\n")
                                 
                             offsets.append(FF.tell())    
 
-                            FF.write(struct.pack("lll", *grfSig.shape))
-                            octets = grfSig.reshape(-1).tobytes()
-                            FF.write(octets)
+                            FF.write(struct.pack("l", nbtokens))
+                            FF.write(bufgrfSig)
 
-                            FF.write(struct.pack("ll", *edge_idx.shape))
+                            deux, sh = edge_idx.shape
+                            assert deux == 2
+                            assert sh%2 == 0
+                            assert sh == Nadj * (2*nbtokens-4)
+                            sh = sh // 2
+                            edge_idx = edge_idx[:,:sh]
+                            FF.write(struct.pack("l", sh))
+
                             octets = edge_idx.reshape(-1).tobytes()
                             FF.write(octets)
 
                             FF.write(roles.tobytes())
-                            FF.write(sens.tobytes())
-                            FF.write(msk_roles.tobytes())
-                            FF.write(msk_sens.tobytes())
+
+                            bools = np.zeros((Nadj,), dtype="uint8")
+                            ones = np.ones((Nadj,), dtype="uint8")
+                            bools = bools | ((ones * (sens == 1)) << 7)
+                            bools = bools | ((ones * msk_roles) << 1)
+                            bools = bools | ((ones * msk_sens))
+
+                            FF.write(bools.tobytes())
+
                             
                             nb_graphes += 1
                             pbar.update(1)
@@ -350,8 +592,11 @@ class AligDataset(Dataset):
             self.FileHandle = open(self.processed_paths[0], "rb")
 
             ligne = self.FileHandle.readline().decode("ascii").strip()
-            assert ligne.startswith("dtype(")
-            self.dtyp_grfSig = eval(ligne)
+            self.dimension = int(ligne)
+
+            #ligne = self.FileHandle.readline().decode("ascii").strip()
+            #assert ligne.startswith("dtype(")
+            #self.dtyp_grfSig = eval(ligne)
 
             ligne = self.FileHandle.readline().decode("ascii").strip()
             assert ligne.startswith("dtype(")
@@ -361,17 +606,9 @@ class AligDataset(Dataset):
             assert ligne.startswith("dtype(")
             self.dtyp_roles = eval(ligne)
 
-            ligne = self.FileHandle.readline().decode("ascii").strip()
-            assert ligne.startswith("dtype(")
-            self.dtyp_sens = eval(ligne)
-
-            ligne = self.FileHandle.readline().decode("ascii").strip()
-            assert ligne.startswith("dtype(")
-            self.dtyp_msk_roles = eval(ligne)
-
-            ligne = self.FileHandle.readline().decode("ascii").strip()
-            assert ligne.startswith("dtype(")
-            self.dtyp_msk_sens = eval(ligne)
+            #ligne = self.FileHandle.readline().decode("ascii").strip()
+            #assert ligne.startswith("dtype(")
+            #self.dtyp_bools = eval(ligne)
 
             self.sizeL = len(struct.pack("l", 0))
         
@@ -385,36 +622,34 @@ class AligDataset(Dataset):
         self.ouvrir_gros_fichier() 
         self.FileHandle.seek(self.offsets[idx])
         
-        X1X2X3 = self.FileHandle.read(3*self.sizeL)
-        X1, X2, X3 = struct.unpack("lll", X1X2X3)
+        XXX = self.FileHandle.read(self.sizeL)
+        (nbtokens,) = struct.unpack("l", XXX)
+        Nadj = nbtokens * (nbtokens-1) // 2
+        
 
-        buf = self.FileHandle.read(X1*X2*X3*(self.dtyp_grfSig.itemsize))
-        grfSig = np.frombuffer(buf, dtype=self.dtyp_grfSig).reshape((X1,X2,X3))
+        buf = self.FileHandle.read(Nadj*self.dimension*2*2)
+        grfSig = np.frombuffer(buf, dtype=np.dtype("V2"))
 
-        E1E2 = self.FileHandle.read(2*self.sizeL)
-        E1, E2 = struct.unpack("ll", E1E2)
+        EEE = self.FileHandle.read(self.sizeL)
+        (E1,) = struct.unpack("l", EEE)
+        assert E1 == Nadj * (nbtokens -2)
 
-        buf = self.FileHandle.read(E1*E2*(self.dtyp_edge_idx.itemsize))
-        edge_idx = np.frombuffer(buf, dtype=self.dtyp_edge_idx).reshape((E1, E2))
+        buf = self.FileHandle.read(2*E1*(self.dtyp_edge_idx.itemsize))
+        edge_idx = np.frombuffer(buf, dtype=self.dtyp_edge_idx).reshape((2,E1))
+        edge_idx = np.concatenate((edge_idx, edge_idx[(1,0),:]), axis=1)
 
-        buf = self.FileHandle.read(X1*(self.dtyp_roles.itemsize))
+        buf = self.FileHandle.read(Nadj*(self.dtyp_roles.itemsize))
         roles = np.frombuffer(buf, dtype=self.dtyp_roles)
 
-        buf = self.FileHandle.read(X1*(self.dtyp_sens.itemsize))
-        sens = np.frombuffer(buf, dtype=self.dtyp_sens)
+        buf = self.FileHandle.read(Nadj*(np.dtype("uint8").itemsize))
+        bools = np.frombuffer(buf, dtype="uint8")
 
-        buf = self.FileHandle.read(X1*(self.dtyp_msk_roles.itemsize))
-        msk_roles = np.frombuffer(buf, dtype=self.dtyp_msk_roles)
-
-        buf = self.FileHandle.read(X1*(self.dtyp_msk_sens.itemsize))
-        msk_sens = np.frombuffer(buf, dtype=self.dtyp_msk_sens)
-
-        grfSig = torch.as_tensor(grfSig)
+        grfSig = torch.frombuffer(grfSig, dtype=torch.bfloat16).reshape(Nadj, self.dimension, 2)
         edge_idx = torch.as_tensor(edge_idx)
         roles = torch.as_tensor(roles)
-        sens = torch.as_tensor(sens)
-        msk_roles = torch.as_tensor(msk_roles)
-        msk_sens = torch.as_tensor(msk_sens)
+        sens = torch.as_tensor((bools & 128) > 0).to(dtype=torch.bfloat16)
+        msk_roles = torch.as_tensor((bools & 2) > 0)
+        msk_sens = torch.as_tensor((bools & 1) > 0)
 
         data = Data(x=grfSig, edge_index=edge_idx,
                     y1=roles, y2=sens,
@@ -422,7 +657,89 @@ class AligDataset(Dataset):
         return data
 
 
+def essai_chrono():
+    nom_fichier = "./AMR_et_graphes_phrases_explct.txt"
+    etat = 0
+    lbl_id = "# ::id "
+    lbl_modname = "# ::model_name "
+
+    total_graphes = 0
+    with open(nom_fichier, "r", encoding="utf-8") as F:
+            for ligne in F:
+                ligne = ligne.strip()
+                if ligne.startswith(lbl_id):
+                    total_graphes += 1
+    
+    pbar = tqdm(total = total_graphes)
+    with open(nom_fichier, "r", encoding="utf-8") as F:
+        for ligne in F:
+            ligne = ligne.strip()
+            if etat == 0:
+                if ligne.startswith(lbl_id):
+                    ligne = ligne[len(lbl_id):]
+                    idSNT = ligne.split()[0]
+                    etat = 1
+            elif etat == 1:
+                if ligne.startswith('{"tokens": '):
+                    jsn = json.loads(ligne)
+                    tokens = jsn["tokens"]
+                    ntokens = len(tokens)
+                    Nadj = ntokens*(ntokens-1)//2
+                    degAdj = 2*ntokens - 4
+
+                    # Construction de la matrice d’adjacence au format "edge_index" :
+                    edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int32)
+                    numerote = lambda s,c : (2*ntokens-1-s)*s//2+c-s-1
+                    # Fonction pour obtenir le numéro d’un sommet adjoint (s,c) (avec s<c)
+
+                    ii = 0
+                    # for s1 in range(ntokens):
+                    #     for c1 in range(s1+1, ntokens):
+                    #         N1 = numerote(s1, c1)
+                    #         for c2 in range(c1+1, ntokens):
+                    #             N2 = numerote(s1, c2)
+                    #             edge_idx[0, ii] = N1
+                    #             edge_idx[1, ii] = N2
+                    #             ii += 1
+                    #             edge_idx[0, ii] = N2
+                    #             edge_idx[1, ii] = N1
+                    #             ii += 1
+                                
+                    #         for s2 in range(s1+1, ntokens):
+                    #             if s2 != c1:
+                    #                 if c1 < s2:
+                    #                     N2 = numerote(c1, s2)
+                    #                 else:
+                    #                     N2 = numerote(s2, c1)
+                    #                 edge_idx[0, ii] = N1
+                    #                 edge_idx[1, ii] = N2
+                    #                 ii += 1
+                    #                 edge_idx[0, ii] = N2
+                    #                 edge_idx[1, ii] = N1
+                    #                 ii += 1
+                    with open("/dev/null", "wb") as FF:
+                        octets = edge_idx.reshape(-1).tobytes()
+                        FF.write(octets)
+                    pbar.update(1)
+                    etat = 0
+
+
+
+
 if __name__ == "__main__":
+    # filtre = FusionElimination()
+    # filtre2 = filtre.garder(lambda x: x["ef"] > 1000)
+
+    # def clef(x):
+    #     if x["al"].startswith(":>"):
+    #         return ":" + x["al"][2:].lower()
+    #     else:
+    #         return x["al"].lower()
+        
+    # filtre3 = filtre2.fusionner(clef)
+
+    # print(0)
+    #essai_chrono()
     ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
 
     print(ds[2])
