@@ -12,6 +12,7 @@ from collections import OrderedDict, defaultdict
 from enchainables import MAILLON
 from tqdm import tqdm
 from inspect import isfunction
+import random
 
 
 @MAILLON
@@ -692,36 +693,66 @@ def essai_chrono():
                     numerote = lambda s,c : (2*ntokens-1-s)*s//2+c-s-1
                     # Fonction pour obtenir le numéro d’un sommet adjoint (s,c) (avec s<c)
 
-                    ii = 0
-                    # for s1 in range(ntokens):
-                    #     for c1 in range(s1+1, ntokens):
-                    #         N1 = numerote(s1, c1)
-                    #         for c2 in range(c1+1, ntokens):
-                    #             N2 = numerote(s1, c2)
-                    #             edge_idx[0, ii] = N1
-                    #             edge_idx[1, ii] = N2
-                    #             ii += 1
-                    #             edge_idx[0, ii] = N2
-                    #             edge_idx[1, ii] = N1
-                    #             ii += 1
-                                
-                    #         for s2 in range(s1+1, ntokens):
-                    #             if s2 != c1:
-                    #                 if c1 < s2:
-                    #                     N2 = numerote(c1, s2)
-                    #                 else:
-                    #                     N2 = numerote(s2, c1)
-                    #                 edge_idx[0, ii] = N1
-                    #                 edge_idx[1, ii] = N2
-                    #                 ii += 1
-                    #                 edge_idx[0, ii] = N2
-                    #                 edge_idx[1, ii] = N1
-                    #                 ii += 1
+                    
                     with open("/dev/null", "wb") as FF:
                         octets = edge_idx.reshape(-1).tobytes()
                         FF.write(octets)
                     pbar.update(1)
                     etat = 0
+
+def test_dataset():
+    nom_fichier = "./AMR_et_graphes_phrases_explct.txt"
+    lbl_id = "# ::id "
+    lbl_modname = "# ::model_name "
+    attn = TRANSFORMER_ATTENTION()
+    liste_phrases = []
+    total_graphes = 0
+    with open(self.nom_fichier, "r", encoding="utf-8") as F:
+        for ligne in F:
+            ligne = ligne.strip()
+            if ligne.startswith(lbl_id):
+                total_graphes += 1
+    pbar = tqdm(total = total_graphes)
+    with open(nom_fichier, "r", encoding="utf-8") as F:
+        depart = True
+        for ligne in F:
+            ligne = ligne.strip()
+            if depart and ligne.startswith(lbl_modname):
+                model_name = ligne[len(lbl_modname):]
+                attn.select_modele("minbert://"+ model_name)
+            elif etat == 0:
+                if ligne.startswith(lbl_id):
+                    ligne = ligne[len(lbl_id):]
+                    idSNT = ligne.split()[0]
+                    etat = 1
+            elif etat == 1:
+                if ligne.startswith('{"tokens": '):
+                    jsn = json.loads(ligne)
+                    liste_phrases.append(jsn)
+                pbar.update(1)
+                etat = 0
+
+    liste_roles = [k for k in dico_roles]
+    ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
+    for NBESSAI in range(5):
+        print("Essai no %d"%NBESSAI)
+        idx = random.randint(0, total_graphes-1)
+        jsn = liste_phrases[idx]
+
+        attn.compute_attn_tensor(jsn["tokens"])
+        data_attn = attn.data_att.astype(np.float32)
+        nbtokens = len(jsn["tokens"])
+        Nadj = nbtokens*(nbtokens-1)//2
+        idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(
+            len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
+            data_attn, liste_roles
+        )
+        data = ds[idx]
+
+
+
+
+
 
 
 
@@ -740,6 +771,7 @@ if __name__ == "__main__":
 
     # print(0)
     #essai_chrono()
+    test_dataset()
     ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
 
     print(ds[2])
