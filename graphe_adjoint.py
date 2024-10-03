@@ -37,11 +37,27 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
     idAdj = []
     roles = np.zeros((Nadj,), dtype=np.int8)
     sens = np.zeros((Nadj,), dtype=np.int8)
-    msk_sens = np.zeros((Nadj,),dtype="bool")
-    msk_roles = np.zeros((Nadj,),dtype="bool")
+    msk_sens = np.zeros((Nadj,), dtype="bool")
+    msk_roles = np.zeros((Nadj,), dtype="bool")
+    msk_tkisoles = np.zeros((Nadj,), dtype="bool")
+    # Masque qui doit contenir "faux" si on a une relation vers un mot partagé entre plusieurs tokens
+    # ou une partie d’une conjonction.
+
+    tk_libres = set(tk_utiles)
+    relations_groupe = ['{and_or}', '{and}', '{groupe}', '{inter}', '{or}', '{syntax}' ] #, '{idem}']
 
     for s,r,c in aretes:
         S, C = tk_utiles[s], tk_utiles[c]
+        if r in relations_groupe:
+            try:
+                tk_libres.remove(S)
+            except KeyError:
+                pass
+            try:
+                tk_libres.remove(C)
+            except KeyError:
+                pass
+
         assert S != C
         I,J = (S,C) if S<C else (C,S)
         J = J-I-1
@@ -70,6 +86,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                     rrr = None #Pas de relation
                 adja[I][J] = (sss, rrr, ccc)
         
+    tk_libres = list(tk_libres)
 
     idxattr = 0
     for s in range(ntokens-1):
@@ -88,7 +105,9 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                 roles[idxattr] = 0
                 msk_roles[idxattr] = False
                 msk_sens[idxattr] = False
+                msk_tkisoles[idxattr] = False
                 # Ni relation ni sens à prédire pour ce nœud.
+                # Le masque de token isolé reste "faux" par défaut.
             else:
                 source, r, cible = arete
                 assert source == s or source == c or source == None
@@ -113,6 +132,14 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                     roles[idxattr] = liste_roles.index(r)
                     msk_roles[idxattr] = True
                     # Prédire la relation
+
+                if (s not in tk_libres) or (c not in tk_libres):
+                    msk_tkisoles[idxattr] = False
+                    # Si l’un des deux sommets est lié par une "relation de groupe",
+                    # masquer la prédiction pour les tokens isolés.
+                else:
+                    msk_tkisoles[idxattr] = msk_sens[idxattr] or msk_roles[idxattr]
+
             idxattr += 1
 
     # Construction de la matrice d’adjacence au format "edge_index" :
@@ -146,7 +173,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                     #ii += 1
     edge_idx = np.concatenate((edge_idx, edge_idx[(1,0),:]), axis=1)
     
-    return idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens
+    return idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_tkisoles
         
 
 
@@ -315,6 +342,7 @@ def test2():
     trafo.compute_attn_tensor(snt)
 
 def test3():
+    from liste_tous_roles import dico_roles
     tokens = ["\u00a4<s>", "\u00a4Est", "\u00a4ablish", "\u00a4ing", "Models",
               "in", "Industrial", "Innovation", "\u00a4</s>"]
     sommets = [1, 2, 3, 4, 6, 7]
@@ -323,16 +351,17 @@ def test3():
               [2, ":>THEME", 3], [2, "{groupe}", 0], [2, "{groupe}", 1],
               [3, ":mod", 5], [5, ":>THEME", 4]]
     
-    jsn = {"tokens": ["\u00a4<s>", "The", "lack", "or", "serious", "shortage", "of", "intermediate", "layers", "of", "Party", "organizations", "and", "units", "between", "the", "two", "has", "resulted", "in", "its", "inability", "to", "consider", "major", "issues", "with", "endless", "minor", "issues", "on", "hand", "\u00a4,", "such", "that", "even", "if", "it", "is", "highly", "capable", "\u00a4,", "it", "won", "\u00a4't", "last", "long", "\u00a4,", "as", "it", "will", "be", "dragged", "down", "by", "numerous", "petty", "things", "\u00a4.", "\u00a4</s>"], "sommets": [2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 18, 20, 21, 23, 24, 25, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 39, 40, 44, 45, 46, 48, 52, 53, 55, 56, 57], "dicTokens": [["1.1.1"], ["1.1.2.3"], ["1.1.2"], ["1.1.1.2.1"], ["1.1.1.2"], ["1.1.1.2.2.3"], ["1.1.1.2.2.1"], ["1.1.1.2.2.2"], ["1.1.1.1"], ["1.1.1.1.1", "1.1.1.1.1.1"], ["1.2.3"], ["1"], ["1.1.1.2.2.3"], ["1.2.3.2"], ["1.2.2"], ["1.2.2.2.1"], ["1.2.2.2"], ["1.2.3.1.2"], ["1.2.3.1.1"], ["1.2.3.1"], ["1.2"], ["1.2"], ["1.3"], ["1.3"], ["1.3.1.4"], ["1.3.1.4"], ["1.2.1"], ["1.3.1.2.2"], ["1.3.1.2"], ["1.3.1.1"], ["1.3.1"], ["1.3.1.3"], ["1.3.1.5"], ["1.3.1.5.1"], ["1.3.1.5.1.3"], ["1.3.1.5.1.1.1"], ["1.3.1.5.1.1.2"], ["1.3.1.5.1.1"]], "aretes": [[0, ":>AGENT", 9], [0, ":>THEME", 4], [0, "{or}", 2], [2, ":mod", 1], [2, "?ARG2", 4], [2, "{or}", 0], [4, ":mod", 3], [5, ":mod", 28], [5, ":part", 6], [5, ":part", 7], [5, "{idem}", 12], [6, ":part", 4], [6, "{and}", 7], [7, ":part", 4], [7, "{and}", 6], [8, "{syntax}", 9], [9, ":mod", 2], [10, ":>ATTRIBUTE", 19], [10, ":location", 13], [11, ":>GOAL", 20], [11, ":>GOAL", 21], [11, ":>THEME", 0], [11, ":>THEME", 2], [12, ":mod", 28], [12, ":part", 6], [12, ":part", 7], [12, "{idem}", 5], [14, ":>AGENT", 5], [14, ":>AGENT", 12], [14, ":>THEME", 16], [14, ":mod", 20], [14, ":mod", 21], [16, ":mod", 15], [19, ":mod", 18], [19, ":quant", 17], [20, ":condition", 10], [20, ":polarity", 26], [20, "{groupe}", 21], [21, ":condition", 10], [21, ":polarity", 26], [21, "{groupe}", 20], [22, ":>AGENT", 11], [22, ":>RESULT", 30], [22, "{groupe}", 23], [23, ":>AGENT", 11], [23, ":>RESULT", 30], [23, "{groupe}", 22], [24, "{groupe}", 25], [24, "{syntax}", 28], [25, "{groupe}", 24], [25, "{syntax}", 28], [28, ":degree", 27], [30, ":>DESTINATION", 31], [30, ":>THEME", 28], [30, ":concession", 28], [30, ":polarity", 29], [31, "?ARG1", 28], [32, ":>AGENT", 33], [32, ":>RESULT", 30], [33, ":>AGENT", 37], [33, ":>DESTINATION", 34], [33, ":>THEME", 28], [37, ":mod", 36], [37, ":quant", 35]]}
+    #jsn = {"tokens": ["\u00a4<s>", "The", "lack", "or", "serious", "shortage", "of", "intermediate", "layers", "of", "Party", "organizations", "and", "units", "between", "the", "two", "has", "resulted", "in", "its", "inability", "to", "consider", "major", "issues", "with", "endless", "minor", "issues", "on", "hand", "\u00a4,", "such", "that", "even", "if", "it", "is", "highly", "capable", "\u00a4,", "it", "won", "\u00a4't", "last", "long", "\u00a4,", "as", "it", "will", "be", "dragged", "down", "by", "numerous", "petty", "things", "\u00a4.", "\u00a4</s>"], "sommets": [2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 18, 20, 21, 23, 24, 25, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 39, 40, 44, 45, 46, 48, 52, 53, 55, 56, 57], "dicTokens": [["1.1.1"], ["1.1.2.3"], ["1.1.2"], ["1.1.1.2.1"], ["1.1.1.2"], ["1.1.1.2.2.3"], ["1.1.1.2.2.1"], ["1.1.1.2.2.2"], ["1.1.1.1"], ["1.1.1.1.1", "1.1.1.1.1.1"], ["1.2.3"], ["1"], ["1.1.1.2.2.3"], ["1.2.3.2"], ["1.2.2"], ["1.2.2.2.1"], ["1.2.2.2"], ["1.2.3.1.2"], ["1.2.3.1.1"], ["1.2.3.1"], ["1.2"], ["1.2"], ["1.3"], ["1.3"], ["1.3.1.4"], ["1.3.1.4"], ["1.2.1"], ["1.3.1.2.2"], ["1.3.1.2"], ["1.3.1.1"], ["1.3.1"], ["1.3.1.3"], ["1.3.1.5"], ["1.3.1.5.1"], ["1.3.1.5.1.3"], ["1.3.1.5.1.1.1"], ["1.3.1.5.1.1.2"], ["1.3.1.5.1.1"]], "aretes": [[0, ":>AGENT", 9], [0, ":>THEME", 4], [0, "{or}", 2], [2, ":mod", 1], [2, "?ARG2", 4], [2, "{or}", 0], [4, ":mod", 3], [5, ":mod", 28], [5, ":part", 6], [5, ":part", 7], [5, "{idem}", 12], [6, ":part", 4], [6, "{and}", 7], [7, ":part", 4], [7, "{and}", 6], [8, "{syntax}", 9], [9, ":mod", 2], [10, ":>ATTRIBUTE", 19], [10, ":location", 13], [11, ":>GOAL", 20], [11, ":>GOAL", 21], [11, ":>THEME", 0], [11, ":>THEME", 2], [12, ":mod", 28], [12, ":part", 6], [12, ":part", 7], [12, "{idem}", 5], [14, ":>AGENT", 5], [14, ":>AGENT", 12], [14, ":>THEME", 16], [14, ":mod", 20], [14, ":mod", 21], [16, ":mod", 15], [19, ":mod", 18], [19, ":quant", 17], [20, ":condition", 10], [20, ":polarity", 26], [20, "{groupe}", 21], [21, ":condition", 10], [21, ":polarity", 26], [21, "{groupe}", 20], [22, ":>AGENT", 11], [22, ":>RESULT", 30], [22, "{groupe}", 23], [23, ":>AGENT", 11], [23, ":>RESULT", 30], [23, "{groupe}", 22], [24, "{groupe}", 25], [24, "{syntax}", 28], [25, "{groupe}", 24], [25, "{syntax}", 28], [28, ":degree", 27], [30, ":>DESTINATION", 31], [30, ":>THEME", 28], [30, ":concession", 28], [30, ":polarity", 29], [31, "?ARG1", 28], [32, ":>AGENT", 33], [32, ":>RESULT", 30], [33, ":>AGENT", 37], [33, ":>DESTINATION", 34], [33, ":>THEME", 28], [37, ":mod", 36], [37, ":quant", 35]]}
 
-    tokens = jsn["tokens"]
-    sommets = jsn["sommets"]
-    aretes = jsn["aretes"]
+    #tokens = jsn["tokens"]
+    #sommets = jsn["sommets"]
+    #aretes = jsn["aretes"]
     
     attn = TRANSFORMER_ATTENTION()
     attn.select_modele("minbert://roberta-base")
     attn.compute_attn_tensor(tokens)
-    idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(len(tokens), sommets, aretes, attn.data_att)
+    idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_iso = faire_graphe_adjoint(
+        len(tokens), sommets, aretes, attn.data_att, [k for k in dico_roles])
     pass
 
 if __name__ == "__main__":
