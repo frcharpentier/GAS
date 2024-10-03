@@ -466,12 +466,13 @@ class AligDataset(Dataset):
         edge_idx = torch.as_tensor(edge_idx)
         roles = torch.as_tensor(roles)
         sens = torch.as_tensor((bools & 128) > 0).to(dtype=torch.bfloat16)
+        msk_iso = torch.as_tensor((bools & 4) > 0)
         msk_roles = torch.as_tensor((bools & 2) > 0)
         msk_sens = torch.as_tensor((bools & 1) > 0)
 
         data = Data(x=grfSig, edge_index=edge_idx,
                     y1=roles, y2=sens,
-                    msk1=msk_roles, msk2 = msk_sens)
+                    msk1=msk_roles, msk2 = msk_sens, msk_iso = msk_iso)
         return data
 
 
