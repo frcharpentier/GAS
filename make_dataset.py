@@ -493,9 +493,6 @@ class AligDataset(Dataset):
                     elif etat == 1:
                         if ligne.startswith('{"tokens": '):
                             jsn = json.loads(ligne)
-                            #jsn["idSNT"] = idSNT
-                            #jsn["model_name"] = model_name
-                            #print(idSNT)
                             attn.compute_attn_tensor(jsn["tokens"])
                             data_attn = attn.data_att.astype(np.float32)
                             nbtokens = len(jsn["tokens"])
@@ -512,21 +509,28 @@ class AligDataset(Dataset):
                             assert (Nadj,) == sens.shape
                             assert (Nadj,) == msk_roles.shape
                             assert (Nadj,) == msk_sens.shape
-                            dtyp_grfSig = repr(grfSig.dtype)
-                            assert dtyp_grfSig.startswith("dtype(")
-                            dtyp_grfSig = dtyp_grfSig[7:-2]
-                            assert dtyp_grfSig in ["float64", "float32"]
-                            if dtyp_grfSig == "float64":
-                                grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float64)
-                            elif dtyp_grfSig == "float32":
-                                grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float32)
-                            grfSig = grfSig.to(dtype=torch.bfloat16).to(dtype=torch.float32)
+                            #dtyp_grfSig = repr(grfSig.dtype)
+                            #assert dtyp_grfSig.startswith("dtype(")
+                            #dtyp_grfSig = dtyp_grfSig[7:-2]
+                            #assert dtyp_grfSig in ["float64", "float32"]
+                            #if dtyp_grfSig == "float64":
+                            #    grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float64)
+                            #elif dtyp_grfSig == "float32":
+                            #    grfSig = torch.frombuffer(grfSig.tobytes(), dtype=torch.float32)
+                            #grfSig = grfSig.to(dtype=torch.bfloat16).to(dtype=torch.float32)
                             # conversion au format bfloat16, et reconversion au format float32 (pour gérer l’arrondi.)
-                            bufgrfSig = grfSig.numpy().tobytes()
-                            lenBuf = len(bufgrfSig)
-                            assert lenBuf%2 == 0
-                            bufgrfSig = b"".join(bufgrfSig[i:i+2] for i in range(2, lenBuf, 4))
+                            #bufgrfSig = grfSig.numpy().tobytes()
+                            #lenBuf = len(bufgrfSig)
+                            #assert lenBuf%2 == 0
+                            #bufgrfSig = b"".join(bufgrfSig[i:i+2] for i in range(2, lenBuf, 4))
                             # conversion au format bfloat16 "à la main" par troncature.
+
+                            grfSig = torch.as_tensor(grfSig).to(dtype=torch.bfloat16)
+                            # Conversion du tableau numpy en un tenseur de brainfloats
+                            grfSig = grfSig.view(dtype=torch.int16).numpy()
+                            # On "caste" point à point les brainfloats en entier à 16 bits, pour refaire un tableau numpy
+
+                            
                             if nb_graphes == 0:
                                 #Écrire la dimension des embeddings
                                 FF.write(b"%d"%dimension + b"\n")
@@ -544,7 +548,9 @@ class AligDataset(Dataset):
                             offsets.append(FF.tell())    
 
                             FF.write(struct.pack("l", nbtokens))
-                            FF.write(bufgrfSig)
+                            #FF.write(bufgrfSig)
+                             
+                            FF.write(grfSig.reshape(-1).tobytes())
 
                             deux, sh = edge_idx.shape
                             assert deux == 2
@@ -554,8 +560,7 @@ class AligDataset(Dataset):
                             edge_idx = edge_idx[:,:sh]
                             FF.write(struct.pack("l", sh))
 
-                            octets = edge_idx.reshape(-1).tobytes()
-                            FF.write(octets)
+                            FF.write(edge_idx.reshape(-1).tobytes())
 
                             FF.write(roles.tobytes())
 
@@ -595,10 +600,6 @@ class AligDataset(Dataset):
             ligne = self.FileHandle.readline().decode("ascii").strip()
             self.dimension = int(ligne)
 
-            #ligne = self.FileHandle.readline().decode("ascii").strip()
-            #assert ligne.startswith("dtype(")
-            #self.dtyp_grfSig = eval(ligne)
-
             ligne = self.FileHandle.readline().decode("ascii").strip()
             assert ligne.startswith("dtype(")
             self.dtyp_edge_idx = eval(ligne)
@@ -606,10 +607,6 @@ class AligDataset(Dataset):
             ligne = self.FileHandle.readline().decode("ascii").strip()
             assert ligne.startswith("dtype(")
             self.dtyp_roles = eval(ligne)
-
-            #ligne = self.FileHandle.readline().decode("ascii").strip()
-            #assert ligne.startswith("dtype(")
-            #self.dtyp_bools = eval(ligne)
 
             self.sizeL = len(struct.pack("l", 0))
         
@@ -628,24 +625,31 @@ class AligDataset(Dataset):
         Nadj = nbtokens * (nbtokens-1) // 2
         
 
-        buf = self.FileHandle.read(Nadj*self.dimension*2*2)
-        grfSig = np.frombuffer(buf, dtype=np.dtype("V2"))
+        #buf = self.FileHandle.read(Nadj*self.dimension*2*2)
+        #grfSig = np.frombuffer(buf, dtype=np.dtype("V2"))
+        cnt = Nadj * self.dimension * 2
+        grfSig = np.fromfile(self.FileHandle, dtype="int16", count=cnt).reshape((Nadj, self.dimension, 2))
 
         EEE = self.FileHandle.read(self.sizeL)
         (E1,) = struct.unpack("l", EEE)
         assert E1 == Nadj * (nbtokens -2)
 
-        buf = self.FileHandle.read(2*E1*(self.dtyp_edge_idx.itemsize))
-        edge_idx = np.frombuffer(buf, dtype=self.dtyp_edge_idx).reshape((2,E1))
+        #buf = self.FileHandle.read(2*E1*(self.dtyp_edge_idx.itemsize))
+        #edge_idx = np.frombuffer(buf, dtype=self.dtyp_edge_idx).reshape((2,E1))
+        cnt = 2*E1
+        edge_idx = np.fromfile(self.FileHandle, dtype=self.dtyp_edge_idx, count=cnt).reshape((2,E1))
         edge_idx = np.concatenate((edge_idx, edge_idx[(1,0),:]), axis=1)
 
-        buf = self.FileHandle.read(Nadj*(self.dtyp_roles.itemsize))
-        roles = np.frombuffer(buf, dtype=self.dtyp_roles)
+        #buf = self.FileHandle.read(Nadj*(self.dtyp_roles.itemsize))
+        #roles = np.frombuffer(buf, dtype=self.dtyp_roles)
+        roles = np.fromfile(self.FileHandle, dtype=self.dtyp_roles, count=Nadj)
 
-        buf = self.FileHandle.read(Nadj*(np.dtype("uint8").itemsize))
-        bools = np.frombuffer(buf, dtype="uint8")
+        #buf = self.FileHandle.read(Nadj*(np.dtype("uint8").itemsize))
+        #bools = np.frombuffer(buf, dtype="uint8")
+        bools = np.fromfile(self.FileHandle, dtype="uint8", count=Nadj)
 
-        grfSig = torch.frombuffer(grfSig, dtype=torch.bfloat16).reshape(Nadj, self.dimension, 2)
+        #grfSig = torch.frombuffer(grfSig, dtype=torch.bfloat16).reshape(Nadj, self.dimension, 2)
+        grfSig = torch.as_tensor(grfSig).view(dtype=torch.bfloat16)
         edge_idx = torch.as_tensor(edge_idx)
         roles = torch.as_tensor(roles)
         sens = torch.as_tensor((bools & 128) > 0).to(dtype=torch.bfloat16)
@@ -707,12 +711,13 @@ def test_dataset():
     attn = TRANSFORMER_ATTENTION()
     liste_phrases = []
     total_graphes = 0
-    with open(self.nom_fichier, "r", encoding="utf-8") as F:
+    with open(nom_fichier, "r", encoding="utf-8") as F:
         for ligne in F:
             ligne = ligne.strip()
             if ligne.startswith(lbl_id):
                 total_graphes += 1
     pbar = tqdm(total = total_graphes)
+    etat = 0
     with open(nom_fichier, "r", encoding="utf-8") as F:
         depart = True
         for ligne in F:
@@ -729,25 +734,61 @@ def test_dataset():
                 if ligne.startswith('{"tokens": '):
                     jsn = json.loads(ligne)
                     liste_phrases.append(jsn)
-                pbar.update(1)
-                etat = 0
+                    pbar.update(1)
+                    etat = 0
 
     liste_roles = [k for k in dico_roles]
     ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
-    for NBESSAI in range(5):
-        print("Essai no %d"%NBESSAI)
+    #idx = 0
+    for NBESSAI in range(20):
         idx = random.randint(0, total_graphes-1)
+        #idx += 1
         jsn = liste_phrases[idx]
 
         attn.compute_attn_tensor(jsn["tokens"])
         data_attn = attn.data_att.astype(np.float32)
         nbtokens = len(jsn["tokens"])
+        print("Essai no %d (%d tokens)"%(NBESSAI, nbtokens))
         Nadj = nbtokens*(nbtokens-1)//2
         idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(
             len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
             data_attn, liste_roles
         )
         data = ds[idx]
+        RESULTATS = []
+        COMP = (data.y1 == roles)
+        RESULTATS.append(all(x for x in COMP.reshape(-1).numpy().tolist()))
+        COMP = (data.y2 == sens)
+        RESULTATS.append(all(x for x in COMP.reshape(-1).numpy().tolist()))
+        COMP = (data.msk1 == msk_roles)
+        RESULTATS.append(all(x for x in COMP.reshape(-1).numpy().tolist()))
+        COMP = (data.msk2 == msk_sens)
+        RESULTATS.append(all(x for x in COMP.reshape(-1).numpy().tolist()))
+
+        T = torch.as_tensor(grfSig)
+        err = (T - data.x)
+        err = err / T
+        err.abs_()
+        COMP = (err <= 2**(-7))
+        COMP2 = T < 2**(-126)
+        TEST = all(x for x in (COMP|COMP2).reshape(-1).numpy().tolist())
+        if not TEST:
+            maxi = max(err.reshape(-1).numpy().tolist())
+            #for ind in range(Nadj):
+            #    maxi = max(err[ind,:,:].reshape(-1).numpy().tolist())
+            #    if maxi > 2**(-7):
+            #        print(ind, maxi)
+            #        pass
+        RESULTATS.append(TEST)
+
+        RESULTAT = all(RESULTATS)
+        if RESULTAT:
+            print("    Test positif.")
+        else:
+            print("    ÉCHEC TEST !!", RESULTATS, maxi)
+
+        #print(RESU0, RESU1, RESU2, RESU3)
+
 
 
 
@@ -771,7 +812,7 @@ if __name__ == "__main__":
 
     # print(0)
     #essai_chrono()
-    test_dataset()
+    #test_dataset()
     ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
 
     print(ds[2])
