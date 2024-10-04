@@ -627,10 +627,12 @@ if __name__ == "__main__":
     # print(0)
     #essai_chrono()
     #test_dataset()
-    ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
+    ds_train = AligDataset("./dataset_train", "./AMR_et_graphes_phrases_explct_train.txt")
+    ds_dev   = AligDataset("./dataset_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
+    ds_test  = AligDataset("./dataset_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    print(ds[2])
-    print(ds.raw_paths)
-    print(ds.processed_paths)
-    print(len(ds))
+    print(ds_train[2])
+    print(ds_train.raw_paths)
+    print(ds_dev.processed_paths)
+    print(len(ds_test))
     
