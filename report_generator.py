@@ -121,29 +121,31 @@ class FILENAME():
 
 
 class HTML_IMAGE():
-    def __init__(self, docu, extension):
-        if not extension.startswith("."):
-            extension = "." + extension
+    def __init__(self, docu, format):
+        if format.startswith("."):
+            format = format[1:]
+        assert format in ["png", "svg"]
         trouve = False
         while not trouve:
-            self.basename = "PJ_%d%s"%(random.randint(1,1000000), extension)
+            self.basename = "PJ_%d.%s"%(random.randint(1,1000000), format)
             trouve = not os.path.isfile(os.path.join(docu.fullfigdirname, self.basename))
         self.fullname = os.path.join(docu.fullfigdirname, self.basename)
         self.figdirname = docu.figdirname
         self.S = docu.S
+        self.format = format
         
     def __enter__(self):
-        self.F = open(self.fullname, "wb")
-        return self
+        #self.F = open(self.fullname, "wb")
+        return self.fullname
         
         
-    def write(self, octets):
-        self.F.write(octets)
+    #def write(self, octets):
+    #    self.F.write(octets)
         
         
     def __exit__(self, typ, value, traceback):
         #print("Sortie du contexte")
-        self.F.close()
+        #self.F.close()
         source = self.figdirname + "/" + self.basename
         image = self.S.new_tag("img", src = source)
         self.S.body.append(image)
