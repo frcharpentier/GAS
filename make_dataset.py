@@ -273,11 +273,12 @@ class FusionElimination(TRF.BaseTransform):
 
 
 class AligDataset(Dataset):
-    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None):
+    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, QscalK=False):
         self.nom_fichier = nom_fichier
         self.offsets = None
         self.FileHandle = None
         self.liste_roles = [k for k in dico_roles]
+        self.QscalK = QscalK
         super().__init__(root, transform, pre_transform, pre_filter)
 
     @property
@@ -304,7 +305,7 @@ class AligDataset(Dataset):
         etat = 0
         model_name=None
         nb_graphes = 0
-        attn = TRANSFORMER_ATTENTION()
+        attn = TRANSFORMER_ATTENTION(QscalK=self.QscalK)
         pbar = tqdm(total = total_graphes)
 
         # Test du format des floats
@@ -329,7 +330,10 @@ class AligDataset(Dataset):
                         if ligne.startswith('{"tokens": '):
                             jsn = json.loads(ligne)
                             attn.compute_attn_tensor(jsn["tokens"])
-                            data_attn = attn.data_att.astype(np.float32)
+                            if self.QscalK:
+                                data_attn = attn.data_QK.astype(np.float32)
+                            else:
+                                data_attn = attn.data_att.astype(np.float32)
                             nbtokens = len(jsn["tokens"])
                             Nadj = nbtokens*(nbtokens-1)//2
                             idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_iso = faire_graphe_adjoint(
@@ -552,7 +556,7 @@ def test_dataset():
                     etat = 0
 
     liste_roles = [k for k in dico_roles]
-    ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt")
+    ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt", QscalK=False)
     #idx = 0
     for NBESSAI in range(20):
         idx = random.randint(0, total_graphes-1)
@@ -627,9 +631,9 @@ if __name__ == "__main__":
     # print(0)
     #essai_chrono()
     #test_dataset()
-    ds_train = AligDataset("./dataset_train", "./AMR_et_graphes_phrases_explct_train.txt")
-    ds_dev   = AligDataset("./dataset_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
-    ds_test  = AligDataset("./dataset_test", "./AMR_et_graphes_phrases_explct_test.txt")
+    ds_train = AligDataset("./dataset_attn_train", "./AMR_et_graphes_phrases_explct_train.txt")
+    ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
+    ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
     print(ds_train[2])
     print(ds_train.raw_paths)
