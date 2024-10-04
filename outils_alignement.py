@@ -38,6 +38,8 @@ class AMR_modif(AMR):
         self.edges = amr.edges
         self.metadata = amr.metadata
         self.variables = amr.variables
+        self.partition = None # None ou "train" ou "dev" ou "test"
+
         if hasattr(amr, "reconstruction"):
             self.reconstruction = amr.reconstruction
         if hasattr(amr, "prefix"):
@@ -329,6 +331,7 @@ def load_aligs_from_json(json_files, amrs=None, explicit=None):
     # On élimine les phrases qui viennent du Petit Prince.
     ids = [k for k in alignments]
     for k in ids:
+        #print("load_aligs_from_json : ", k)
         if not k in amrs:
             print('Failed to un-anonymize: no matching AMR:', k)
             del alignments[k]
@@ -1030,29 +1033,41 @@ def preparer_alignements(explicit_arg=False, **kwargs):
     # snt_dict sera un dico dont les clés sont des identifiants de phrases
     # et dont les valeurs sont les phrases modèle.
 
-    for sntfile in fichiers_snt:
-        snt_dict = quick_read_amr_file(sntfile, snt_dict)
-        # snt_dict est un dico dont les clés sont des identifiants de phrases
-        # et dont les valeurs sont les phrases modèle.
+    if type(fichiers_snt) is list:
+        fichiers_snt = {"_": fichiers_snt}
+    assert type(fichiers_snt) is dict
 
-    for amrfile in fichiers_amr:
-        #print(amrfile)
-        listeG = [AMR_modif(G) for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
-        # listeG est une liste remplie d’objets AMR_modif (classe dérivée de la classe AMR).
-        if explicit_arg:
-            listeG = [Explicit.expliciter_AMR(G) for G in listeG]
-        amr_liste.extend(listeG)
-        for amr in listeG:
-            amrid = amr.id
-            amr_dict[amr.id] = amr
-            
-            if not "snt" in amr.metadata:
-                if amrid in snt_dict:
-                    amr.metadata["snt"] = snt_dict[amrid]
-                else:
-                    #toks = graphe.tokens
-                    toks = amr.words
-                    amr.metadata["snt"] = " ".join(toks)
+    for partition, liste_fichiers in fichiers_snt.items():
+        for sntfile in liste_fichiers:
+            snt_dict.update(quick_read_amr_file(sntfile, snt_dict))
+            # snt_dict est un dico dont les clés sont des identifiants de phrases
+            # et dont les valeurs sont les phrases modèle.
+
+    if type(fichiers_amr) is list:
+        fichiers_amr = {"_": fichiers_amr}
+    assert type(fichiers_amr) is dict
+
+    for partition, liste_fichiers in fichiers_amr.items():
+        for amrfile in liste_fichiers:
+            #print(amrfile)
+            listeG = [AMR_modif(G) for G in amr_reader.load(amrfile, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
+            # listeG est une liste remplie d’objets AMR_modif (classe dérivée de la classe AMR).
+            if explicit_arg:
+                listeG = [Explicit.expliciter_AMR(G) for G in listeG]
+            amr_liste.extend(listeG)
+            for amr in listeG:
+                if partition in ["train", "dev", "test"]:
+                    amr.partition = partition
+                amrid = amr.id
+                amr_dict[amr.id] = amr
+                
+                if not "snt" in amr.metadata:
+                    if amrid in snt_dict:
+                        amr.metadata["snt"] = snt_dict[amrid]
+                    else:
+                        #toks = graphe.tokens
+                        toks = amr.words
+                        amr.metadata["snt"] = " ".join(toks)
 
     
 

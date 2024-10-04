@@ -280,8 +280,40 @@ def ecrire_liste(SOURCE, fichier_out = "./AMR_et_graphes_phrases_2.txt", model_n
             if limNgraphe > 0 and NgraphesEcrits > limNgraphe:
                 break
 
+@MAILLON
+def ecrire_listes_split(SOURCE, fichier_out, model_name):
+    """Création de trois fichiers finaux pour train, dev et test.
+    """
+    if fichier_out.endswith(".txt"):
+        fichier_out = fichier_out[:-4]
+    fichiers = {
+            "train": fichier_out + "_train.txt",
+            "dev":   fichier_out + "_dev.txt",
+            "test":  fichier_out + "_test.txt",
+    }
+    FFs = dict()
+    with open(fichiers["train"], "w", encoding="UTF-8") as FFtrain:
+        if model_name is not None:
+            print("# ::model_name %s"%model_name, file=FFtrain)
+        FFs["train"] = FFtrain
+        with open(fichiers["dev"], "w", encoding="UTF-8") as FFdev:
+            if model_name is not None:
+                print("# ::model_name %s"%model_name, file=FFdev)
+            FFs["dev"] = FFdev
+            with open(fichiers["test"], "w", encoding="UTF-8") as FFtest:
+                if model_name is not None:
+                    print("# ::model_name %s"%model_name, file=FFtest)
+                FFs["test"] = FFtest
+                for idSNT, amr, graphe in SOURCE:
+                    FF = FFs[amr.partition]
+                    print(amr.amr_to_string(), file=FF)
+                    jsn = graphe.jsonifier() #explicit_arg)
+                    print(jsn, file=FF)
+                    print(file=FF)
+                
 
-def construire_graphes(fichier_out="a_tej.txt"):
+
+def construire_graphes(fichier_out="a_tej.txt", split=False):
 
     explicit_arg = True
     kwargs = dict()
@@ -290,14 +322,37 @@ def construire_graphes(fichier_out="a_tej.txt"):
     kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
     kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
     kwargs["fichier_relations"] = prefixe_alignements + "relation_alignments.json"
-    amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
-    snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
+    if split:
+        amr_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
+        amr_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/dev"
+        amr_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/test"
+        
+        snt_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/training"
+        snt_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/dev"
+        snt_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/test"
+        
+    else:
+        amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+        snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
     kwargs["doublons"] = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
     # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
     # Cette liste a été établie en exécutant la fonction "dresser_liste_doublons" ci-dessus.
-    kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)] #[:1]
-    kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)] #[:1]
+    if split:
+        kwargs["fichiers_amr"] = {
+            "train" : [os.path.abspath(os.path.join(amr_rep_training, f)) for f in os.listdir(amr_rep_training)], #[:1]
+            "dev" :   [os.path.abspath(os.path.join(amr_rep_dev, f)) for f in os.listdir(amr_rep_dev)], #[:1]
+            "test" :  [os.path.abspath(os.path.join(amr_rep_test, f)) for f in os.listdir(amr_rep_test)], #[:1]
+        }
+
+        kwargs["fichiers_snt"] = {
+            "train": [os.path.abspath(os.path.join(snt_rep_training, f)) for f in os.listdir(snt_rep_training)], #[:1]
+            "dev" :  [os.path.abspath(os.path.join(snt_rep_dev, f)) for f in os.listdir(snt_rep_dev)], #[:1]
+            "test" : [os.path.abspath(os.path.join(snt_rep_test, f)) for f in os.listdir(snt_rep_test)], #[:1]
+        }
+    else:
+        kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)] #[:1]
+        kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)] #[:1]
     
 
     alignements = preparer_alignements(explicit_arg=explicit_arg, **kwargs)
@@ -306,7 +361,10 @@ def construire_graphes(fichier_out="a_tej.txt"):
     chaine = chaine >> traiter_opN()
     chaine = chaine >> iterer_graphe(nom_modele) >> filtrer_anaphore()
     chaine = chaine >> calculer_graphe_toks()
-    chaine = chaine >> ecrire_liste(fichier_out = fichier_out, model_name=nom_modele) #, explicit_arg=explicit_arg)
+    if split:
+        chaine = chaine >> ecrire_listes_split(fichier_out = fichier_out, model_name=nom_modele)
+    else:
+        chaine = chaine >> ecrire_liste(fichier_out = fichier_out, model_name=nom_modele) #, explicit_arg=explicit_arg)
     print("\n%s\n"%chaine.docu)
     chaine.enchainer()
 
@@ -503,4 +561,4 @@ def refaire_probleme():
 
 if __name__ == "__main__":
     #refaire_probleme()
-    construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt")
+    construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True)
