@@ -1,5 +1,7 @@
 from enchainables import MAILLON
 from collections import OrderedDict, defaultdict
+import json
+import re
 
 @MAILLON
 def sourcer_fichier_txt(SOURCE, nom_fichier):
@@ -33,6 +35,10 @@ def cataloguer_roles(source):
     for jsn in source:
         for s, r, c in jsn["aretes"]:
             if not r.startswith("?"):
+                if r.startswith(":>"):
+                    fnd = re.search("^(:>\D+)\(\d+\)$", r)
+                    if fnd:
+                        r = fnd[1]
                 dico[r] += 1
     return dico
 

@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import random
 import numpy as np
@@ -12,7 +13,7 @@ from transformers import utils as transfo_utils
 from minbert.model import BERT, param_translation
 from mingpt.model import GPT
 
-def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, typ=np.float64):
+def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, outputARGn=False):
     Nadj = ntokens*(ntokens-1)//2
     # Nombre de sommets du graphe adjoint du graphe complet
     degAdj = 2*ntokens - 4
@@ -42,6 +43,10 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
     msk_tkisoles = np.zeros((Nadj,), dtype="bool")
     # Masque qui doit contenir "faux" si on a une relation vers un mot partagé entre plusieurs tokens
     # ou une partie d’une conjonction.
+
+    if outputARGn:
+        argus_num = np.zeros((Nadj,), dtype=np.int8)
+        msk_ARGn  = np.zeros((Nadj,), dtype="bool")
 
     tk_libres = set(tk_utiles)
     relations_groupe = ['{and_or}', '{and}', '{groupe}', '{inter}', '{or}', '{syntax}' ] #, '{idem}']
@@ -110,6 +115,23 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                 # Le masque de token isolé reste "faux" par défaut.
             else:
                 source, r, cible = arete
+                numARGn = None
+                if r is not None:
+                    if r.startswith(":>"):
+                        fnd = re.search("^(:>\D+)\((\d+)\)$", r)
+                        if fnd:
+                            r = fnd[1]
+                            numARGn = int(fnd[2])
+                    elif r.startswith("?ARG"):
+                        numARGn = int(r[-1])
+
+                if outputARGn:
+                    if numARGn is None:
+                        msk_ARGn[idxattr] = False
+                    else:
+                        argus_num[idxattr] = numARGn
+                        msk_ARGn[idxattr] = True
+                    
                 assert source == s or source == c or source == None
                 assert cible == c or cible == s or cible == None
                 if source == None:

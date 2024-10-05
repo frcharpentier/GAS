@@ -181,6 +181,8 @@ def traiter_opN(SOURCE):
     """Transformation du graphe des AMR afin d’éliminer les relations syntaxiques du type :op_N
     """
     def decompose(rel):
+        if rel.startswith(":>"):
+            return False
         resu = re.search("^:(\D+)(\d+)$", rel)
         if resu is None:
             return False
@@ -351,8 +353,8 @@ def construire_graphes(fichier_out="a_tej.txt", split=False):
             "test" : [os.path.abspath(os.path.join(snt_rep_test, f)) for f in os.listdir(snt_rep_test)], #[:1]
         }
     else:
-        kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)] #[:1]
-        kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)] #[:1]
+        kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)][:1]
+        kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)][:1]
     
 
     alignements = preparer_alignements(explicit_arg=explicit_arg, **kwargs)
@@ -561,4 +563,5 @@ def refaire_probleme():
 
 if __name__ == "__main__":
     #refaire_probleme()
-    construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True)
+    #construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True)
+    construire_graphes(fichier_out="./a_tej_5.txt", split=False)

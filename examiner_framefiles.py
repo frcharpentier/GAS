@@ -95,26 +95,57 @@ class EXPLICITATION_AMR:
         if r.startswith(":ARG") or r.startswith("?ARG"):
             reverse = (r.endswith("-of"))
             ND = t if reverse else s
+            fff = re.search("ARG(\d+)", r[1:])
+            if fff:
+                ARGn = int(fff[1])
+                fff = True
+            else:
+                ARGn = -1
+                fff = False
             if ND in self.dicFrames:
-                fnd = re.search("ARG(\d+)", r[1:])
-                if not fnd:
-                    ARGn = r[1:]
-                    roles = self.dicFrames[ND]["special"]
-                    if ARGn in roles:
-                        fnd = True
-                    else:
-                        fnd = False
-                else:
-                    ARGn = int(fnd[1])
+                if fff:
                     roles = self.dicFrames[ND]["ARGn"]
                     lenr = len(roles)
                     if 0 <= ARGn < lenr :
                         fnd = True
+                        numeriq = True
                     else:
                         fnd = False
+                else:
+                    ARGn = r[1:]
+                    roles = self.dicFrames[ND]["special"]
+                    if ARGn in roles:
+                        fnd = True
+                        numeriq = False
+                    else:
+                        fnd = False
+
+                ######
+                # fnd = re.search("ARG(\d+)", r[1:])
+                # if not fnd:
+                #     ARGn = r[1:]
+                #     roles = self.dicFrames[ND]["special"]
+                #     if ARGn in roles:
+                #         fnd = True
+                #         numeriq = False
+                #     else:
+                #         fnd = False
+                # else:
+                #     ARGn = int(fnd[1])
+                #     roles = self.dicFrames[ND]["ARGn"]
+                #     lenr = len(roles)
+                #     if 0 <= ARGn < lenr :
+                #         fnd = True
+                #         numeriq = True
+                #     else:
+                #         fnd = False
                 if fnd:
                     role = roles[ARGn].upper()
-                    role = ":>" + role
+                    if numeriq:
+                        assert 0 <= ARGn < 10
+                        role = ":>%s(%d)"%(role, ARGn)
+                    else:
+                        role = ":>" + role
                     if reverse:
                         role += "-of"
                     return role
@@ -130,10 +161,18 @@ class EXPLICITATION_AMR:
                 except:
                     return "?" + r[1:]
                 else:
-                    if reverse:
-                        return ":mod"
+                    if fff:
+                        if reverse:
+                            return ":>THEME(%d)-of"%ARGn #3
+                        else:
+                            return ":>THEME(%d)"%ARGn    #3
+                    elif reverse:
+                        #return ":mod" #1
+                        return ":>THEME-of" #3
                     else:
-                        return ":domain"
+                        #return ":domain" #1
+                        #return ":mod-of" #2
+                        return ":>THEME"  #3
             else:
                 return "?" + r[1:]
         return r
