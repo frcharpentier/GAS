@@ -315,7 +315,7 @@ def ecrire_listes_split(SOURCE, fichier_out, model_name):
                 
 
 
-def construire_graphes(fichier_out="a_tej.txt", split=False):
+def construire_graphes(fichier_out="a_tej.txt", split=False, court=False):
 
     explicit_arg = True
     kwargs = dict()
@@ -352,9 +352,19 @@ def construire_graphes(fichier_out="a_tej.txt", split=False):
             "dev" :  [os.path.abspath(os.path.join(snt_rep_dev, f)) for f in os.listdir(snt_rep_dev)], #[:1]
             "test" : [os.path.abspath(os.path.join(snt_rep_test, f)) for f in os.listdir(snt_rep_test)], #[:1]
         }
+        if court:
+            kwargs["fichiers_amr"]["train"] = kwargs["fichiers_amr"]["train"][:1]
+            kwargs["fichiers_amr"]["dev"] = kwargs["fichiers_amr"]["dev"][:1]
+            kwargs["fichiers_amr"]["test"] = kwargs["fichiers_amr"]["test"][:1]
+            kwargs["fichiers_snt"]["train"] = kwargs["fichiers_snt"]["train"][:1]
+            kwargs["fichiers_snt"]["dev"] = kwargs["fichiers_snt"]["dev"][:1]
+            kwargs["fichiers_snt"]["test"] = kwargs["fichiers_snt"]["test"][:1]
     else:
-        kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)][:1]
-        kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)][:1]
+        kwargs["fichiers_amr"] = [os.path.abspath(os.path.join(amr_rep, f)) for f in os.listdir(amr_rep)]
+        kwargs["fichiers_snt"] = [os.path.abspath(os.path.join(snt_rep, f)) for f in os.listdir(snt_rep)]
+        if court:
+            kwargs["fichiers_amr"] = kwargs["fichiers_amr"][:1]
+            kwargs["fichiers_snt"] = kwargs["fichiers_snt"][:1]
     
 
     alignements = preparer_alignements(explicit_arg=explicit_arg, **kwargs)
@@ -564,4 +574,4 @@ def refaire_probleme():
 if __name__ == "__main__":
     #refaire_probleme()
     #construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True)
-    construire_graphes(fichier_out="./a_tej_5.txt", split=False)
+    construire_graphes(fichier_out="./a_tej.txt", split=False)
