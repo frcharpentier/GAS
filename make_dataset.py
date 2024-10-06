@@ -336,21 +336,28 @@ class AligDataset(Dataset):
                                 data_attn = attn.data_att.astype(np.float32)
                             nbtokens = len(jsn["tokens"])
                             Nadj = nbtokens*(nbtokens-1)//2
-                            idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_iso = faire_graphe_adjoint(
+                            grfAdj = faire_graphe_adjoint(
                                 len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
-                                data_attn, self.liste_roles
+                                data_attn, self.liste_roles, outputARGn=True
                             )
-                            sh1, dimension, deux = grfSig.shape
+
+                            sh1, dimension, deux = grfAdj["grfSig"].shape
                             assert deux == 2
                             #assert dim == dimension
                             assert sh1 == Nadj
-                            assert (Nadj,) == roles.shape
-                            assert (Nadj,) == sens.shape
-                            assert (Nadj,) == msk_roles.shape
-                            assert (Nadj,) == msk_sens.shape
-                            assert (Nadj,) == msk_iso.shape
+                            assert (Nadj,) == grfAdj["roles"].shape
+                            assert (Nadj,) == grfAdj["sens"].shape
+                            assert (Nadj,) == grfAdj["msk_roles"].shape
+                            assert (Nadj,) == grfAdj["msk_sens"].shape
+                            assert (Nadj,) == grfAdj["msk_iso"].shape
+                            assert (Nadj,) == grfAdj["argus_num"].shape
+                            assert (Nadj,) == grfAdj["msk_ARGn"].shape
+
+                            msk_ARGn = grfAdj["msk_ARGn"] & (grfAdj["argus_num"] < 8)
+                            # On estime qu’il n’existe pas d’arcs étiqueté par :ARG8 ou :ARGn (n>8)
+                            argus_num = grfAdj["argus_num"] * msk_ARGn
                             
-                            grfSig = torch.as_tensor(grfSig).to(dtype=torch.bfloat16)
+                            grfSig = torch.as_tensor(grfAdj["grfSig"]).to(dtype=torch.bfloat16)
                             # Conversion du tableau numpy en un tenseur de brainfloats
                             grfSig = grfSig.view(dtype=torch.int16).numpy()
                             # On "caste" point à point les brainfloats en entier à 16 bits, pour refaire un tableau numpy
@@ -361,13 +368,13 @@ class AligDataset(Dataset):
                                 FF.write(b"%d"%dimension + b"\n")
 
                                 #Écrire le dtype du tableau edge_index
-                                self.dtyp_edge_idx = edge_idx.dtype
-                                dtyp_edge_idx = repr(edge_idx.dtype).encode("ascii")
+                                self.dtyp_edge_idx = grfAdj["edge_idx"].dtype
+                                dtyp_edge_idx = repr(self.dtyp_edge_idx).encode("ascii")
                                 FF.write(dtyp_edge_idx + b"\n")
 
                                 #Écrire le dtype du tableau des roles
-                                self.dtyp_roles = roles.dtype
-                                dtyp_roles = repr(roles.dtype).encode("ascii")
+                                self.dtyp_roles = grfAdj["roles"].dtype
+                                dtyp_roles = repr(self.dtyp_roles).encode("ascii")
                                 FF.write(dtyp_roles + b"\n")
                                 
                             offsets.append(FF.tell())    
@@ -377,24 +384,29 @@ class AligDataset(Dataset):
                              
                             FF.write(grfSig.reshape(-1).tobytes())
 
-                            deux, sh = edge_idx.shape
+                            deux, sh = grfAdj["edge_idx"].shape
                             assert deux == 2
                             assert sh%2 == 0
                             assert sh == Nadj * (2*nbtokens-4)
                             sh = sh // 2
-                            edge_idx = edge_idx[:,:sh]
+                            edge_idx = grfAdj["edge_idx"][:,:sh]
                             FF.write(struct.pack("l", sh))
 
                             FF.write(edge_idx.reshape(-1).tobytes())
 
-                            FF.write(roles.tobytes())
+                            FF.write(grfAdj["roles"].tobytes())
 
                             bools = np.zeros((Nadj,), dtype="uint8")
                             ones = np.ones((Nadj,), dtype="uint8")
-                            bools = bools | ((ones * (sens == 1)) << 7)
-                            bools = bools | ((ones * msk_iso) << 2)
-                            bools = bools | ((ones * msk_roles) << 1)
-                            bools = bools | ((ones * msk_sens))
+                            bools = bools | ((ones * grfAdj["msk_sens"]))
+                            bools = bools | ((ones * grfAdj["msk_roles"]) << 1)
+                            bools = bools | ((ones * grfAdj["msk_iso"]) << 2)
+                            bools = bools | ((ones * msk_ARGn) << 3)
+                            bools = bools | ((argus_num & 0x07) << 4)
+                            bools = bools | ((ones * (grfAdj["sens"] == 1)) << 7)
+                            
+                            
+                            
 
                             FF.write(bools.tobytes())
 
@@ -473,10 +485,14 @@ class AligDataset(Dataset):
         msk_iso = torch.as_tensor((bools & 4) > 0)
         msk_roles = torch.as_tensor((bools & 2) > 0)
         msk_sens = torch.as_tensor((bools & 1) > 0)
+        msk_ARGn = torch.as_tensor((bools & 8) > 0)
+        ARGn = torch.as_tensor((bools >> 4) & 0x07).view(dtype=torch.int8)
 
         data = Data(x=grfSig, edge_index=edge_idx,
-                    y1=roles, y2=sens,
-                    msk1=msk_roles, msk2 = msk_sens, msk_iso = msk_iso)
+                    y1=roles, y2=sens, ARGn=ARGn,
+                    msk1=msk_roles, msk2 = msk_sens,
+                    msk_iso = msk_iso,
+                    msk_ARGn = msk_ARGn)
         return data
 
 
@@ -568,10 +584,16 @@ def test_dataset():
         nbtokens = len(jsn["tokens"])
         print("Essai no %d (%d tokens)"%(NBESSAI, nbtokens))
         Nadj = nbtokens*(nbtokens-1)//2
-        idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens = faire_graphe_adjoint(
+        resu = faire_graphe_adjoint(
             len(jsn["tokens"]), jsn["sommets"], jsn["aretes"],
             data_attn, liste_roles
         )
+        grfSig = resu["grfSig"]
+        roles = resu["roles"]
+        msk_roles = resu["msk_roles"]
+        sens = resu["sens"]
+        msk_sens = resu["msk_sens"]
+
         data = ds[idx]
         RESULTATS = []
         COMP = (data.y1 == roles)

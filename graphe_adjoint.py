@@ -195,7 +195,20 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                     #ii += 1
     edge_idx = np.concatenate((edge_idx, edge_idx[(1,0),:]), axis=1)
     
-    return idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_tkisoles
+    resu = {
+        "idAdj"        : idAdj,
+        "grfSig"       : grfSig,
+        "edge_idx"     : edge_idx,
+        "roles"        : roles,
+        "msk_roles"    : msk_roles,
+        "sens"         : sens,
+        "msk_sens"     : msk_sens,
+        "msk_tkisoles" : msk_tkisoles,
+    }
+    if outputARGn:
+        resu["argus_num"] = argus_num
+        resu["msk_ARGn"]  = msk_ARGn
+    return resu
         
 
 
@@ -382,8 +395,14 @@ def test3():
     attn = TRANSFORMER_ATTENTION()
     attn.select_modele("minbert://roberta-base")
     attn.compute_attn_tensor(tokens)
-    idAdj, grfSig, edge_idx, roles, sens, msk_roles, msk_sens, msk_iso = faire_graphe_adjoint(
-        len(tokens), sommets, aretes, attn.data_att, [k for k in dico_roles])
+    resu = faire_graphe_adjoint(
+        len(tokens),
+        sommets,
+        aretes,
+        attn.data_att,
+        [k for k in dico_roles]
+    )
+    
     pass
 
 if __name__ == "__main__":

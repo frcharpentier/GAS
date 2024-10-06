@@ -119,26 +119,6 @@ class EXPLICITATION_AMR:
                         numeriq = False
                     else:
                         fnd = False
-
-                ######
-                # fnd = re.search("ARG(\d+)", r[1:])
-                # if not fnd:
-                #     ARGn = r[1:]
-                #     roles = self.dicFrames[ND]["special"]
-                #     if ARGn in roles:
-                #         fnd = True
-                #         numeriq = False
-                #     else:
-                #         fnd = False
-                # else:
-                #     ARGn = int(fnd[1])
-                #     roles = self.dicFrames[ND]["ARGn"]
-                #     lenr = len(roles)
-                #     if 0 <= ARGn < lenr :
-                #         fnd = True
-                #         numeriq = True
-                #     else:
-                #         fnd = False
                 if fnd:
                     role = roles[ARGn].upper()
                     if numeriq:
