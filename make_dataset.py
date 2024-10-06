@@ -12,7 +12,7 @@ from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict
 from tqdm import tqdm
 from inspect import isfunction
-from liste_tous_roles import dico_roles
+from liste_roles import dico_roles
 import random
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
@@ -25,7 +25,8 @@ class FusionElimination(TRF.BaseTransform):
             if noms_classes is None:
                 noms_classes = [[k] for k in dico_roles]
             if effectifs is None:
-                effectifs = [v[0] for _,v in dico_roles.items()]
+                #effectifs = [v[0] for _,v in dico_roles.items()]
+                effectifs = [v for _,v in dico_roles.items()]
             if alias is None:
                 alias = [k for k in dico_roles]
 
