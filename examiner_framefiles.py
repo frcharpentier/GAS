@@ -121,6 +121,11 @@ class EXPLICITATION_AMR:
                         fnd = False
                 if fnd:
                     role = roles[ARGn].upper()
+                    if re.match("ARG\d+$", role):
+                        role = "?"+role
+                        if reverse:
+                            role += "-of"
+                        return role
                     if numeriq:
                         assert 0 <= ARGn < 10
                         role = ":>%s(%d)"%(role, ARGn)
