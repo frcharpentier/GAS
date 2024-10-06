@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 import numpy as np
 import json
@@ -14,7 +15,7 @@ from inspect import isfunction
 from liste_tous_roles import dico_roles
 import random
 
-
+os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
 
 class FusionElimination(TRF.BaseTransform):
