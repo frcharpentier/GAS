@@ -351,7 +351,7 @@ class AligDataset(Dataset):
                             assert (Nadj,) == grfAdj["sens"].shape
                             assert (Nadj,) == grfAdj["msk_roles"].shape
                             assert (Nadj,) == grfAdj["msk_sens"].shape
-                            assert (Nadj,) == grfAdj["msk_iso"].shape
+                            assert (Nadj,) == grfAdj["msk_tkisoles"].shape
                             assert (Nadj,) == grfAdj["argus_num"].shape
                             assert (Nadj,) == grfAdj["msk_ARGn"].shape
 
@@ -402,7 +402,7 @@ class AligDataset(Dataset):
                             ones = np.ones((Nadj,), dtype="uint8")
                             bools = bools | ((ones * grfAdj["msk_sens"]))
                             bools = bools | ((ones * grfAdj["msk_roles"]) << 1)
-                            bools = bools | ((ones * grfAdj["msk_iso"]) << 2)
+                            bools = bools | ((ones * grfAdj["msk_tkisoles"]) << 2)
                             bools = bools | ((ones * msk_ARGn) << 3)
                             bools = bools | ((argus_num & 0x07) << 4)
                             bools = bools | ((ones * (grfAdj["sens"] == 1)) << 7)
