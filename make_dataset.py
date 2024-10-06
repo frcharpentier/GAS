@@ -653,9 +653,13 @@ if __name__ == "__main__":
     # print(0)
     #essai_chrono()
     #test_dataset()
-    ds_train = AligDataset("./dataset_attn_train", "./AMR_et_graphes_phrases_explct_train.txt")
-    ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
-    ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
+    #ds_train = AligDataset("./dataset_attn_train", "./AMR_et_graphes_phrases_explct_train.txt")
+    #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
+    #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
+
+    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct_train.txt", QscalK=True)
+    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct_dev.txt", QscalK=True)
+    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct_test.txt", QscalK=True)
 
     print(ds_train[2])
     print(ds_train.raw_paths)
