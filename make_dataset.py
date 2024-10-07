@@ -12,7 +12,7 @@ from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict
 from tqdm import tqdm
 from inspect import isfunction
-from liste_tous_roles import cataloguer_roles, liste_roles
+from liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
 import random
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
@@ -311,25 +311,22 @@ class AligDataset(Dataset):
             fichier_train = fichier + "_train.txt"
             fichier_dev   = fichier + "_dev.txt" 
             fichier_test  = fichier + "_test.txt"
-            dico = cataloguer_roles(fichier_train)
-            dico = cataloguer_roles(fichier_dev, dico)
-            dico = cataloguer_roles(fichier_test, dico)
+            dico = cataloguer_roles(sourcer_fichier_txt(fichier_train))
+            dico = cataloguer_roles(sourcer_fichier_txt(fichier_dev), dico)
+            dico = cataloguer_roles(sourcer_fichier_txt(fichier_test), dico)
             dico_roles, dico_ARGn = liste_roles(dico=dico)
         else:
             dico_roles, dico_ARGn = liste_roles(nom_fichier=self.nom_fichier)
         self.dico_roles = dico_roles
         self.dico_ARGn = dico_ARGn
+        self.liste_roles = [k for k in self.dico_roles]
+        self.liste_ARGn = [k for k in self.dico_ARGn]
         jason = dict()
         jason["dico_roles"] = [(k,v) for k,v in dico_roles.items()]
         jason["dico_ARGn"] = [(k,v) for k,v in dico_ARGn.items()]
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
 
-    def lire_liste_roles(self):
-        with open(self.processed_paths[2], "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
-            jason = json.load(F)
-        self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
-        self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
 
     def process(self):
         idx = 0
@@ -471,6 +468,15 @@ class AligDataset(Dataset):
             with open(self.processed_paths[1], "rb") as FF: # fichier "pointeurs.bin"
                 self.offsets = np.load(FF)
 
+    def lire_liste_roles(self):
+        if self.liste_roles is None:
+            with open(self.processed_paths[2], "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
+                jason = json.load(F)
+            self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
+            self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
+            self.liste_roles = [k for k in self.dico_roles]
+            self.liste_ARGn = [k for k in self.dico_ARGn]
+
 
     def ouvrir_gros_fichier(self):
         from numpy import dtype
@@ -493,10 +499,12 @@ class AligDataset(Dataset):
 
     def len(self):
         self.ouvrir_offsets()
+        self.lire_liste_roles()
         return self.offsets.shape[0]
 
     def get(self, idx):
         self.ouvrir_offsets()
+        self.lire_liste_roles()
         self.ouvrir_gros_fichier() 
         self.FileHandle.seek(self.offsets[idx])
         
