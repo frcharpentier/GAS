@@ -12,15 +12,16 @@ from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict
 from tqdm import tqdm
 from inspect import isfunction
-from liste_roles import dico_roles
+from liste_tous_roles import cataloguer_roles, liste_roles
 import random
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
 
 class FusionElimination(TRF.BaseTransform):
-    def __init__(self, index=None, noms_classes=None, effectifs=None, alias=None):
+    def __init__(self, dico_roles=None, index=None, noms_classes=None, effectifs=None, alias=None):
         if index is None:
+            assert dico_roles is not None
             index=[i for i, _ in enumerate(dico_roles)]
             if noms_classes is None:
                 noms_classes = [[k] for k in dico_roles]
@@ -275,11 +276,21 @@ class FusionElimination(TRF.BaseTransform):
 
 
 class AligDataset(Dataset):
-    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, QscalK=False):
+    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False):
+        if not split:
+            self.split = False
+        else:
+            assert split in ["test", "dev", "train"]
+            self.split = split
+            if not nom_fichier.endswith("_%s.txt"%split):
+                if nom_fichier.endswith(".txt"):
+                    nom_fichier = nom_fichier[:-4]
+                nom_fichier += "_%s.txt"%split
         self.nom_fichier = nom_fichier
         self.offsets = None
         self.FileHandle = None
-        self.liste_roles = [k for k in dico_roles]
+        self.liste_roles = None
+        self.liste_ARGn = None
         self.QscalK = QscalK
         super().__init__(root, transform, pre_transform, pre_filter)
 
@@ -290,7 +301,35 @@ class AligDataset(Dataset):
     @property
     def processed_file_names(self):
         #return []
-        return ['gros_fichier.bin', 'pointeurs.bin']
+        return ['gros_fichier.bin', 'pointeurs.bin', 'liste_roles.json']
+
+    def ecrire_liste_roles(self):
+        if self.split:
+            suffixe = "_%s.txt"%self.split
+            assert self.nom_fichier.endswith(suffixe)
+            fichier = self.nom_fichier[:-len(suffixe)]
+            fichier_train = fichier + "_train.txt"
+            fichier_dev   = fichier + "_dev.txt" 
+            fichier_test  = fichier + "_test.txt"
+            dico = cataloguer_roles(fichier_train)
+            dico = cataloguer_roles(fichier_dev, dico)
+            dico = cataloguer_roles(fichier_test, dico)
+            dico_roles, dico_ARGn = liste_roles(dico=dico)
+        else:
+            dico_roles, dico_ARGn = liste_roles(nom_fichier=self.nom_fichier)
+        self.dico_roles = dico_roles
+        self.dico_ARGn = dico_ARGn
+        jason = dict()
+        jason["dico_roles"] = [(k,v) for k,v in dico_roles.items()]
+        jason["dico_ARGn"] = [(k,v) for k,v in dico_ARGn.items()]
+        with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
+            json.dump(jason, F)
+
+    def lire_liste_roles(self):
+        with open(self.processed_paths[2], "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
+            jason = json.load(F)
+        self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
+        self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
 
     def process(self):
         idx = 0
@@ -299,6 +338,7 @@ class AligDataset(Dataset):
         lbl_id = "# ::id "
         lbl_modname = "# ::model_name "
         total_graphes = 0
+        self.ecrire_liste_roles()
         with open(self.nom_fichier, "r", encoding="utf-8") as F:
             for ligne in F:
                 ligne = ligne.strip()
@@ -315,7 +355,7 @@ class AligDataset(Dataset):
         buf = T.to(dtype=torch.float32).numpy().tobytes()[2:4]
         assert buf == bytes([0xa7, 0x43])
 
-        with open(self.processed_paths[0], "wb") as FF:
+        with open(self.processed_paths[0], "wb") as FF: # fichier "gros_fichier.bin"
             with open(self.nom_fichier, "r", encoding="utf-8") as F:
                 depart = True
                 for ligne in F:
@@ -421,21 +461,21 @@ class AligDataset(Dataset):
                             etat  = 0
                     depart = False
         offsets = np.array(offsets, dtype = np.int64)
-        with open(self.processed_paths[1], "wb") as FF:
+        with open(self.processed_paths[1], "wb") as FF: # fichier "pointeurs.bin"
             np.save(FF, offsets)
         self.offsets = offsets
         pbar.close()
 
     def ouvrir_offsets(self):
         if self.offsets is None:
-            with open(self.processed_paths[1], "rb") as FF:
+            with open(self.processed_paths[1], "rb") as FF: # fichier "pointeurs.bin"
                 self.offsets = np.load(FF)
 
 
     def ouvrir_gros_fichier(self):
         from numpy import dtype
         if self.FileHandle is None:
-            self.FileHandle = open(self.processed_paths[0], "rb")
+            self.FileHandle = open(self.processed_paths[0], "rb") # fichier "gros_fichier.bin"
 
             ligne = self.FileHandle.readline().decode("ascii").strip()
             self.dimension = int(ligne)
@@ -573,8 +613,8 @@ def test_dataset():
                     pbar.update(1)
                     etat = 0
 
-    liste_roles = [k for k in dico_roles]
     ds = AligDataset("./icidataset", "./AMR_et_graphes_phrases_explct.txt", QscalK=False)
+    liste_roles = [k for k in ds.dico_roles]
     #idx = 0
     for NBESSAI in range(20):
         idx = random.randint(0, total_graphes-1)
@@ -659,9 +699,9 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct_train.txt", QscalK=True)
-    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct_dev.txt", QscalK=True)
-    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct_test.txt", QscalK=True)
+    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
     print(ds_train[2])
     print(ds_train.raw_paths)

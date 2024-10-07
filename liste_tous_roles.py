@@ -30,8 +30,10 @@ def sourcer_fichier_txt(SOURCE, nom_fichier):
             depart = False
 
 
-def cataloguer_roles(source):
-    dico = defaultdict(lambda: 0)
+def cataloguer_roles(source, dico=None):
+    if dico is None:
+        dico = defaultdict(lambda: 0)
+    assert isinstance(dico, defaultdict)
     for jsn in source:
         for s, r, c in jsn["aretes"]:
             if not r.startswith("?"):
@@ -44,31 +46,39 @@ def cataloguer_roles(source):
                 dico[r] += 1
     return dico
 
-def liste_roles(nom_fichier):
-    chaine = sourcer_fichier_txt(nom_fichier)
-    dico = cataloguer_roles(chaine)
+def liste_roles(dico=None, nom_fichier=None, fichier_out = None):
+    if dico is None:
+        assert type(nom_fichier) is str
+        chaine = sourcer_fichier_txt(nom_fichier)
+        dico = cataloguer_roles(chaine)
+    else:
+        assert nom_fichier is None
+        assert isinstance(dico, dict)
     cles = [k for k in dico]
     classer = lambda x: x[2:].lower() if x.startswith(":>") else (x[1:].lower() if x.startswith(":") else x.lower())
     cles.sort(key = classer)
-    with open ("./liste_roles.py", "w", encoding="UTF-8") as F:
-        print("from collections import OrderedDict, defaultdict", file=F)
-        print(file=F)
-        print("#Le dico suivant a été fait en exécutant la fonction liste_roles du module liste_tous_roles.py",
-              file=F)
-        print("dico_roles = OrderedDict( [", file=F)
-        for k in cles:
-            if not re.match(":ARG\d$", k):
-                print("    (%s, %d),"%(repr(k), dico[k]), file=F)
-        print("] )", file=F)
-        print(file=F)
-        print("#Le dico suivant a été fait en exécutant la fonction liste_roles du module liste_tous_roles.py",
-              file=F)
-        print("dico_ARGn = OrderedDict( [", file=F)
-        ARGn = [k for k in cles if re.match(":ARG\d$", k)]
-        for k in ARGn:
-            print("    (%s, %d),"%(repr(k), dico[k]), file=F)
-        print("] )", file=F)
-    #print(dict(dico))
+    cles1 = [k for k in cles if not re.match(":ARG\d$", k)]
+    cles_ARGn = [k for k in cles if re.match(":ARG\d+$", k)]
+    dico_roles = OrderedDict([(k, dico[k]) for k in cles1])
+    dico_ARGn = OrderedDict([(k, dico[k]) for k in cles_ARGn])
+    if fichier_out is not None:
+        with open (fichier_out, "w", encoding="UTF-8") as F:
+            print("from collections import OrderedDict, defaultdict", file=F)
+            print(file=F)
+            print("#Le dico suivant a été fait en exécutant la fonction liste_roles du module liste_tous_roles.py",
+                file=F)
+            print("dico_roles = OrderedDict( [", file=F)
+            for k, v in cles1.items():
+                print("    (%s, %d),"%(repr(k), v), file=F)
+            print("] )", file=F)
+            print(file=F)
+            print("#Le dico suivant a été fait en exécutant la fonction liste_roles du module liste_tous_roles.py",
+                file=F)
+            print("dico_ARGn = OrderedDict( [", file=F)
+            for k, v in dico_ARGn.items():
+                print("    (%s, %d),"%(repr(k), v), file=F)
+            print("] )", file=F)
+    return dico_roles, dico_ARGn
 
 
 
