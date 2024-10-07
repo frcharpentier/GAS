@@ -45,7 +45,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
     # ou une partie d’une conjonction.
 
     if outputARGn:
-        argus_num = np.zeros((Nadj,), dtype=np.int8)
+        argus_num = np.zeros((Nadj,), dtype=np.uint8)
         msk_ARGn  = np.zeros((Nadj,), dtype="bool")
 
     tk_libres = set(tk_utiles)

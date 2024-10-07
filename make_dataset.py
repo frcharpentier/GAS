@@ -5,7 +5,8 @@ import json
 import struct
 
 import torch
-from torch_geometric.data import Dataset, download_url
+from torch.utils.data import Dataset as torchDataset
+from torch_geometric.data import Dataset as geoDataset, download_url
 from torch_geometric.data import Data
 import torch_geometric.transforms as TRF
 from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
@@ -273,9 +274,44 @@ class FusionElimination(TRF.BaseTransform):
 
 
 
+class EdgeDataset(torchDataset):
+    def __init__(self, aligDS, transform=None):
+        self.transform = transform
+        self.gros_fichier = aligDS.processed_paths[0]
+        self.fichier_pointeurs = aligDS.processed_paths[1]
+        self.fichiers_roles = aligDS.processed_paths[2]
+        rep = osp.dirname(self.gros_fichier)
+        # On écrit dans le même répertoire que le fichier aligDS.
+        # (c’est pas grave...)
+        self.fichier_edge = osp.join(rep, "edge_data.bin")
+        self.fichier_edge_labels = osp.join(rep, "edge_labels.bin")
+        if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels):
+            self.open()
+        else:
+            self.process()
+
+    def process(self, aligDS):
+        for data in tqdm(aligDS):
+            #data = Data(x=grfSig, edge_index=edge_idx,
+            #        y1=roles, y2=sens, ARGn=ARGn,
+            #        msk1=msk_roles, msk2 = msk_sens,
+            #        msk_iso = msk_iso,
+            #        msk_ARGn = msk_ARGn)
+            msk = data.msk1 & data.msk2 & data.msk_iso & data.msk_ARGn
+            idx = torch.nonzero(msk).view(-1)
+            
+
+    def open(self):
+        pass
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self, idx):
+        pass
 
 
-class AligDataset(Dataset):
+class AligDataset(geoDataset):
     def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False):
         if not split:
             self.split = False
@@ -707,12 +743,14 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    #ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
-    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    print(ds_train[2])
-    print(ds_train.raw_paths)
-    print(ds_dev.processed_paths)
-    print(len(ds_test))
+    data5 = ds_dev[5]
+
+    #print(ds_train[2])
+    #print(ds_train.raw_paths)
+    #print(ds_dev.processed_paths)
+    #print(len(ds_test))
     
