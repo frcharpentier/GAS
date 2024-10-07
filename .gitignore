@@ -2,7 +2,10 @@
 __pycache__/
 algebre_relationnelle.js
 *.svg
+*.png
+*.bak
 *.html
 *.txt
+*.pdf
 plot_subgraph.ipynb
 
