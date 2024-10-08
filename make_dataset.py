@@ -285,31 +285,78 @@ class EdgeDataset(torchDataset):
         # (c’est pas grave...)
         self.fichier_edge = osp.join(rep, "edge_data.bin")
         self.fichier_edge_labels = osp.join(rep, "edge_labels.bin")
-        if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels):
+        self.fichier_ARGn_labels = osp.join(rep, "edge_ARGn.bin")
+        self.fichier_sens = osp.join(rep, "edge_dir.bin")
+        if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels) and osp.exists(self.fichier_ARGn_labels):
             self.open()
         else:
             self.process()
 
+    def lire_liste_roles(self):
+        if self.liste_roles is None:
+            with open(self.fichiers_roles, "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
+                jason = json.load(F)
+            self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
+            self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
+            self.liste_roles = [k for k in self.dico_roles]
+            self.liste_ARGn = [k for k in self.dico_ARGn]
+            self.lisge_rolARG = self.liste_roles + self.liste_ARGn # On met les roles de type ":ARGn" à la fin.
+
     def process(self, aligDS):
-        for data in tqdm(aligDS):
-            #data = Data(x=grfSig, edge_index=edge_idx,
-            #        y1=roles, y2=sens, ARGn=ARGn,
-            #        msk1=msk_roles, msk2 = msk_sens,
-            #        msk_iso = msk_iso,
-            #        msk_ARGn = msk_ARGn)
-            msk = data.msk1 & data.msk2 & data.msk_iso & data.msk_ARGn
-            idx = torch.nonzero(msk).view(-1)
+        self.lire_liste_roles()
+        FX = open(self.fichier_edge, "wb")
+        Froles = open(self.fichier_edge_labels, "wb")
+        FARGn = open(self.fichier_ARGn_labels, "wb")
+        Fsens = open(self.fichier_sens, "wb")
+        try:
+            for data in tqdm(aligDS):
+                msk = data.msk1 & data.msk2 & data.msk_iso
+                idx = torch.nonzero(msk).view(-1)
+                X = data.x[idx].contiguous()
+                shape = X.shape
+                assert (shape[1], shape[2]) == (144,2)
+                assert X.dtype == torch.bfloat16
+                octets = X.view(dtype=torch.int16).numpy().reshape(-1).tobytes()
+                assert len(octets) == shape[0] * 144 * 2 * 2
+                FX.write(octets)
+
+                roles = data.y1[idx].contiguous() #role
+                assert roles.dtype == torch.int8
+                Froles.write(roles.numpy().reshape(-1).tobytes())
+
+                sens = data.y2[idx].contiguous() #sens
+                assert sens.dtype == torch.int8
+                Fsens.write(sens.numpy().reshape(-1).tobytes())
+
+                msk_argus = data.msk_ARGn[idx].contiguous()
+                assert msk_argus.dtype == torch.bool
+                ARGn = data.ARGn[idx] + len(self.liste_roles)
+                # décaler tous les numéros ARGn pour qu’ils prennent place à la fin de la liste des rôles normaux
+                assert ARGn.dtype == torch.int8
+                ARGn = (ARGn * msk_argus) + (roles * (~msk_argus))
+                assert ARGn.dtype == torch.int8
+                FARGn.write(ARGn.numpy().reshape(-1).tobytes())
+                
+        except:
+            raise
+        finally:
+            FX.close()
+            Froles.close()
+            FARGn.close()
+            Fsens.close()
+
+            
             
 
     def open(self):
-        pass
+        self.lire_liste_roles()
 
     def __len__(self):
         pass
 
     def __getitem__(self, idx):
         pass
-
+    
 
 class AligDataset(geoDataset):
     def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False):
@@ -744,7 +791,7 @@ if __name__ == "__main__":
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
     ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    #ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
     ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
     #data5 = ds_dev[5]
