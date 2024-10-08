@@ -278,8 +278,7 @@ class EdgeDataset(torchDataset):
     def __init__(self, aligDS, transform=None):
         self.transform = transform
         self.gros_fichier = aligDS.processed_paths[0]
-        self.fichier_pointeurs = aligDS.processed_paths[1]
-        self.fichiers_roles = aligDS.processed_paths[2]
+        self.fichier_roles = aligDS.processed_paths[2]
         rep = osp.dirname(self.gros_fichier)
         # On écrit dans le même répertoire que le fichier aligDS.
         # (c’est pas grave...)
@@ -287,20 +286,24 @@ class EdgeDataset(torchDataset):
         self.fichier_edge_labels = osp.join(rep, "edge_labels.bin")
         self.fichier_ARGn_labels = osp.join(rep, "edge_ARGn.bin")
         self.fichier_sens = osp.join(rep, "edge_dir.bin")
+        self.liste_roles = None
         if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels) and osp.exists(self.fichier_ARGn_labels):
-            self.open()
+            self.read_files()
         else:
-            self.process()
+            self.process(aligDS)
 
     def lire_liste_roles(self):
         if self.liste_roles is None:
-            with open(self.fichiers_roles, "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
+            with open(self.fichier_roles, "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
                 jason = json.load(F)
             self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
             self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             self.liste_roles = [k for k in self.dico_roles]
             self.liste_ARGn = [k for k in self.dico_ARGn]
-            self.lisge_rolARG = self.liste_roles + self.liste_ARGn # On met les roles de type ":ARGn" à la fin.
+            self.liste_rolARG = self.liste_roles + self.liste_ARGn # On met les roles de type ":ARGn" à la fin.
+            with open(self.gros_fichier, "rb") as F:
+                ligne = F.readline().decode("ascii").strip()
+            self.dimension = int(ligne)
 
     def process(self, aligDS):
         self.lire_liste_roles()
@@ -312,20 +315,24 @@ class EdgeDataset(torchDataset):
             for data in tqdm(aligDS):
                 msk = data.msk1 & data.msk2 & data.msk_iso
                 idx = torch.nonzero(msk).view(-1)
+                self.Nadj = idx.shape[0]
                 X = data.x[idx].contiguous()
                 shape = X.shape
-                assert (shape[1], shape[2]) == (144,2)
+                assert (shape[1], shape[2]) == (self.dimension,2)
                 assert X.dtype == torch.bfloat16
                 octets = X.view(dtype=torch.int16).numpy().reshape(-1).tobytes()
-                assert len(octets) == shape[0] * 144 * 2 * 2
+                assert len(octets) == shape[0] * self.dimension * 2 * 2
                 FX.write(octets)
+                self.X = X
 
                 roles = data.y1[idx].contiguous() #role
                 assert roles.dtype == torch.int8
                 Froles.write(roles.numpy().reshape(-1).tobytes())
+                self.roles = roles
 
-                sens = data.y2[idx].contiguous() #sens
-                assert sens.dtype == torch.int8
+                sens = data.y2[idx].contiguous()
+                self.sens = sens
+                sens = sens.to(dtype=torch.int8) #sens
                 Fsens.write(sens.numpy().reshape(-1).tobytes())
 
                 msk_argus = data.msk_ARGn[idx].contiguous()
@@ -336,7 +343,7 @@ class EdgeDataset(torchDataset):
                 ARGn = (ARGn * msk_argus) + (roles * (~msk_argus))
                 assert ARGn.dtype == torch.int8
                 FARGn.write(ARGn.numpy().reshape(-1).tobytes())
-                
+                self.ARGn = ARGn
         except:
             raise
         finally:
@@ -348,14 +355,35 @@ class EdgeDataset(torchDataset):
             
             
 
-    def open(self):
+    def read_files(self):
         self.lire_liste_roles()
+        with open(self.fichier_edge, "rb") as F:
+            grfSig = np.fromfile(F, dtype="int16").reshape((-1, self.dimension, 2))
+        self.X = torch.as_tensor(grfSig).view(dtype=torch.bfloat16)
+        (Nadj, dim, deux) = self.X.shape
+        assert dim == self.dimension
+        assert deux == 2
+        with open(self.fichier_edge_labels, "rb") as F:
+            self.roles = torch.as_tensor(np.fromfile(F, dtype="int8"))
+        assert self.roles.dtype == torch.int8
+        assert self.roles.shape == (Nadj,)
+        with open(self.fichier_ARGn_labels, "rb") as F:
+            self.ARGn = torch.as_tensor(np.fromfile(F, dtype="int8"))
+        assert self.ARGn.dtype == torch.int8
+        assert self.ARGn.shape == (Nadj,)
+        with open(self.fichier_sens, "rb") as F:
+            sens = torch.as_tensor(np.fromfile(F, dtype="int8"))
+        assert sens.dtype == torch.int8
+        assert sens.shape == (Nadj,)
+        self.sens = sens.to(dtype=torch.bfloat16)
+        self.Nadj = Nadj
+
 
     def __len__(self):
-        pass
+        return self.Nadj
 
     def __getitem__(self, idx):
-        pass
+        return self.X[idx], self.roles[idx], self.sens[idx], self.ARGn[idx]
     
 
 class AligDataset(geoDataset):
@@ -794,7 +822,11 @@ if __name__ == "__main__":
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
     ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    #data5 = ds_dev[5]
+    ds_edge_train = EdgeDataset(ds_train)
+    ds_edge_dev = EdgeDataset(ds_dev)
+    ds_edge_test = EdgeDataset(ds_test)
+
+    data5 = ds_dev[5]
 
     #print(ds_train[2])
     #print(ds_train.raw_paths)
