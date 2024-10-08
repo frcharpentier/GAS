@@ -287,7 +287,12 @@ class EdgeDataset(torchDataset):
         self.fichier_ARGn_labels = osp.join(rep, "edge_ARGn.bin")
         self.fichier_sens = osp.join(rep, "edge_dir.bin")
         self.liste_roles = None
+        self.debug_idSNT = aligDS.debug_idSNT
+        if self.debug_idSNT:
+            self.liste_idSNT = aligDS.liste_idSNT
         if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels) and osp.exists(self.fichier_ARGn_labels):
+            if self.debug_idSNT:
+                self.etablir_table_debug(aligDS)
             self.read_files()
         else:
             self.process(aligDS)
@@ -305,9 +310,34 @@ class EdgeDataset(torchDataset):
                 ligne = F.readline().decode("ascii").strip()
             self.dimension = int(ligne)
 
+    def etablir_table_debug(self, aligDS):
+        print("Établissement de la table de debug")
+        self.table_debug = [0]
+        NN = 0
+        for data in tqdm(aligDS):
+            msk = data.msk1 & data.msk2 & data.msk_iso
+            idx = torch.nonzero(msk).view(-1)
+            (N,) = idx.shape
+            NN += N
+            self.table_debug.append(NN)
+
+
+    def get_range_debug(self, idx):
+        if not self.debug_idSNT:
+            raise NotImplementedError
+        if type(idx) == str:
+            idx = self.liste_idSNT.index(idx)
+        return self.table_debug[idx], self.table_debug[idx+1]
+
+
+
     def process(self, aligDS):
+        print("Construction des fichiers")
         self.lire_liste_roles()
         FX = open(self.fichier_edge, "wb")
+        if self.debug_idSNT:
+            self.table_debug = [0]
+            NN = 0
         Froles = open(self.fichier_edge_labels, "wb")
         FARGn = open(self.fichier_ARGn_labels, "wb")
         Fsens = open(self.fichier_sens, "wb")
@@ -315,6 +345,10 @@ class EdgeDataset(torchDataset):
             for data in tqdm(aligDS):
                 msk = data.msk1 & data.msk2 & data.msk_iso
                 idx = torch.nonzero(msk).view(-1)
+                if self.debug_idSNT:
+                    (N,) = idx.shape
+                    NN += N
+                    self.table_debug.append(NN)
                 self.Nadj = idx.shape[0]
                 X = data.x[idx].contiguous()
                 shape = X.shape
@@ -387,7 +421,7 @@ class EdgeDataset(torchDataset):
     
 
 class AligDataset(geoDataset):
-    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False):
+    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False):
         if not split:
             self.split = False
         else:
@@ -403,6 +437,8 @@ class AligDataset(geoDataset):
         self.liste_roles = None
         self.liste_ARGn = None
         self.QscalK = QscalK
+        self.debug_idSNT = debug_idSNT
+
         super().__init__(root, transform, pre_transform, pre_filter)
 
     @property
@@ -438,6 +474,20 @@ class AligDataset(geoDataset):
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
 
+    def compter_graphes(self):
+        if self.debug_idSNT:
+            self.liste_idSNT = []
+        total_graphes = 0
+        lbl_id = "# ::id "
+        with open(self.nom_fichier, "r", encoding="utf-8") as F:
+            for ligne in F:
+                ligne = ligne.strip()
+                if ligne.startswith(lbl_id):
+                    total_graphes += 1
+                    if self.debug_idSNT:
+                        idSNT = ligne.split()[2]
+                        self.liste_idSNT.append(idSNT)
+        return total_graphes
 
     def process(self):
         idx = 0
@@ -445,13 +495,14 @@ class AligDataset(geoDataset):
         print("Entrée fonction process")
         lbl_id = "# ::id "
         lbl_modname = "# ::model_name "
-        total_graphes = 0
+        #total_graphes = 0
         self.ecrire_liste_roles()
-        with open(self.nom_fichier, "r", encoding="utf-8") as F:
-            for ligne in F:
-                ligne = ligne.strip()
-                if ligne.startswith(lbl_id):
-                    total_graphes += 1
+        #with open(self.nom_fichier, "r", encoding="utf-8") as F:
+        #    for ligne in F:
+        #        ligne = ligne.strip()
+        #        if ligne.startswith(lbl_id):
+        #            total_graphes += 1
+        total_graphes = self.compter_graphes()
         etat = 0
         model_name=None
         nb_graphes = 0
@@ -474,7 +525,7 @@ class AligDataset(geoDataset):
                     elif etat == 0:
                         if ligne.startswith(lbl_id):
                             ligne = ligne[len(lbl_id):]
-                            idSNT = ligne.split()[0]
+                            idSNT = ligne.split()[2]
                             etat = 1
                     elif etat == 1:
                         if ligne.startswith('{"tokens": '):
@@ -578,6 +629,8 @@ class AligDataset(geoDataset):
         if self.offsets is None:
             with open(self.processed_paths[1], "rb") as FF: # fichier "pointeurs.bin"
                 self.offsets = np.load(FF)
+            if self.debug_idSNT:
+                self.compter_graphes()
 
     def lire_liste_roles(self):
         if self.liste_roles is None:
@@ -818,15 +871,16 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
-    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    #ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", debug_idSNT=True)
+    #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    ds_edge_train = EdgeDataset(ds_train)
+    #ds_edge_train = EdgeDataset(ds_train)
     ds_edge_dev = EdgeDataset(ds_dev)
-    ds_edge_test = EdgeDataset(ds_test)
+    #ds_edge_test = EdgeDataset(ds_test)
 
     data5 = ds_dev[5]
+    print(data5)
 
     #print(ds_train[2])
     #print(ds_train.raw_paths)
