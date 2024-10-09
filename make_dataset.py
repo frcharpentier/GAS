@@ -34,7 +34,7 @@ class FusionElimination(TRF.BaseTransform):
             with open(nom_json, "r", encoding="UTF-8") as F:
                 jason = json.load(F)
             dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
-            #dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
+            self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             index=[i for i, _ in enumerate(dico_roles)]
             if noms_classes is None:
                 noms_classes = [[k] for k in dico_roles]
@@ -289,17 +289,14 @@ class FusionElimination(TRF.BaseTransform):
 
 
 class EdgeDataset(torchDataset):
-    def __init__(self, aligDS, transform=None):
-        self.transform = transform
+    def __init__(self, aligDS, repertoire): #, transform=None):
         self.gros_fichier = aligDS.processed_paths[0]
-        self.fichier_roles = aligDS.processed_paths[2]
-        rep = osp.dirname(self.gros_fichier)
-        # On écrit dans le même répertoire que le fichier aligDS.
-        # (c’est pas grave...)
-        self.fichier_edge = osp.join(rep, "edge_data.bin")
-        self.fichier_edge_labels = osp.join(rep, "edge_labels.bin")
-        self.fichier_ARGn_labels = osp.join(rep, "edge_ARGn.bin")
-        self.fichier_sens = osp.join(rep, "edge_dir.bin")
+        self.filtre = aligDS.filtre
+        
+        self.fichier_edge = osp.join(repertoire, "edge_data.bin")
+        self.fichier_edge_labels = osp.join(repertoire, "edge_labels.bin")
+        self.fichier_ARGn_labels = osp.join(repertoire, "edge_ARGn.bin")
+        self.fichier_sens = osp.join(repertoire, "edge_dir.bin")
         self.liste_roles = None
         self.debug_idSNT = aligDS.debug_idSNT
         if self.debug_idSNT:
@@ -312,17 +309,18 @@ class EdgeDataset(torchDataset):
             self.process(aligDS)
 
     def lire_liste_roles(self):
-        if self.liste_roles is None:
-            with open(self.fichier_roles, "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
-                jason = json.load(F)
-            self.dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
-            self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
-            self.liste_roles = [k for k in self.dico_roles]
+        if self.liste_roles is None: 
+            self.dico_ARGn = self.filtre.dico_ARGn
+            self.liste_roles = [k for k in self.filtre.alias]
             self.liste_ARGn = [k for k in self.dico_ARGn]
+            self.dico_roles = OrderedDict([(k,v) for k,v in zip(self.filtre.alias, self.filtre.effectifs)])
             self.liste_rolARG = self.liste_roles + self.liste_ARGn # On met les roles de type ":ARGn" à la fin.
+
             with open(self.gros_fichier, "rb") as F:
                 ligne = F.readline().decode("ascii").strip()
             self.dimension = int(ligne)
+
+
 
     def etablir_table_debug(self, aligDS):
         print("Établissement de la table de debug")
@@ -511,14 +509,10 @@ class AligDataset(geoDataset):
         print("Entrée fonction process")
         lbl_id = "# ::id "
         lbl_modname = "# ::model_name "
-        #total_graphes = 0
+        
         self.ecrire_liste_roles()
-        #with open(self.nom_fichier, "r", encoding="utf-8") as F:
-        #    for ligne in F:
-        #        ligne = ligne.strip()
-        #        if ligne.startswith(lbl_id):
-        #            total_graphes += 1
         total_graphes = self.compter_graphes()
+
         etat = 0
         model_name=None
         nb_graphes = 0
@@ -882,14 +876,9 @@ if __name__ == "__main__":
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", debug_idSNT=True)
     #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
+    ds_edge_dev = EdgeDataset(ds_dev, "./edges_QK_dev")
     data5 = ds_dev[5]
-    datamod = filtre3.forward(data5)
-
-    #ds_edge_train = EdgeDataset(ds_train)
-    ds_edge_dev = EdgeDataset(ds_dev)
-    #ds_edge_test = EdgeDataset(ds_test)
-
-    data5 = ds_dev[5]
+    
     print(data5)
 
     #print(ds_train[2])
