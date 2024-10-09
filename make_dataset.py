@@ -10,7 +10,7 @@ from torch_geometric.data import Dataset as geoDataset, download_url
 from torch_geometric.data import Data
 import torch_geometric.transforms as TRF
 from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 from tqdm import tqdm
 from inspect import isfunction
 from liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
@@ -20,9 +20,21 @@ os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
 
 class FusionElimination(TRF.BaseTransform):
-    def __init__(self, dico_roles=None, index=None, noms_classes=None, effectifs=None, alias=None):
+    # ef : effectif
+    # li : liste des classes associées à un numéro
+    # al : alias associé à un numéro (nom considéré comme canonique)
+    # no : numéro d’une classe
+
+    Ntup = namedtuple("Ntup", ["no", "al", "ef", "li"])
+
+    def __init__(self, nom_json=None, index=None, noms_classes=None, effectifs=None, alias=None):
         if index is None:
-            assert dico_roles is not None
+            assert nom_json is not None
+            #nom_json = osp.join(repertoire, 'processed', 'liste_roles.json')
+            with open(nom_json, "r", encoding="UTF-8") as F:
+                jason = json.load(F)
+            dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
+            #dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             index=[i for i, _ in enumerate(dico_roles)]
             if noms_classes is None:
                 noms_classes = [[k] for k in dico_roles]
@@ -36,13 +48,13 @@ class FusionElimination(TRF.BaseTransform):
         self.nb_classes = 1+max(index)
         assert all(idx in index for idx in range(self.nb_classes))
 
-        self.index = index
+        self.index = torch.tensor([0 if i < 0 else i for i in index], dtype=torch.int8)
         if any(idx < 0 for idx in index):
-            self.eliminer = True
-            self.agarder = [idx >=0 for idx in index]
+            self.eliminVF = True
+            self.agarder = torch.tensor([idx >=0 for idx in index], dtype=torch.bool)
         else:
             self.agarder = None
-            self.eliminer = False
+            self.eliminVF = False
 
         
         if noms_classes:
@@ -119,15 +131,15 @@ class FusionElimination(TRF.BaseTransform):
         effectifs = []
         if isfunction(args[0]):
             f = args[0]
-            for i, idx in enumerate(self.index):
-                if idx == -1:
+            for i, idx in enumerate(self.index.numpy()):
+                if self.eliminVF and (not self.agarder[i]):
                     index.append(-1)
                     continue
                 al = self.alias[idx]
                 ef = self.effectifs[idx]
                 li = self.noms_classes[idx]
-                dico = {"no": i, "al": al, "ef":ef, "li":li}
-                if not f(dico):
+                tup = FusionElimination.Ntup(no=i, al=al, ef=ef, li=li)
+                if not f(tup):
                     #garder
                     index.append(N)
                     alias.append(al)
@@ -139,8 +151,8 @@ class FusionElimination(TRF.BaseTransform):
                     index.append(-1)
                     
         else:
-            for i, idx in enumerate(self.index):
-                if idx == -1:
+            for i, idx in enumerate(self.index.numpy()):
+                if self.eliminVF and (not self.agarder[i]):
                     index.append(-1)
                     continue
                 al = self.alias[idx]
@@ -157,8 +169,8 @@ class FusionElimination(TRF.BaseTransform):
                     #Éliminer
                     index.append(-1)
                     
-        #return FusionElimination(self.noms_classes, index, self.effectifs, self.alias)
-        return FusionElimination(index, noms_classes, effectifs, alias)
+        
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)
 
 
     def garder(self, *args):
@@ -169,14 +181,14 @@ class FusionElimination(TRF.BaseTransform):
         effectifs = []
         if isfunction(args[0]):
             f = args[0]
-            for i, idx in enumerate(self.index):
-                if idx < 0:
+            for i, idx in enumerate(self.index.numpy()):
+                if self.eliminVF and (not self.agarder[i]):
                     index.append(-1)
                     continue
                 al = self.alias[idx]
                 ef = self.effectifs[idx]
                 li = self.noms_classes[idx]
-                if f({"no": i, "al": al, "ef":ef, "li":li}):
+                if f(FusionElimination.Ntup(no=i, al=al, ef=ef, li=li)):
                     #garder
                     index.append(N)
                     alias.append(al)
@@ -188,8 +200,8 @@ class FusionElimination(TRF.BaseTransform):
                     index.append(-1)
                     
         else:
-            for i, idx in enumerate(self.index):
-                if idx < 0:
+            for i, idx in enumerate(self.index.numpy()):
+                if self.eliminVF and (not self.agarder[i]):
                     index.append(-1)
                     continue
                 al = self.alias[idx]
@@ -206,21 +218,20 @@ class FusionElimination(TRF.BaseTransform):
                     #Éliminer
                     index.append(-1)
                     
-        #return FusionElimination(self.noms_classes, index, self.effectifs, self.alias)
-        return FusionElimination(index, noms_classes, effectifs, alias)
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)
                     
 
     def fusionner(self, *args):
         if isfunction(args[0]):
             f = args[0]
             dico0 = {}
-            for i, idx in enumerate(self.index):
-                if idx < 0:
+            for i, idx in enumerate(self.index.numpy()):
+                if self.eliminVF and (not self.agarder[i]):
                     continue
                 al = self.alias[idx]
                 ef = self.effectifs[idx]
                 li = self.noms_classes[idx]
-                truc = f({"no": i, "al": al, "ef":ef, "li":li})
+                truc = f(FusionElimination.Ntup(no=i, al=al, ef=ef, li=li))
                 if truc in dico0:
                     if al != truc:
                         dico0[truc].add(al)
@@ -239,8 +250,8 @@ class FusionElimination(TRF.BaseTransform):
         noms_classes = []
         effectifs = []
         N = 0
-        for i, idx in enumerate(self.index):
-            if idx == -1:
+        for i, idx in enumerate(self.index.numpy()):
+            if self.eliminVF and (not self.agarder[i]):
                 index.append(-1)
                 continue
             al = self.alias[idx]
@@ -262,14 +273,17 @@ class FusionElimination(TRF.BaseTransform):
                 noms_classes.append([elt for elt in self.noms_classes[idx]])
                 effectifs.append(self.effectifs[idx])
                 N += 1
-        #resu = FusionElimination(self.noms_classes, index, self.effectifs)
-        #resu.alias = [T[-1] for T in listeargus]
-        return FusionElimination(index, noms_classes, effectifs, alias)  
+        
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)  
 
     def forward(self, data):
-        data.y1 = self.index[data.y1]
-        if self.eliminer:
-            data.msk_y1 = data.msk_y1 & self.agarder[data.y1]
+        # data contient : y1=roles, y2=sens, ARGn,
+        # msk1=msk_roles, msk2 = msk_sens,
+        # msk_iso et msk_ARGn.
+        roles = data.y1.to(dtype=torch.int)
+        data.y1 = self.index[roles]
+        if self.eliminVF:
+            data.msk_y1 = data.msk_y1 & self.agarder[roles]
         return data
 
 
@@ -438,7 +452,7 @@ class AligDataset(geoDataset):
         self.liste_ARGn = None
         self.QscalK = QscalK
         self.debug_idSNT = debug_idSNT
-
+        self.filtre = transform # Éventuellement remplacé plus tard si cette valeur est None.
         super().__init__(root, transform, pre_transform, pre_filter)
 
     @property
@@ -473,6 +487,8 @@ class AligDataset(geoDataset):
         jason["dico_ARGn"] = [(k,v) for k,v in dico_ARGn.items()]
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
+        if self.transform is None:
+            self.filtre = FusionElimination(nom_json=self.processed_paths[2])
 
     def compter_graphes(self):
         if self.debug_idSNT:
@@ -640,6 +656,8 @@ class AligDataset(geoDataset):
             self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             self.liste_roles = [k for k in self.dico_roles]
             self.liste_ARGn = [k for k in self.dico_ARGn]
+            if self.transform is None:
+                self.filtre = FusionElimination(nom_json=self.processed_paths[2])
 
 
     def ouvrir_gros_fichier(self):
@@ -853,18 +871,7 @@ def test_dataset():
 
 
 if __name__ == "__main__":
-    # filtre = FusionElimination()
-    # filtre2 = filtre.garder(lambda x: x["ef"] > 1000)
-
-    # def clef(x):
-    #     if x["al"].startswith(":>"):
-    #         return ":" + x["al"][2:].lower()
-    #     else:
-    #         return x["al"].lower()
-        
-    # filtre3 = filtre2.fusionner(clef)
-
-    # print(0)
+    #print(0)
     #essai_chrono()
     #test_dataset()
     #ds_train = AligDataset("./dataset_attn_train", "./AMR_et_graphes_phrases_explct_train.txt")
@@ -874,6 +881,9 @@ if __name__ == "__main__":
     #ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", debug_idSNT=True)
     #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+
+    data5 = ds_dev[5]
+    datamod = filtre3.forward(data5)
 
     #ds_edge_train = EdgeDataset(ds_train)
     ds_edge_dev = EdgeDataset(ds_dev)
