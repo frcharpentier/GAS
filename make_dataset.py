@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+from pathlib import Path
 import numpy as np
 import json
 import struct
@@ -27,14 +28,15 @@ class FusionElimination(TRF.BaseTransform):
 
     Ntup = namedtuple("Ntup", ["no", "al", "ef", "li"])
 
-    def __init__(self, nom_json=None, index=None, noms_classes=None, effectifs=None, alias=None):
+    def __init__(self, nom_json=None, index=None, noms_classes=None, effectifs=None, alias=None, dico_ARGn=None):
         if index is None:
             assert nom_json is not None
             #nom_json = osp.join(repertoire, 'processed', 'liste_roles.json')
             with open(nom_json, "r", encoding="UTF-8") as F:
                 jason = json.load(F)
             dico_roles = OrderedDict([tuple(t) for t in jason["dico_roles"]])
-            self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
+            if dico_ARGn is None:
+                dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             index=[i for i, _ in enumerate(dico_roles)]
             if noms_classes is None:
                 noms_classes = [[k] for k in dico_roles]
@@ -69,6 +71,10 @@ class FusionElimination(TRF.BaseTransform):
             self.alias = alias
         else:
             self.alias = None
+        if dico_ARGn:
+            self.dico_ARGn = dico_ARGn
+        else:
+            self.dico_ARGn = None
             
     def __getitem__(self, clef):
         # syntaxe : machin["al#12"] : pour obtenir l’alias de la 12e classe
@@ -170,7 +176,7 @@ class FusionElimination(TRF.BaseTransform):
                     index.append(-1)
                     
         
-        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias, dico_ARGn=self.dico_ARGn)
 
 
     def garder(self, *args):
@@ -218,7 +224,7 @@ class FusionElimination(TRF.BaseTransform):
                     #Éliminer
                     index.append(-1)
                     
-        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias, dico_ARGn=self.dico_ARGn)
                     
 
     def fusionner(self, *args):
@@ -274,7 +280,7 @@ class FusionElimination(TRF.BaseTransform):
                 effectifs.append(self.effectifs[idx])
                 N += 1
         
-        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias)  
+        return FusionElimination(index=index, noms_classes=noms_classes, effectifs=effectifs, alias=alias, dico_ARGn=self.dico_ARGn)  
 
     def forward(self, data):
         # data contient : y1=roles, y2=sens, ARGn,
@@ -283,7 +289,7 @@ class FusionElimination(TRF.BaseTransform):
         roles = data.y1.to(dtype=torch.int)
         data.y1 = self.index[roles]
         if self.eliminVF:
-            data.msk_y1 = data.msk_y1 & self.agarder[roles]
+            data.msk1 = data.msk1 & self.agarder[roles]
         return data
 
 
@@ -293,6 +299,7 @@ class EdgeDataset(torchDataset):
         self.gros_fichier = aligDS.processed_paths[0]
         self.filtre = aligDS.filtre
         
+        Path(repertoire).mkdir(parents=True, exist_ok=True)
         self.fichier_edge = osp.join(repertoire, "edge_data.bin")
         self.fichier_edge_labels = osp.join(repertoire, "edge_labels.bin")
         self.fichier_ARGn_labels = osp.join(repertoire, "edge_ARGn.bin")
@@ -307,6 +314,7 @@ class EdgeDataset(torchDataset):
             self.read_files()
         else:
             self.process(aligDS)
+            self.read_files()
 
     def lire_liste_roles(self):
         if self.liste_roles is None: 
@@ -357,11 +365,12 @@ class EdgeDataset(torchDataset):
             for data in tqdm(aligDS):
                 msk = data.msk1 & data.msk2 & data.msk_iso
                 idx = torch.nonzero(msk).view(-1)
+                (N,) = idx.shape
                 if self.debug_idSNT:
-                    (N,) = idx.shape
                     NN += N
                     self.table_debug.append(NN)
-                self.Nadj = idx.shape[0]
+                if N == 0:
+                    continue
                 X = data.x[idx].contiguous()
                 shape = X.shape
                 assert (shape[1], shape[2]) == (self.dimension,2)
@@ -369,15 +378,15 @@ class EdgeDataset(torchDataset):
                 octets = X.view(dtype=torch.int16).numpy().reshape(-1).tobytes()
                 assert len(octets) == shape[0] * self.dimension * 2 * 2
                 FX.write(octets)
-                self.X = X
+                #self.X = X
 
                 roles = data.y1[idx].contiguous() #role
                 assert roles.dtype == torch.int8
                 Froles.write(roles.numpy().reshape(-1).tobytes())
-                self.roles = roles
+                #self.roles = roles
 
                 sens = data.y2[idx].contiguous()
-                self.sens = sens
+                #self.sens = sens
                 sens = sens.to(dtype=torch.int8) #sens
                 Fsens.write(sens.numpy().reshape(-1).tobytes())
 
@@ -389,7 +398,7 @@ class EdgeDataset(torchDataset):
                 ARGn = (ARGn * msk_argus) + (roles * (~msk_argus))
                 assert ARGn.dtype == torch.int8
                 FARGn.write(ARGn.numpy().reshape(-1).tobytes())
-                self.ARGn = ARGn
+                #self.ARGn = ARGn
         except:
             raise
         finally:
@@ -430,7 +439,42 @@ class EdgeDataset(torchDataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.roles[idx], self.sens[idx], self.ARGn[idx]
+
+    def redresser_X(self, direction):
+        # Direction est un tenseur qui ne contient que des zéros et des uns.
+        if not direction.dtype == torch.long:
+            direction = direction.to(dtype = torch.long)
+        indices = torch.column_stack((direction, 1-direction)).view(-1,1,2)
+        #assert all(indices[i, 0, 0] == T[i] for i in range(self.Nadj))
+        #assert all(indices[i, 0, 1] == 1-T[i] for i in range(self.Nadj))
+        X = torch.take_along_dim(self.X, indices, dim=2).transpose(1,2).reshape(-1, 2*self.dimension)
+        if False and self.debug_idSNT:
+            print("Vérification de la permutation de X :")
+            for i in tqdm(range(self.Nadj)):
+                d = direction[i]
+                if d == 0:
+                    assert all(X[i,k].item() == self.X[i,k,0].item() for k in range(self.dimension))
+                    assert all(X[i,k + self.dimension].item() == self.X[i,k,1].item() for k in range(self.dimension))
+                else:
+                    assert all(X[i,k].item() == self.X[i,k,1].item() for k in range(self.dimension))
+                    assert all(X[i,k + self.dimension].item() == self.X[i,k,0].item() for k in range(self.dimension))
+            print("Vérification terminée") 
+        self.X = X.contiguous()
     
+
+class EdgeDatasetMono(EdgeDataset):
+    def __init__(self, aligDS, repertoire):
+        super().__init__(aligDS, repertoire)
+        self.redresser_X(self.sens)
+        
+class EdgeDatasetRdmDir(EdgeDataset):
+    def __init__(self, aligDS, repertoire):
+        super().__init__(aligDS, repertoire)
+        self.permutation_aleatoire(self)
+
+    def permutation_aleatoire(self):
+        self.redresser_X(torch.randint(0,2,(self.Nadj,), dtype=torch.long))
+
 
 class AligDataset(geoDataset):
     def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False):
@@ -452,6 +496,9 @@ class AligDataset(geoDataset):
         self.debug_idSNT = debug_idSNT
         self.filtre = transform # Éventuellement remplacé plus tard si cette valeur est None.
         super().__init__(root, transform, pre_transform, pre_filter)
+        if self.transform is None:
+            self.filtre = FusionElimination(nom_json=self.processed_paths[2])
+
 
     @property
     def raw_file_names(self):
@@ -485,9 +532,7 @@ class AligDataset(geoDataset):
         jason["dico_ARGn"] = [(k,v) for k,v in dico_ARGn.items()]
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
-        if self.transform is None:
-            self.filtre = FusionElimination(nom_json=self.processed_paths[2])
-
+        
     def compter_graphes(self):
         if self.debug_idSNT:
             self.liste_idSNT = []
@@ -650,8 +695,7 @@ class AligDataset(geoDataset):
             self.dico_ARGn = OrderedDict([tuple(t) for t in jason["dico_ARGn"]])
             self.liste_roles = [k for k in self.dico_roles]
             self.liste_ARGn = [k for k in self.dico_ARGn]
-            if self.transform is None:
-                self.filtre = FusionElimination(nom_json=self.processed_paths[2])
+            
 
 
     def ouvrir_gros_fichier(self):
@@ -876,8 +920,16 @@ if __name__ == "__main__":
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", debug_idSNT=True)
     #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    ds_edge_dev = EdgeDataset(ds_dev, "./edges_QK_dev")
+    dsed0 = EdgeDataset(ds_dev, "./edges_QK_dev")
+    
+    filtre0 = ds_dev.filtre
+    filtre1 = filtre0.eliminer(lambda x: x.al.startswith(":prep-"))
+    filtre1 = filtre1.eliminer(":beneficiary")
+    ds_dev1 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", transform=filtre1, debug_idSNT=True)
     data5 = ds_dev[5]
+    data777 = ds_dev1[777]
+    dsed1 = EdgeDataset(ds_dev1, "./edges_f_QK_dev")
+    dsmono1 = EdgeDatasetMono(ds_dev1, "./edges_f_QK_dev")
     
     print(data5)
 
