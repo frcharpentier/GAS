@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import seaborn as sbn
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
 import numpy as np
+from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
+
 
 
 def plot_confusion_matrix(true_labels, pred_labels, label_names, imgfile=None):
@@ -42,6 +44,8 @@ def plot_confusion_matrix(true_labels, pred_labels, label_names, imgfile=None):
             fig.savefig(imgfile, format=imgfile.format)
     plt.close()
     return confusion
+
+
 
 def batch_LM():
     nom_rapport="Rapport_modèle_linéaire.html"

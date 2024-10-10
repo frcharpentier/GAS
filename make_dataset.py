@@ -315,6 +315,7 @@ class EdgeDataset(torchDataset):
         else:
             self.process(aligDS)
             self.read_files()
+        self.calc_freq()
 
     def lire_liste_roles(self):
         if self.liste_roles is None: 
@@ -327,6 +328,24 @@ class EdgeDataset(torchDataset):
             with open(self.gros_fichier, "rb") as F:
                 ligne = F.readline().decode("ascii").strip()
             self.dimension = int(ligne)
+
+    def calc_freq(self):
+        assert self.roles.shape == (self.Nadj,)
+        uns = torch.ones((self.Nadj,), dtype=torch.int)
+        cumRoles = torch.zeros((len(self.liste_roles),), dtype=torch.int)
+        cumRoles.scatter_add_(0, self.roles, uns)
+
+        assert self.roles.shape == (self.Nadj,)
+        cumARGn = torch.zeros((len(self.liste_rolARG),), dtype=torch.int)
+        cumARGn.scatter_add_(0, self.liste_rolARG, uns)
+
+        assert self.roles.shape == (self.Nadj,)
+        cumSens = torch.tensor([0, 0], dtype=torch.int)
+        cumSens.scatter_add_(0, self.sens, uns)
+
+        self.freqRoles = cumRoles / self.Nadj
+        self.freqARGn  = cumARGn / self.Nadj
+        self.freqSens  = cumSens / self.Nadj 
 
 
 
