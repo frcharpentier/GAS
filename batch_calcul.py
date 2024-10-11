@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sbn
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
 import numpy as np
+from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
 
 
@@ -67,7 +68,29 @@ def batch_LM():
         with R.new_img("svg") as IMG:
             plot_confusion_matrix(truth, pred, labels, IMG)
 
+def pour_fusion(C, liste):
+    if C.startswith(":") and C[1] != ">":
+        CC = ":>" + C[1:].upper()
+        if CC in liste:
+            return CC
+    return C
+
+def filtrer_dataset():
+    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    noms_classes = [k for k in ds_train.filtre.alias]
+    filtre = ds_train.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    print(len(filtre.alias))
+    ds_train =  AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre, QscalK=True, split="train")
+    dsed_tr = EdgeDatasetMono(ds_train, "./edges_f_QK_train")
+    print(len(dsed_tr))
+                              
+
 
 
 if __name__ == "__main__" :
-    batch_LM()
+    filtrer_dataset()

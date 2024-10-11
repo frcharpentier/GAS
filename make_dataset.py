@@ -135,6 +135,7 @@ class FusionElimination(TRF.BaseTransform):
         alias = []
         noms_classes = []
         effectifs = []
+        djvus = dict()
         if isfunction(args[0]):
             f = args[0]
             for i, idx in enumerate(self.index.numpy()):
@@ -147,11 +148,15 @@ class FusionElimination(TRF.BaseTransform):
                 tup = FusionElimination.Ntup(no=i, al=al, ef=ef, li=li)
                 if not f(tup):
                     #garder
-                    index.append(N)
-                    alias.append(al)
-                    noms_classes.append(li)
-                    effectifs.append(ef)
-                    N += 1
+                    if not idx in djvus:
+                        djvus[idx] = N
+                        index.append(N)
+                        alias.append(al)
+                        noms_classes.append(li)
+                        effectifs.append(ef)
+                        N += 1
+                    else:
+                        index.append(djvus[idx])
                 else:
                     #Éliminer
                     index.append(-1)
@@ -185,6 +190,7 @@ class FusionElimination(TRF.BaseTransform):
         alias = []
         noms_classes = []
         effectifs = []
+        djvus = dict()
         if isfunction(args[0]):
             f = args[0]
             for i, idx in enumerate(self.index.numpy()):
@@ -196,11 +202,14 @@ class FusionElimination(TRF.BaseTransform):
                 li = self.noms_classes[idx]
                 if f(FusionElimination.Ntup(no=i, al=al, ef=ef, li=li)):
                     #garder
-                    index.append(N)
-                    alias.append(al)
-                    noms_classes.append(li)
-                    effectifs.append(ef)
-                    N += 1
+                    if not idx in djvus:
+                        index.append(N)
+                        alias.append(al)
+                        noms_classes.append(li)
+                        effectifs.append(ef)
+                        N += 1
+                    else:
+                        index.append(djvus[idx])
                 else:
                     #Éliminer
                     index.append(-1)
@@ -215,11 +224,14 @@ class FusionElimination(TRF.BaseTransform):
                 li = self.noms_classes[idx]
                 if al in args:
                     #garder
-                    index.append(N)
-                    alias.append(al)
-                    noms_classes.append(li)
-                    effectifs.append(ef)
-                    N += 1
+                    if not idx in djvus:
+                        index.append(N)
+                        alias.append(al)
+                        noms_classes.append(li)
+                        effectifs.append(ef)
+                        N += 1
+                    else:
+                        index.append(djvus[idx])
                 else:
                     #Éliminer
                     index.append(-1)
@@ -333,15 +345,18 @@ class EdgeDataset(torchDataset):
         assert self.roles.shape == (self.Nadj,)
         uns = torch.ones((self.Nadj,), dtype=torch.int)
         cumRoles = torch.zeros((len(self.liste_roles),), dtype=torch.int)
-        cumRoles.scatter_add_(0, self.roles, uns)
+        indices = self.roles.to(dtype = torch.long)
+        cumRoles.scatter_add_(0, indices, uns)
 
         assert self.roles.shape == (self.Nadj,)
         cumARGn = torch.zeros((len(self.liste_rolARG),), dtype=torch.int)
-        cumARGn.scatter_add_(0, self.liste_rolARG, uns)
+        indices = self.ARGn.to(dtype = torch.long)
+        cumARGn.scatter_add_(0, indices, uns)
 
         assert self.roles.shape == (self.Nadj,)
         cumSens = torch.tensor([0, 0], dtype=torch.int)
-        cumSens.scatter_add_(0, self.sens, uns)
+        indices = self.sens.to(dtype = torch.long)
+        cumSens.scatter_add_(0, indices, uns)
 
         self.freqRoles = cumRoles / self.Nadj
         self.freqARGn  = cumARGn / self.Nadj
