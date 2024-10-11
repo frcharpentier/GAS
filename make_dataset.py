@@ -16,6 +16,7 @@ from tqdm import tqdm
 from inspect import isfunction
 from liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
 import random
+import hashlib
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
@@ -522,6 +523,7 @@ class AligDataset(geoDataset):
                     nom_fichier = nom_fichier[:-4]
                 nom_fichier += "_%s.txt"%split
         self.nom_fichier = nom_fichier
+        self.digests = dict()
         self.offsets = None
         self.FileHandle = None
         self.liste_roles = None
@@ -541,7 +543,7 @@ class AligDataset(geoDataset):
     @property
     def processed_file_names(self):
         #return []
-        return ['gros_fichier.bin', 'pointeurs.bin', 'liste_roles.json']
+        return ['gros_fichier.bin', 'pointeurs.bin', 'liste_roles.json', 'digests.txt']
 
     def ecrire_liste_roles(self):
         if self.split:
@@ -566,6 +568,9 @@ class AligDataset(geoDataset):
         jason["dico_ARGn"] = [(k,v) for k,v in dico_ARGn.items()]
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
+        with open(self.processed_paths[2], "rb") as F: #fichier "liste_roles.json"
+            HH = hashlib.file_digest(F)
+        self.digests["liste_roles"] == HH.hexdigest()
         
     def compter_graphes(self):
         if self.debug_idSNT:
@@ -603,6 +608,7 @@ class AligDataset(geoDataset):
         buf = T.to(dtype=torch.float32).numpy().tobytes()[2:4]
         assert buf == bytes([0xa7, 0x43])
 
+        HH = hashlib.new("md5")
         with open(self.processed_paths[0], "wb") as FF: # fichier "gros_fichier.bin"
             with open(self.nom_fichier, "r", encoding="utf-8") as F:
                 depart = True
@@ -655,24 +661,34 @@ class AligDataset(geoDataset):
                             
                             if nb_graphes == 0:
                                 #Écrire la dimension des embeddings
-                                FF.write(b"%d"%dimension + b"\n")
+                                octs = b"%d"%dimension + b"\n"
+                                HH.update(octs)
+                                FF.write(octs)
 
                                 #Écrire le dtype du tableau edge_index
                                 self.dtyp_edge_idx = grfAdj["edge_idx"].dtype
                                 dtyp_edge_idx = repr(self.dtyp_edge_idx).encode("ascii")
-                                FF.write(dtyp_edge_idx + b"\n")
+                                octs = dtyp_edge_idx + b"\n"
+                                HH.update(octs)
+                                FF.write(octs)
 
                                 #Écrire le dtype du tableau des roles
                                 self.dtyp_roles = grfAdj["roles"].dtype
                                 dtyp_roles = repr(self.dtyp_roles).encode("ascii")
-                                FF.write(dtyp_roles + b"\n")
+                                octs = dtyp_roles + b"\n"
+                                HH.update(octs)
+                                FF.write(octs)
                                 
                             offsets.append(FF.tell())    
 
-                            FF.write(struct.pack("l", nbtokens))
+                            octs = struct.pack("l", nbtokens)
+                            HH.update(octs)
+                            FF.write(octs)
                             #FF.write(bufgrfSig)
                              
-                            FF.write(grfSig.reshape(-1).tobytes())
+                            octs = grfSig.reshape(-1).tobytes()
+                            HH.update(octs)
+                            FF.write(octs)
 
                             deux, sh = grfAdj["edge_idx"].shape
                             assert deux == 2
@@ -680,11 +696,17 @@ class AligDataset(geoDataset):
                             assert sh == Nadj * (2*nbtokens-4)
                             sh = sh // 2
                             edge_idx = grfAdj["edge_idx"][:,:sh]
-                            FF.write(struct.pack("l", sh))
+                            octs = struct.pack("l", sh)
+                            HH.update(octs)
+                            FF.write(octs)
 
-                            FF.write(edge_idx.reshape(-1).tobytes())
+                            octs = edge_idx.reshape(-1).tobytes()
+                            HH.update(octs)
+                            FF.write(octs)
 
-                            FF.write(grfAdj["roles"].tobytes())
+                            octs = grfAdj["roles"].tobytes()
+                            HH.update(octs)
+                            FF.write(octs)
 
                             bools = np.zeros((Nadj,), dtype="uint8")
                             ones = np.ones((Nadj,), dtype="uint8")
@@ -697,8 +719,9 @@ class AligDataset(geoDataset):
                             
                             
                             
-
-                            FF.write(bools.tobytes())
+                            octs = bools.tobytes()
+                            HH.update(octs)
+                            FF.write(octs)
 
                             
                             nb_graphes += 1
@@ -708,11 +731,29 @@ class AligDataset(geoDataset):
 
                             etat  = 0
                     depart = False
+        self.digests["gros_fichier"] = HH.hexdigest()
         offsets = np.array(offsets, dtype = np.int64)
         with open(self.processed_paths[1], "wb") as FF: # fichier "pointeurs.bin"
             np.save(FF, offsets)
+        
+        with open(self.processed_paths[1], "rb") as FF: # fichier "pointeurs.bin"
+            HH = hashlib.file_digest(FF)
+        self.digests["pointeurs"] = HH.hexdigest()
         self.offsets = offsets
+        with open(self.processed_paths[3], "w", encoding="UTF-8") as F: #fichier "digests.txt"
+            json.dump(self.digests, F)
         pbar.close()
+
+    def ouvrir_digests(self):
+        if len(self.digests) == 0:
+            with open(self.processed_paths[3], "r", encoding="UTF-8") as F: #fichier "digests.txt"
+                self.digests = json.load(F)
+            with open(self.nom_fichier, "rb") as F:
+                digest = hashlib.file_digest(F)
+            digest_source = digest.hexdigest()
+            if digest_source != self.digests["fichier_source"]:
+                self.digests = {"fichier_source": digest_source}
+                self.process()
 
     def ouvrir_offsets(self):
         if self.offsets is None:
@@ -752,11 +793,13 @@ class AligDataset(geoDataset):
         
 
     def len(self):
+        self.ouvrir_digests()
         self.ouvrir_offsets()
         self.lire_liste_roles()
         return self.offsets.shape[0]
 
     def get(self, idx):
+        self.ouvrir_digests()
         self.ouvrir_offsets()
         self.lire_liste_roles()
         self.ouvrir_gros_fichier() 
