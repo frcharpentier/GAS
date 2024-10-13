@@ -18,13 +18,57 @@ class Classif_Logist(nn.Module):
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         return self.lin(X)
     
-
 class Classif_Bil_Sym(nn.Module):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR.
 
     def __init__(self, dim, nb_classes, rang=2, freqs = None):
         super(Classif_Bil_Sym, self).__init__()
+        if freqs:
+            assert freqs.shape == (nb_classes,)
+        self.weight = nn.Parameter(torch.empty(nb_classes, rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.diag = nn.Parameter(torch.empty(nb_classes, rang))
+        nn.init.xavier_normal_(self.diag)
+        self.bias = nn.Parameter(torch.empty(nb_classes, ))
+        nn.init.normal_(self.bias)
+        self.freqs = freqs
+        self.nb_classes = nb_classes
+
+    def forward(self, X):
+        # X est un tenseur de format (b, dim, 2)
+        # On commence par le transformer en un tenseur (b, 1, dim, 2)
+        # Qui s’ajustera (par conduplication) à un tenseur (b, nb_classes, dim, 2)
+
+        X = X.unsqueeze(-3)
+        M = self.weight.unsqueeze(0)
+        # X est désormais un tenseur de format (b, 1, dim, 2)
+        # et M est un tenseur de format (1, nb_classes, rang, dim)
+        # Si on l’ajuste (par conduplication) à un tenseur (b, nb_classes, rang, dim)
+        # alors M et X sont envisageables comme des tenseurs de matrices (b, nb_classes)
+        # Si on multiple (matriciellement) point à point les éléments de ces tenseurs,
+        # on obtient un tenseur (b, nb_classes) de matrices (rang, 2),
+        # C’est-à-dire un tenseur (b, nb_classes, rang, 2).
+
+        
+        Y = torch.matmul(M, X)
+        # Y est un tenseur de format (b, nb_classes, rang, 2)
+        
+        Y0 = (Y[...,0] * self.diag.unsqueeze(0)).unsqueeze(-2)
+        # Y0 est un tenseur (b, nb_classes, 1, rang)
+        Y1 = Y[...,1].unsqueeze(-1)
+        # Y1 est un tenseur (b, nb_classes, rang, 1)
+        Y = torch.matmul(Y0,Y1)
+        # Y est un tenseur (b, nb_classes,1,1)
+        return Y.reshape(-1, self.nb_classes)
+
+
+class Classif_Bil_Sym_0(nn.Module):
+    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
+    # étiquettes = roles VerbAtlas ou étiquettes = roles AMR.
+
+    def __init__(self, dim, nb_classes, rang=2, freqs = None):
+        super(Classif_Bil_Sym_0, self).__init__()
         if freqs:
             assert freqs.shape == (nb_classes,)
         self.weight = nn.Parameter(torch.empty(nb_classes, dim, rang))
@@ -60,8 +104,6 @@ class Classif_Bil_Sym(nn.Module):
 #        A = X.triu(1)
 #        return A - (A.transpose(-1,-2))
 
-
-
 class Classif_Bil_Antisym(nn.Module):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = sens
@@ -69,6 +111,34 @@ class Classif_Bil_Antisym(nn.Module):
     def __init__(self, dim, rang=2, freqs = None):
         # On n’a que deux classes, a priori.
         super(Classif_Bil_Antisym, self).__init__()
+        if freqs:
+            assert freqs.shape == (2,)
+        self.weight = nn.Parameter(torch.empty(rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.antisym = nn.Parameter(torch.empty(rang,rang))
+        nn.init.xavier_normal_(self.antisym)
+        self.freqs = freqs
+
+    def forward(self, X):
+        # X : (b, dim, 2)
+        # w_unsq : (1, r, dim)
+        Y = torch.matmul(self.weight.unsqueeze(0), X)
+        # Y : (b, r, 2)
+        A = self.antisym.triu(1)
+        A = A - (A.T)
+        Y1 = Y[...,1]
+        Y1 = torch.matmul(A.unsqueeze(0), Y1.unsqueeze(-1))
+        Y0 = Y[...,0].unsqueeze(-2)
+        Y = torch.matmul(Y0, Y1)
+        return Y.reshape(-1)
+
+class Classif_Bil_Antisym_0(nn.Module):
+    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
+    # étiquettes = sens
+
+    def __init__(self, dim, rang=2, freqs = None):
+        # On n’a que deux classes, a priori.
+        super(Classif_Bil_Antisym_0, self).__init__()
         if freqs:
             assert freqs.shape == (2,)
         self.weight = nn.Parameter(torch.empty(dim, rang))
@@ -122,6 +192,7 @@ def test_sym_antisym():
     X = torch.randn((batch, dim, 2))
     print("Test symétrique :")
     modele = Classif_Bil_Sym(dim, nb_classes, rang)
+    #modele0 = Classif_Bil_Sym_0(dim, nb_classes, rang)
     with torch.no_grad():
         Yref = modele.forward(X)
     for _ in range(20):
@@ -129,6 +200,8 @@ def test_sym_antisym():
         Xs = changer_sens_X(X, index)
         with torch.no_grad():
             Y = modele.forward(Xs)
+            #Y0 = modele0.forward(Xs)
+        #assert torch.allclose(Y,Y0)
         assert torch.allclose(Y, Yref) #(Y == Yref).all().item()
     print("Test Symétrique OK.")
     print()
@@ -145,6 +218,7 @@ def test_sym_antisym():
         Ys = Y*signe
         assert torch.allclose(Ys, Yref) #(Y == Yref).all().item()
     print("Test Antisymétrique OK.")
+
 if __name__ == "__main__":
     test_sym_antisym()
 
