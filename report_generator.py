@@ -45,7 +45,7 @@ class HTML_TABLE():
         lgmax = max(len(v) for v in argus.values())
         for k in argus.keys():
             if k == "index":
-                liste_lbls = [str(x) for x in argus[k]]
+                liste_lbls = [str(x)[:30] for x in argus[k]]
                 if len(liste_lbls) < lgmax:
                     liste_lbls += [""]*(lgmax-len(self.index))
                 if lignes:
@@ -59,7 +59,7 @@ class HTML_TABLE():
                     self.index.append(k)
                 else:
                     self.liste_cols.append(k)
-                colonne = [str(x) for x in argus[k]]
+                colonne = [str(x)[:30] for x in argus[k]]
                 if len(colonne) < lgmax:
                     colonne += [""]*(lgmax-len(self.index))
                 cols.append(colonne)
@@ -106,46 +106,85 @@ class HTML_TABLE():
     #    colsT = [list(x) for x in zip(self.cols)
             
         
-class FILENAME():
-    def __init__(self, truc):
-        self.truc = truc
-    def __enter__(self):
-        print("entrée dans %s"%self.truc)
-        return self.truc
-
-    def __exit__(self, typ, value, traceback):
-        print("sortie du machin %s"%self.truc)
-        if typ != None:
-            return False
-        return True
-
-
-class HTML_IMAGE():
-    def __init__(self, docu, format):
-        if format.startswith("."):
-            format = format[1:]
-        assert format in ["png", "svg"]
+class NOM_FICHIER():
+    def __init__(self, docu, extension):
+        while extension.startswith("."):
+            extension = extension[1:]
+        self.format_image = extension
         trouve = False
         while not trouve:
-            self.basename = "PJ_%d.%s"%(random.randint(1,1000000), format)
+            self.basename = "PJ_%d.%s"%(random.randint(1,1000000), extension)
             trouve = not os.path.isfile(os.path.join(docu.fullfigdirname, self.basename))
         self.fullname = os.path.join(docu.fullfigdirname, self.basename)
         self.figdirname = docu.figdirname
         self.S = docu.S
-        self.format = format
         
     def __enter__(self):
-        #self.F = open(self.fullname, "wb")
-        return self.fullname
-        
-        
-    #def write(self, octets):
-    #    self.F.write(octets)
+        return self
         
         
     def __exit__(self, typ, value, traceback):
         #print("Sortie du contexte")
-        #self.F.close()
+        source = self.figdirname + "/" + self.basename
+        image = self.S.new_tag("img", src = source)
+        self.S.body.append(image)
+        self.S.body.append("\n(Image stockée dans %s)\n"%source)
+        if typ != None:
+            return False
+        return True 
+    
+
+class RESSOURCE():
+    def __init__(self, docu, extension="bin"):
+        while extension.startswith("."):
+            extension = extension[1:]
+        self.format_image = extension
+        trouve = False
+        while not trouve:
+            self.basename = "RES_%d.%s"%(random.randint(1,1000000), extension)
+            trouve = not os.path.isfile(os.path.join(docu.fullfigdirname, self.basename))
+        self.fullname = os.path.join(docu.fullfigdirname, self.basename)
+        self.figdirname = docu.figdirname
+        self.S = docu.S
+        
+        
+    def __enter__(self):
+        return self
+        
+        
+    def __exit__(self, typ, value, traceback):
+        #print("Sortie du contexte")
+        source = self.figdirname + "/" + self.basename
+        self.S.body.append("\n(Ressource stockée dans %s)\n"%source)
+        if typ != None:
+            return False
+        return True 
+
+class HTML_IMAGE():
+    def __init__(self, docu, extension):
+        while extension.startswith("."):
+            extension = extension[1:]
+        self.format_image = extension
+        trouve = False
+        while not trouve:
+            self.basename = "PJ_%d.%s"%(random.randint(1,1000000), extension)
+            trouve = not os.path.isfile(os.path.join(docu.fullfigdirname, self.basename))
+        self.fullname = os.path.join(docu.fullfigdirname, self.basename)
+        self.figdirname = docu.figdirname
+        self.S = docu.S
+        
+    def __enter__(self):
+        self.F = open(self.fullname, "wb")
+        return self
+        
+        
+    def write(self, octets):
+        self.F.write(octets)
+        
+        
+    def __exit__(self, typ, value, traceback):
+        #print("Sortie du contexte")
+        self.F.close()
         source = self.figdirname + "/" + self.basename
         image = self.S.new_tag("img", src = source)
         self.S.body.append(image)
@@ -153,6 +192,22 @@ class HTML_IMAGE():
         if typ != None:
             return False
         return True
+
+class CLASSE_SKLEARN:
+    def __init__(self, classe, report):
+        self.classe = classe
+        self.R = report
+
+    def __call__(self, **kwargs):
+        self.R.titre("Paramètres d’instanciation",2)
+        self.R.table(
+            **kwargs,
+            colonnes=False
+        )
+        self.R.flush()
+        instance = self.classe(**kwargs)
+        return instance
+
 
 class HTML_REPORT:
     def __init__(self, fichier):
@@ -179,7 +234,7 @@ class HTML_REPORT:
             html_code = F.read()
         self.S = BeautifulSoup(html_code, "html.parser")
         
-    def close(self):
+    def flush(self):
         if self.S == None:
             return
         #print("Écriture", file=sys.stderr)
@@ -194,7 +249,7 @@ class HTML_REPORT:
         
     def __exit__(self, typ, value, traceback):
         #print("Sortie du contexte")
-        self.close()
+        self.flush()
         if typ != None:
             return False
         return True
@@ -238,6 +293,15 @@ class HTML_REPORT:
     
     def line(self):
         self.hr()
+
+    def skl(self, classe):
+        return CLASSE_SKLEARN(classe, self)
+
+    def new_img_with_format(self, format):
+        return NOM_FICHIER(self, format)
+    
+    def new_ressource(self):
+        return RESSOURCE(self)
             
     def new_img(self, extension):
         return HTML_IMAGE(self, extension)
@@ -270,7 +334,6 @@ class HTML_REPORT:
                    
         self.S.body.append(tbl.rendu(self.S))
         self.S.body.append("\n")
-            
             
             
 def main():
