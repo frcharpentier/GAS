@@ -1,8 +1,10 @@
 import torch
 from torch import nn
 import torch.nn.functional as NNF
+import lightning as LTN
+import random
 
-class Classif_Logist(nn.Module):
+class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
     def __init__(self, dim, nb_classes, freqs=None):
@@ -11,12 +13,23 @@ class Classif_Logist(nn.Module):
             assert freqs.shape == (nb_classes,)
         self.lin = nn.Linear(dim, nb_classes, bias=True)
         self.freqs = freqs
+        self.pondus = freqs.max() / freqs
+        #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
+        self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # Ni softmax ni log softmax.
         # utiliser la perte "Cross entropy à partir des logits"
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         return self.lin(X)
+    
+    def training_step(self, batch, batch_idx):
+        X, y = batch
+        logits = self.forward(X)
+        perte = self.loss(logits, y)
+        self.log("perte_entrainement", perte)
+        return perte
+
     
 class Classif_Bil_Sym(nn.Module):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
@@ -33,6 +46,8 @@ class Classif_Bil_Sym(nn.Module):
         self.bias = nn.Parameter(torch.empty(nb_classes, ))
         nn.init.normal_(self.bias)
         self.freqs = freqs
+        self.pondus = freqs.max() / freqs
+        #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
         self.nb_classes = nb_classes
 
     def forward(self, X):
@@ -220,7 +235,16 @@ def test_sym_antisym():
     print("Test Antisymétrique OK.")
 
 if __name__ == "__main__":
-    test_sym_antisym()
+    torch.manual_seed(53)
+    random.seed(53)
+    #test_sym_antisym()
+    dim = 5
+    rang = 2
+    batch = 97
+    nb_classes = 3
+    modele = Classif_Bil_Sym(dim, nb_classes, rang)
+    for N, T in modele.named_parameters():
+        print(N, T)
 
 
     
