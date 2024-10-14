@@ -84,9 +84,15 @@ def filtrer_dataset():
     filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     print(len(filtre.alias))
+    dsed_tr  =  EdgeDatasetMono(ds_train, "./edges_f_QK_train")
     ds_train =  AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
                             transform=filtre, QscalK=True, split="train")
     dsed_tr = EdgeDatasetMono(ds_train, "./edges_f_QK_train")
+    ds2     = EdgeDatasetMono(ds_train, "./edges_f_QK_train")
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    dstr2   = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="train")
+    ds3     = EdgeDatasetMono(dstr2, "./edges_f_QK_train")
     print(len(dsed_tr))
                               
 

@@ -317,18 +317,50 @@ class EdgeDataset(torchDataset):
         self.fichier_edge_labels = osp.join(repertoire, "edge_labels.bin")
         self.fichier_ARGn_labels = osp.join(repertoire, "edge_ARGn.bin")
         self.fichier_sens = osp.join(repertoire, "edge_dir.bin")
+        self.fichier_digests = osp.join(repertoire, "digests.txt")
         self.liste_roles = None
         self.debug_idSNT = aligDS.debug_idSNT
         if self.debug_idSNT:
             self.liste_idSNT = aligDS.liste_idSNT
-        if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels) and osp.exists(self.fichier_ARGn_labels):
+        self.calculer_ou_lire(aligDS)
+        self.calc_freq()
+
+    @staticmethod
+    def calculer_digests_filtre(filtre):
+        HH = hashlib.new("md5")
+        HH.update(repr([k for k in filtre.alias]).encode("UTF-8"))
+        HH.update(repr([k for k in filtre.dico_ARGn]).encode("UTF-8"))
+        HH.update(repr([ef for ef in filtre.effectifs]).encode("UTF-8"))
+        return HH.hexdigest()
+
+    def calculer_ou_lire(self, aligDS):
+        calculer = True
+        HH = EdgeDataset.calculer_digests_filtre(self.filtre)
+        with open(aligDS.processed_paths[3], "r", encoding="UTF-8") as F: #fichier "digests.txt"
+            ref_digests = json.load(F)
+        if osp.exists(self.fichier_digests):
+            if osp.exists(self.fichier_edge) and osp.exists(self.fichier_edge_labels) and osp.exists(self.fichier_ARGn_labels):
+                with open(self.fichier_digests, "r", encoding="UTF-8") as F:
+                    digests = json.load(F)
+                verification = True
+                if digests["gros_fichier"] != ref_digests["gros_fichier"]:
+                    verification = False
+                if verification:
+                    if HH != digests["filtre_roles"]:
+                        verification = False
+                if verification: # vérifier les digests
+                    calculer = False
+        if calculer:
+            dico = {"gros_fichier": ref_digests["gros_fichier"],
+                    "filtre_roles": HH}
+            with open(self.fichier_digests, "w", encoding="UTF-8") as F:
+                json.dump(dico, F)
+            self.process(aligDS)
+            self.read_files()
+        else:
             if self.debug_idSNT:
                 self.etablir_table_debug(aligDS)
             self.read_files()
-        else:
-            self.process(aligDS)
-            self.read_files()
-        self.calc_freq()
 
     def lire_liste_roles(self):
         if self.liste_roles is None: 
@@ -534,6 +566,7 @@ class AligDataset(geoDataset):
         super().__init__(root, transform, pre_transform, pre_filter)
         if self.transform is None:
             self.filtre = FusionElimination(nom_json=self.processed_paths[2])
+        
 
 
     @property
@@ -569,8 +602,8 @@ class AligDataset(geoDataset):
         with open(self.processed_paths[2], "w", encoding="UTF-8") as F: #fichier "liste_roles.json"
             json.dump(jason, F)
         with open(self.processed_paths[2], "rb") as F: #fichier "liste_roles.json"
-            HH = hashlib.file_digest(F)
-        self.digests["liste_roles"] == HH.hexdigest()
+            HH = hashlib.file_digest(F, "md5")
+        self.digests["liste_roles"] = HH.hexdigest()
         
     def compter_graphes(self):
         if self.debug_idSNT:
@@ -596,6 +629,10 @@ class AligDataset(geoDataset):
         
         self.ecrire_liste_roles()
         total_graphes = self.compter_graphes()
+
+        with open(self.nom_fichier, "rb") as F:
+            digest = hashlib.file_digest(F, "md5")
+        self.digests["fichier_source"] = digest.hexdigest()
 
         etat = 0
         model_name=None
@@ -737,7 +774,7 @@ class AligDataset(geoDataset):
             np.save(FF, offsets)
         
         with open(self.processed_paths[1], "rb") as FF: # fichier "pointeurs.bin"
-            HH = hashlib.file_digest(FF)
+            HH = hashlib.file_digest(FF, "md5")
         self.digests["pointeurs"] = HH.hexdigest()
         self.offsets = offsets
         with open(self.processed_paths[3], "w", encoding="UTF-8") as F: #fichier "digests.txt"
@@ -749,7 +786,7 @@ class AligDataset(geoDataset):
             with open(self.processed_paths[3], "r", encoding="UTF-8") as F: #fichier "digests.txt"
                 self.digests = json.load(F)
             with open(self.nom_fichier, "rb") as F:
-                digest = hashlib.file_digest(F)
+                digest = hashlib.file_digest(F, "md5")
             digest_source = digest.hexdigest()
             if digest_source != self.digests["fichier_source"]:
                 self.digests = {"fichier_source": digest_source}
@@ -993,25 +1030,26 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    #ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", debug_idSNT=True)
-    #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev") #, debug_idSNT=True)
+    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    dsed0 = EdgeDataset(ds_dev, "./edges_QK_dev")
-    
-    filtre0 = ds_dev.filtre
-    filtre1 = filtre0.eliminer(lambda x: x.al.startswith(":prep-"))
-    filtre1 = filtre1.eliminer(":beneficiary")
-    ds_dev1 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", transform=filtre1, debug_idSNT=True)
-    data5 = ds_dev[5]
-    data777 = ds_dev1[777]
-    dsed1 = EdgeDataset(ds_dev1, "./edges_f_QK_dev")
-    dsmono1 = EdgeDatasetMono(ds_dev1, "./edges_f_QK_dev")
-    
-    print(data5)
+    if False:
+        dsed0 = EdgeDataset(ds_dev, "./edges_QK_dev")
+        
+        filtre0 = ds_dev.filtre
+        filtre1 = filtre0.eliminer(lambda x: x.al.startswith(":prep-"))
+        filtre1 = filtre1.eliminer(":beneficiary")
+        ds_dev1 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev", transform=filtre1, debug_idSNT=True)
+        data5 = ds_dev[5]
+        data777 = ds_dev1[777]
+        dsed1 = EdgeDataset(ds_dev1, "./edges_f_QK_dev")
+        dsmono1 = EdgeDatasetMono(ds_dev1, "./edges_f_QK_dev")
+        
+        print(data5)
 
-    #print(ds_train[2])
-    #print(ds_train.raw_paths)
-    #print(ds_dev.processed_paths)
-    #print(len(ds_test))
+        #print(ds_train[2])
+        #print(ds_train.raw_paths)
+        #print(ds_dev.processed_paths)
+        #print(len(ds_test))
     
