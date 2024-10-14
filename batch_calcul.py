@@ -101,6 +101,9 @@ def essai_train():
     DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
     train_loader = utils.data.DataLoader(DARtr)
     trainer = LTN.Trainer(max_epochs=50)
+    print("Début de l’entrainement")
+    trainer.fit()
+    print("TERMINÉ.")
                               
 
 
