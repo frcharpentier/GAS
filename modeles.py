@@ -1,8 +1,10 @@
 import torch
-from torch import nn
+from torch import optim, nn, utils
 import torch.nn.functional as NNF
 import lightning as LTN
 import random
+
+from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
@@ -29,6 +31,10 @@ class Classif_Logist(LTN.LightningModule):
         perte = self.loss(logits, y)
         self.log("perte_entrainement", perte)
         return perte
+    
+    def configure_optimizers(self):
+        optimizer = optim.SGD(self.parameters(), lr=0.01)
+        return optimizer
 
     
 class Classif_Bil_Sym(nn.Module):
@@ -233,6 +239,16 @@ def test_sym_antisym():
         Ys = Y*signe
         assert torch.allclose(Ys, Yref) #(Y == Yref).all().item()
     print("Test Antisymétrique OK.")
+
+
+def calcul():
+    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    noms_classes = [k for k in ds_train.filtre.alias]
+    filtre = ds_train.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
 
 if __name__ == "__main__":
     torch.manual_seed(53)

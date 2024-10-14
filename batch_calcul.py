@@ -1,5 +1,6 @@
 import os
 #from make_dataset import FusionElimination as FILT, AligDataset
+from torch import optim, nn, utils
 import logging
 from report_generator import HTML_REPORT, HTML_IMAGE
 import matplotlib.pyplot as plt
@@ -8,6 +9,8 @@ from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
 import numpy as np
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
+import lightning as LTN
+
 
 
 
@@ -75,28 +78,32 @@ def pour_fusion(C, liste):
             return CC
     return C
 
-def filtrer_dataset():
-    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    noms_classes = [k for k in ds_train.filtre.alias]
-    filtre = ds_train.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+def essai_train():
+    DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    noms_classes = [k for k in DGRtr.filtre.alias]
+
+    filtre = DGRtr.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
     filtre = filtre.eliminer(":>POLARITY")
     filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
     filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    print(len(filtre.alias))
-    dsed_tr  =  EdgeDatasetMono(ds_train, "./edges_f_QK_train")
-    ds_train =  AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="train")
-    dsed_tr = EdgeDatasetMono(ds_train, "./edges_f_QK_train")
-    ds2     = EdgeDatasetMono(ds_train, "./edges_f_QK_train")
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
-    dstr2   = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+
+    DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
                             transform=filtre2, QscalK=True, split="train")
-    ds3     = EdgeDatasetMono(dstr2, "./edges_f_QK_train")
-    print(len(dsed_tr))
+    DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="dev")
+    DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="test")
+
+    DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
+    train_loader = utils.data.DataLoader(DARtr)
+    trainer = LTN.Trainer(max_epochs=50)
                               
 
 
 
 if __name__ == "__main__" :
-    filtrer_dataset()
+    essai_train()
