@@ -5,6 +5,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, classification_report
+from tqdm import tqdm
 
 # Load the breast cancer dataset
 data = load_breast_cancer()
@@ -43,7 +44,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 # Train the model
 num_epochs = 200
-for epoch in range(num_epochs):
+for epoch in tqdm(range(num_epochs)):
     optimizer.zero_grad()
     outputs = model(X_train)
     loss = criterion(outputs, y_train)

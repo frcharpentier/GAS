@@ -1,39 +1,74 @@
 import torch
+import matplotlib.pyplot as plt
 from torch import optim, nn, utils
 import torch.nn.functional as NNF
 import lightning as LTN
 import random
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from torchmetrics.aggregation import CatMetric
 
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
+
+def dessin_matrice_conf(y_true, y_pred, classes):
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = classes)
+    fig, ax = plt.subplots(figsize=(20,20))
+    disp.plot(xticks_rotation="vertical", ax=ax)
+    #pour calculer disp.figure_, qui est une figure matplotlib
+    return disp.figure_
 
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
-    def __init__(self, dim, nb_classes, freqs=None):
+    def __init__(self, dim, nb_classes, noms_classes, freqs=None):
         super(Classif_Logist, self).__init__()
+        assert len(noms_classes) == nb_classes
+        self.noms_classes = noms_classes
         if freqs:
+            if type(freqs) is list:
+                freqs = torch.Tensor(freqs)
             assert freqs.shape == (nb_classes,)
         self.lin = nn.Linear(dim, nb_classes, bias=True)
         self.freqs = freqs
         self.pondus = freqs.max() / freqs
         #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
+        self.save_hyperparameters(ignore="noms_classes")
         self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # Ni softmax ni log softmax.
         # utiliser la perte "Cross entropy à partir des logits"
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
+        X = X.to(dtype=torch.float32)
         return self.lin(X)
     
     def training_step(self, batch, batch_idx):
-        X, y = batch
+        X, roles, sens, ARGn = batch
         logits = self.forward(X)
-        perte = self.loss(logits, y)
+        perte = self.loss(logits, roles.to(torch.long))
         self.log("perte_entrainement", perte)
         return perte
+
+    def on_test_start(self):
+        self.accuPred = CatMetric()
+        self.accuTrue = CatMetric()
+    
+    def test_step(self, batch, batch_idx):
+        X, roles, sens, ARGn = batch
+        logits = self.forward(X)
+        roles_pred = logits.argmax(axis=1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(roles)
+
+    def on_test_end(self):
+        roles = self.accuTrue.compute().cpu().numpy()
+        roles_pred = self.accuPred.compute().cpu().numpy()
+        fig = dessin_matrice_conf(roles, roles_pred, self.noms_classes)
+        self.logger.experiment.add_figure("Matrice de Confusion", fig, self.current_epoch)
     
     def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), lr=0.01)
+        #optimizer = optim.SGD(self.parameters(), lr=1e-5)
+        optimizer = optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     

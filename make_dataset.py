@@ -18,8 +18,6 @@ from liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
 import random
 import hashlib
 
-os.environ['CUDA_VISIBLE_DEVICES']='1,4'
-
 
 class FusionElimination(TRF.BaseTransform):
     # ef : effectif

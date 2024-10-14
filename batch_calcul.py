@@ -1,6 +1,7 @@
 import os
 #from make_dataset import FusionElimination as FILT, AligDataset
-from torch import optim, nn, utils
+from torch import optim, nn, utils, manual_seed
+import random
 import logging
 from report_generator import HTML_REPORT, HTML_IMAGE
 import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetR
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
 import lightning as LTN
 
-
+os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
 
 def plot_confusion_matrix(true_labels, pred_labels, label_names, imgfile=None):
@@ -99,14 +100,58 @@ def essai_train():
                             transform=filtre2, QscalK=True, split="test")
 
     DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
-    train_loader = utils.data.DataLoader(DARtr)
-    trainer = LTN.Trainer(max_epochs=50)
+    #DARtr = EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev")
+    DARts = EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test")
+    train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+    trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu")
+
+    dimension = 288
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    modele = Classif_Logist(dimension, nb_classes, noms_classes=filtre2.alias, freqs=freqs)
+
     print("Début de l’entrainement")
-    trainer.fit()
+    trainer.fit(model=modele, train_dataloaders=train_loader)
     print("TERMINÉ.")
+    trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
+
+def essai_val():
+    DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    noms_classes = [k for k in DGRtr.filtre.alias]
+
+    filtre = DGRtr.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="train")
+    DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="dev")
+    DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="test")
+
+    DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
+    DARts = EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test")
+    test_loader = utils.data.DataLoader(DARts)
+
+    dimension = 288
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    modele = Classif_Logist.load_from_checkpoint("./lightning_logs/version_2/checkpoints/epoch=49-step=442950.ckpt",
+                                                 dim=dimension, nb_classes=nb_classes, noms_classes=noms_classes, freqs = freqs)
+    print("OK.")
+
                               
 
 
 
 if __name__ == "__main__" :
+    manual_seed(53)
+    random.seed(53)
+    #essai_val()
     essai_train()
