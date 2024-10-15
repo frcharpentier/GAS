@@ -34,10 +34,14 @@ def pour_fusion(C, liste):
             return CC
     return C
 
-def batch_Lgstq():
-    DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
-    DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+def faire_datasets_edges(train=True, dev=True, test=True):
+    if train:
+        DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    if dev:
+        DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    if test:
+        DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+
     noms_classes = [k for k in DGRtr.filtre.alias]
 
     filtre = DGRtr.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
@@ -47,15 +51,29 @@ def batch_Lgstq():
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
-    DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+    if train:
+        DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
                             transform=filtre2, QscalK=True, split="train")
-    DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
+    if dev:
+        DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
                             transform=filtre2, QscalK=True, split="dev")
-    DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
+    if test:
+        DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
                             transform=filtre2, QscalK=True, split="test")
+        
+    datasets = ()
+    if train:
+        datasets += (EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train"),)
+    if dev:
+        datasets += (EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev"),)
+    if test:
+        datasets += (EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test"),)
+    
+    return datasets
 
-    DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
-    DARts = EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test")
+def batch_Lgstq():
+    
+    DARtr, DARts = faire_datasets_edges(train=True, dev=False, test=True)
 
     nom_rapport = "./classif_Logistiq.html"
     
@@ -98,9 +116,6 @@ def batch_Lgstq():
 
                 X_train = DARtr.X.to(dtype=torch.float32).numpy()
                 y_train = DARtr.ARGn.to(dtype=torch.long).numpy()
-                
-                X_tst = DARts.X.to(dtype=torch.float32).numpy()
-                y_tst = DARts.ARGn.to(dtype=torch.long).numpy()
                     
                 for varbls in ["sans_token_sep"]: #["sans_token_sep", "toutes"]:
                     if varbls == "toutes":
@@ -122,11 +137,16 @@ def batch_Lgstq():
                     
                     logging.info("Calcul de la régression (logistique)")
                     
+                    
                     modele.fit(X_train, y_train)
+                    
+                    
                     #mlp.partial_fit(x_tr, y_tr, np.unique(y_tr))
                     logging.info("fin du calcul.")
                     logging.info("Calcul des perfs.")
-                    predictions = modele.predict(X_tst.iloc[:, sl].to_numpy())
+                    X_tst = DARts.X.to(dtype=torch.float32).numpy()
+                    y_tst = DARts.ARGn.to(dtype=torch.long).numpy()
+                    predictions = modele.predict(X_tst)
                     accuracy = accuracy_score(y_tst, predictions)
                     bal_accuracy = balanced_accuracy_score(y_tst, predictions)
                     logging.info("Accuracy : %f, bal_accuracy : %f"%(accuracy, bal_accuracy))
@@ -140,7 +160,7 @@ def batch_Lgstq():
                     R.titre("Matrice de confusion", 2)
                     with R.new_img_with_format("svg") as IMG:
                         #confusion = plot_confusion_matrix(y_tst.to_numpy(), predictions, dic_list, IMG.fullname, numeric=False)
-                        fig = dessin_matrice_conf(y_tst, predictions, filtre2.alias)
+                        fig = dessin_matrice_conf(y_tst, predictions, DARtr.liste_rolARG)
                         fig.savefig(IMG, format="svg")
                     #R.titre("confusion au format python :", 3)
                     #R.texte(repr(confusion))
