@@ -166,7 +166,7 @@ def batch_Lgstq():
                     with R.new_img_with_format("svg") as IMG:
                         #confusion = plot_confusion_matrix(y_tst.to_numpy(), predictions, dic_list, IMG.fullname, numeric=False)
                         fig = dessin_matrice_conf(y_tst, predictions, DARtr.liste_roles)
-                        fig.savefig(IMG, format="svg")
+                        fig.savefig(IMG.fullname, format="svg")
                     #R.titre("confusion au format python :", 3)
                     #R.texte(repr(confusion))
                     #R.ligne()
