@@ -341,24 +341,24 @@ class TRANSFORMER_ATTENTION:
                 trig1t = [np.transpose(M, axes=(0,1,3,2)) for M in trig1]
                 attmodif = [A+B for A,B in zip(triangles, trig1t)]
                 dim = self.num_heads*self.num_layers
-                self.data_att = np.concatenate(tuple(att for att in attmodif), axis=3)
+                self.data_att = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in attmodif), axis=3)
                 self.data_att = self.data_att.reshape(ntokens, ntokens, dim)
                 if self.QK:
-                    self.data_QK = np.concatenate(tuple(att for att in QscalK), axis=3)
+                    self.data_QK = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in QscalK), axis=3)
                     self.data_QK = self.data_QK.reshape(ntokens, ntokens, dim)
             else:
                 dim = self.num_heads*self.num_layers
-                self.data_att = np.concatenate(tuple(att for att in softmaxQK), axis=3)
+                self.data_att = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in softmaxQK), axis=3)
                 self.data_att = self.data_att.reshape(ntokens, ntokens, dim)
                 if self.QK:
                     self.data_QK = np.concatenate(tuple(att for att in QscalK), axis=3)
                     self.data_QK = self.data_QK.reshape(ntokens, ntokens, dim)
         else: #if self.type_transfo == "ENC"
             dim = self.num_heads*self.num_layers
-            self.data_att = np.concatenate(tuple(att for att in attention), axis=3)
+            self.data_att = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in attention), axis=3)
             self.data_att = self.data_att.reshape(ntokens, ntokens, dim)
             if self.QK:
-                self.data_QK = np.concatenate(tuple(att for att in QscalK), axis=3)
+                self.data_QK = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in QscalK), axis=3)
                 self.data_QK = self.data_QK.reshape(ntokens, ntokens, dim)
 
     def compute_line_graph(self):

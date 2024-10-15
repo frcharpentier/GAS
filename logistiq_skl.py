@@ -51,6 +51,11 @@ def faire_datasets_edges(train=True, dev=True, test=True):
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
     if train:
         DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
                             transform=filtre2, QscalK=True, split="train")
@@ -115,7 +120,7 @@ def batch_Lgstq():
                 
 
                 X_train = DARtr.X.to(dtype=torch.float32).numpy()
-                y_train = DARtr.ARGn.to(dtype=torch.long).numpy()
+                y_train = DARtr.roles.to(dtype=torch.long).numpy()
                     
                 for varbls in ["sans_token_sep"]: #["sans_token_sep", "toutes"]:
                     if varbls == "toutes":
@@ -145,7 +150,7 @@ def batch_Lgstq():
                     logging.info("fin du calcul.")
                     logging.info("Calcul des perfs.")
                     X_tst = DARts.X.to(dtype=torch.float32).numpy()
-                    y_tst = DARts.ARGn.to(dtype=torch.long).numpy()
+                    y_tst = DARts.roles.to(dtype=torch.long).numpy()
                     predictions = modele.predict(X_tst)
                     accuracy = accuracy_score(y_tst, predictions)
                     bal_accuracy = balanced_accuracy_score(y_tst, predictions)
@@ -160,7 +165,7 @@ def batch_Lgstq():
                     R.titre("Matrice de confusion", 2)
                     with R.new_img_with_format("svg") as IMG:
                         #confusion = plot_confusion_matrix(y_tst.to_numpy(), predictions, dic_list, IMG.fullname, numeric=False)
-                        fig = dessin_matrice_conf(y_tst, predictions, DARtr.liste_rolARG)
+                        fig = dessin_matrice_conf(y_tst, predictions, DARtr.liste_roles)
                         fig.savefig(IMG, format="svg")
                     #R.titre("confusion au format python :", 3)
                     #R.texte(repr(confusion))

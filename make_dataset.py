@@ -170,11 +170,15 @@ class FusionElimination(TRF.BaseTransform):
                 li = self.noms_classes[idx]
                 if not al in args:
                     #garder
-                    index.append(N)
-                    alias.append(al)
-                    noms_classes.append(li)
-                    effectifs.append(ef)
-                    N += 1
+                    if not idx in djvus:
+                        djvus[idx] = N
+                        index.append(N)
+                        alias.append(al)
+                        noms_classes.append(li)
+                        effectifs.append(ef)
+                        N += 1
+                    else:
+                        index.append(djvus[idx])
                 else:
                     #Éliminer
                     index.append(-1)
@@ -202,6 +206,7 @@ class FusionElimination(TRF.BaseTransform):
                 if f(FusionElimination.Ntup(no=i, al=al, ef=ef, li=li)):
                     #garder
                     if not idx in djvus:
+                        djvus[idx] = N
                         index.append(N)
                         alias.append(al)
                         noms_classes.append(li)
@@ -224,6 +229,7 @@ class FusionElimination(TRF.BaseTransform):
                 if al in args:
                     #garder
                     if not idx in djvus:
+                        djvus[idx] = N
                         index.append(N)
                         alias.append(al)
                         noms_classes.append(li)
@@ -655,7 +661,7 @@ class AligDataset(geoDataset):
                     elif etat == 0:
                         if ligne.startswith(lbl_id):
                             ligne = ligne[len(lbl_id):]
-                            idSNT = ligne.split()[2]
+                            idSNT = ligne.split()[0]
                             etat = 1
                     elif etat == 1:
                         if ligne.startswith('{"tokens": '):
@@ -1031,6 +1037,8 @@ if __name__ == "__main__":
     ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
     ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev") #, debug_idSNT=True)
     ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+
+    ds_test2  = AligDataset("./dataset_QK_test2", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
     if False:
         dsed0 = EdgeDataset(ds_dev, "./edges_QK_dev")
