@@ -10,7 +10,7 @@ from torchmetrics.aggregation import CatMetric
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 def dessin_matrice_conf(y_true, y_pred, noms_classes=None):
-    disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, labels = noms_classes, normalize="true")
+    disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
     fig, ax = plt.subplots(figsize=(20,20))
     disp.plot(xticks_rotation="vertical", ax=ax)
     #pour calculer disp.figure_, qui est une figure matplotlib
@@ -21,10 +21,9 @@ class Classif_Logist(LTN.LightningModule):
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
     def __init__(self, dim, nb_classes, freqs=None):
         super(Classif_Logist, self).__init__()
-        assert len(noms_classes) == nb_classes
-        self.noms_classes = noms_classes
-        if freqs:
+        if not freqs is None:
             if type(freqs) is list:
+                assert len(freqs) == nb_classes
                 freqs = torch.Tensor(freqs)
             assert freqs.shape == (nb_classes,)
         self.lin = nn.Linear(dim, nb_classes, bias=True)

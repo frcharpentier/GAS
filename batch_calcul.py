@@ -1,5 +1,6 @@
 import os
 #from make_dataset import FusionElimination as FILT, AligDataset
+import torch
 from torch import optim, nn, utils, manual_seed
 import random
 import logging
@@ -9,7 +10,7 @@ import seaborn as sbn
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score
 import numpy as np
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
-from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
+from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym, dessin_matrice_conf
 import lightning as LTN
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
@@ -104,6 +105,27 @@ def essai_train():
     modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
 
+def rattraper():
+    DARtr, DARdv, DARts, filtre2 = faire_datasets_edges(True, True, True)
+    modele = Classif_Logist.load_from_checkpoint("./lightning_logs/version_0/checkpoints/epoch=99-step=360200.ckpt")
+    #trainer = LTN.Trainer(devices=1, accelerator="gpu")
+    #trainer.fit(modele, ckpt_path="./lightning_logs/version_0/checkpoints/epoch=99-step=360200.ckpt")
+    #modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
+    #trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
+    modele.eval()
+    modele.to("cpu")
+    modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
+    dld = utils.data.DataLoader(DARts, batch_size=32)
+    with torch.no_grad():
+        modele.on_test_start()
+        for bat in dld:
+            modele.test_step(bat, None)
+        roles = modele.accuTrue.compute().cpu().numpy()
+        roles_pred = modele.accuPred.compute().cpu().numpy()
+        fig = dessin_matrice_conf(roles, roles_pred, modele.noms_classes)
+        fig.savefig("./matrice_confusion.svg")
+        print("TERMINÉ")
+
 def essai_val():
     DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
     DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
@@ -143,4 +165,5 @@ if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
     #essai_val()
-    essai_train()
+    rattraper()
+    #essai_train()
