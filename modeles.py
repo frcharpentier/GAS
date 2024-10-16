@@ -4,17 +4,11 @@ from torch import optim, nn, utils
 import torch.nn.functional as NNF
 import lightning as LTN
 import random
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from torchmetrics.aggregation import CatMetric
 
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
-def dessin_matrice_conf(y_true, y_pred, noms_classes=None):
-    disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
-    fig, ax = plt.subplots(figsize=(20,20))
-    disp.plot(xticks_rotation="vertical", ax=ax)
-    #pour calculer disp.figure_, qui est une figure matplotlib
-    return disp.figure_
+
 
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
@@ -39,6 +33,11 @@ class Classif_Logist(LTN.LightningModule):
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         X = X.to(dtype=torch.float32)
         return self.lin(X)
+    
+    def predict_step(self, batch, batch_idx):
+        X, roles, sens, ARGn = batch
+        logits = self.forward(X)
+        return logits.argmax(axis=1).to(device="cpu")
     
     def training_step(self, batch, batch_idx):
         X, roles, sens, ARGn = batch
@@ -72,8 +71,8 @@ class Classif_Logist(LTN.LightningModule):
     def on_test_end(self):
         roles = self.accuTrue.compute().cpu().numpy()
         roles_pred = self.accuPred.compute().cpu().numpy()
-        fig = dessin_matrice_conf(roles, roles_pred, self.noms_classes)
-        self.logger.experiment.add_figure("Matrice de Confusion", fig, self.current_epoch)
+        #fig = dessin_matrice_conf(roles, roles_pred, self.noms_classes)
+        #self.logger.experiment.add_figure("Matrice de Confusion", fig, self.current_epoch)
     
     def configure_optimizers(self):
         optimizer = optim.SGD(self.parameters(), lr=1e-5)
