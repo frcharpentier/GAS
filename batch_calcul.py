@@ -11,45 +11,9 @@ import numpy as np
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
 import lightning as LTN
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
-
-
-def plot_confusion_matrix(true_labels, pred_labels, label_names, imgfile=None):
-    confusion_norm = confusion_matrix(true_labels,
-                                      pred_labels, #.tolist(),
-                                      labels=list(range(len(label_names))),
-                                      normalize="true")
-    confusion = confusion_matrix(true_labels,
-                                 pred_labels, #.tolist(),
-                                 labels=list(range(len(label_names)))
-                                 )
-    #print(confusion)
-
-    fig, axes = plt.subplots(figsize=(16, 14))
-    sbn.heatmap(
-        confusion_norm,
-        annot=confusion,
-        cbar=False,
-        fmt="d",
-        xticklabels=label_names,
-        yticklabels=label_names,
-        cmap="viridis",
-        ax=axes
-    )
-    axes.set_xlabel("Prédictions")
-    axes.set_ylabel("Réalité")
-    if imgfile == None:
-        plt.show()
-    else:
-        if type(imgfile) is str:
-            fig.savefig(imgfile)
-        else:
-            assert isinstance(imgfile, HTML_IMAGE) 
-            fig.savefig(imgfile, format=imgfile.format)
-    plt.close()
-    return confusion
-
 
 
 def batch_LM():
@@ -79,10 +43,14 @@ def pour_fusion(C, liste):
             return CC
     return C
 
-def essai_train():
-    DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
-    DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+def faire_datasets_edges(train=True, dev=True, test=True):
+    if train:
+        DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    if dev:
+        DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
+    if test:
+        DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+
     noms_classes = [k for k in DGRtr.filtre.alias]
 
     filtre = DGRtr.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
@@ -92,27 +60,48 @@ def essai_train():
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
-    DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="train")
-    DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="dev")
-    DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="test")
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
-    #DARtr = EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev")
-    DARts = EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test")
-    train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
-    trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu")
+    if train:
+        DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="train")
+    if dev:
+        DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="dev")
+    if test:
+        DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre2, QscalK=True, split="test")
+        
+    datasets = ()
+    if train:
+        datasets += (EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train"),)
+    if dev:
+        datasets += (EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev"),)
+    if test:
+        datasets += (EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test"),)
+    
+    return datasets + (filtre2, )
+
+def essai_train():
+    DARtr, DARdv, DARts, filtre2 = faire_datasets_edges(True, True, True)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    modele = Classif_Logist(dimension, nb_classes, noms_classes=filtre2.alias, freqs=freqs)
+    modele = Classif_Logist(dimension, nb_classes, freqs=freqs)
+
+    arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+    trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
 
     print("Début de l’entrainement")
-    trainer.fit(model=modele, train_dataloaders=train_loader)
+    train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+    valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+    trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
     print("TERMINÉ.")
+    modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
 
 def essai_val():

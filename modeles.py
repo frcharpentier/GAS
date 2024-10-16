@@ -9,9 +9,8 @@ from torchmetrics.aggregation import CatMetric
 
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
-def dessin_matrice_conf(y_true, y_pred, classes):
-    cm = confusion_matrix(y_true, y_pred)
-    disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = classes)
+def dessin_matrice_conf(y_true, y_pred, noms_classes=None):
+    disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, labels = noms_classes, normalize="true")
     fig, ax = plt.subplots(figsize=(20,20))
     disp.plot(xticks_rotation="vertical", ax=ax)
     #pour calculer disp.figure_, qui est une figure matplotlib
@@ -20,7 +19,7 @@ def dessin_matrice_conf(y_true, y_pred, classes):
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
-    def __init__(self, dim, nb_classes, noms_classes, freqs=None):
+    def __init__(self, dim, nb_classes, freqs=None):
         super(Classif_Logist, self).__init__()
         assert len(noms_classes) == nb_classes
         self.noms_classes = noms_classes
@@ -32,7 +31,7 @@ class Classif_Logist(LTN.LightningModule):
         self.freqs = freqs
         self.pondus = freqs.max() / freqs
         #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
-        self.save_hyperparameters(ignore="noms_classes")
+        self.save_hyperparameters()
         self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
@@ -46,8 +45,19 @@ class Classif_Logist(LTN.LightningModule):
         X, roles, sens, ARGn = batch
         logits = self.forward(X)
         perte = self.loss(logits, roles.to(torch.long))
-        self.log("perte_entrainement", perte)
+        self.log("train_loss", perte)
         return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        X, roles, sens, ARGn = batch
+        logits = self.forward(X)
+        perte = self.loss(logits, roles.to(torch.long))
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
+        
 
     def on_test_start(self):
         self.accuPred = CatMetric()
@@ -67,8 +77,8 @@ class Classif_Logist(LTN.LightningModule):
         self.logger.experiment.add_figure("Matrice de Confusion", fig, self.current_epoch)
     
     def configure_optimizers(self):
-        #optimizer = optim.SGD(self.parameters(), lr=1e-5)
-        optimizer = optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = optim.SGD(self.parameters(), lr=1e-5)
+        #optimizer = optim.Adam(self.parameters(), lr=1e-5)
         return optimizer
 
     
