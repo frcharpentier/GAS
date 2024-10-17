@@ -103,7 +103,7 @@ def get_ckpt(modele):
         return fichiers[0]
     return fichiers
 
-def batch_LM():
+def batch_LM_ckpt():
     filtre = filtre_defaut()
     def pour_fusion(C, liste):
         if C.startswith(":") and C[1] != ">":
@@ -131,7 +131,8 @@ def batch_LM():
     freqs = filtre2.effectifs
     cible = "roles"
     lr = 1.e-5
-    modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    #modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    modele = Classif_Logist.load_from_checkpoint("/home/frederic/projets/detection_aretes/lightning_logs/version_2/checkpoints/epoch=49-step=180100.ckpt")
 
     arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
@@ -229,6 +230,6 @@ def essai_val():
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
-    batch_LM()
+    batch_LM_ckpt()
     #rattraper()
     #essai_train()
