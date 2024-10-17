@@ -20,7 +20,8 @@ from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
 import lightning as LTN
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
-os.environ['CUDA_VISIBLE_DEVICES']='1,4'
+#os.environ['CUDA_VISIBLE_DEVICES']='1,4'
+os.environ['CUDA_VISIBLE_DEVICES']='4'
 
 
 class GitException(Exception):
@@ -129,12 +130,13 @@ def batch_LM():
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
     cible = "roles"
-    modele = Classif_Logist(dimension, nb_classes, cible=cible, freqs=freqs)
+    lr = 1.e-3
+    modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
 
     arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-    #trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
+    trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
     #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-    trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
 
     print("Début de l’entrainement")
     train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)

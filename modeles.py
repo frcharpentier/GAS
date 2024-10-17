@@ -13,7 +13,7 @@ from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetR
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
-    def __init__(self, dim, nb_classes, cible, freqs=None):
+    def __init__(self, dim, nb_classes, cible, lr, freqs=None):
         super(Classif_Logist, self).__init__()
         if not freqs is None:
             if type(freqs) is list:
@@ -23,6 +23,7 @@ class Classif_Logist(LTN.LightningModule):
         self.lin = nn.Linear(dim, nb_classes, bias=True)
         self.freqs = freqs
         self.cible = cible
+        self.lr = lr
         self.pondus = freqs.max() / freqs
         #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
         self.save_hyperparameters()
@@ -32,27 +33,21 @@ class Classif_Logist(LTN.LightningModule):
         # Ni softmax ni log softmax.
         # utiliser la perte "Cross entropy à partir des logits"
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
-        #X = X.to(dtype=torch.float32)
         return self.lin(X)
     
     def predict_step(self, batch, batch_idx):
-        #X, roles, sens, ARGn = batch
         logits = self.forward(batch["X"])
         return logits.argmax(axis=1).to(device="cpu")
     
     def training_step(self, batch, batch_idx):
-        #X, roles, sens, ARGn = batch
         logits = self.forward(batch["X"])
         perte = self.loss(logits, batch[self.cible])
-        #perte = self.loss(logits, roles.to(torch.long))
         self.log("train_loss", perte)
         return perte
     
     def validation_step(self, batch, batch_idx):
         #Boucle de validation
-        #X, roles, sens, ARGn = batch
         logits = self.forward(batch["X"])
-        #perte = self.loss(logits, roles.to(torch.long))
         perte = self.loss(logits, batch[self.cible])
         # Lu dans la documentation :
         #Si on l'appelle depuis la fonction validation_step, la fonction log
@@ -65,7 +60,6 @@ class Classif_Logist(LTN.LightningModule):
         self.accuTrue = CatMetric()
     
     def test_step(self, batch, batch_idx):
-        #X, roles, sens, ARGn = batch
         logits = self.forward(batch["X"])
         roles_pred = logits.argmax(axis=1).to(device="cpu")
         self.accuPred.update(roles_pred)
@@ -74,12 +68,10 @@ class Classif_Logist(LTN.LightningModule):
     def on_test_end(self):
         roles = self.accuTrue.compute().cpu().numpy()
         roles_pred = self.accuPred.compute().cpu().numpy()
-        #fig = dessin_matrice_conf(roles, roles_pred, self.noms_classes)
-        #self.logger.experiment.add_figure("Matrice de Confusion", fig, self.current_epoch)
-    
+        
+
     def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), lr=1e-5)
-        #optimizer = optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = optim.SGD(self.parameters(), lr=self.lr)
         return optimizer
 
     
