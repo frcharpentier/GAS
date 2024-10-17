@@ -149,7 +149,8 @@ def batch_LM():
         chckpt = get_ckpt(modele)
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
-        R.table(fonction=str(inspect.stack()[0][3]),
+        R.table(colonnes=False,
+                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
                 MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = chckpt)
