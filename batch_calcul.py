@@ -128,7 +128,7 @@ def batch_LM():
     dimension = 288
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    modele = Classif_Logist(dimension, nb_classes, freqs=freqs)
+    modele = Classif_Logist(dimension, nb_classes, cible="roles", freqs=freqs)
 
     arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     #trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
