@@ -1,4 +1,5 @@
 import os
+import inspect
 #from make_dataset import FusionElimination as FILT, AligDataset
 import torch
 from torch import optim, nn, utils, manual_seed
@@ -21,6 +22,34 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 
+
+class GitException(Exception):
+    def __init__(self):
+        super().__init__("Il y a des fichiers modifiés dans le repo git. Veillez à les soumettre, puis relancez.")
+    
+def git_get_commit():
+    # Provoque une exception salutaire s’il y a des fichiers
+    # modifiés dans le répo git. Dans le cas contraire,
+    # renvoie le hash md5 du dernier instantané git.
+    import subprocess
+    
+    cmd = "git status --porcelain"
+    retour = subprocess.check_output(cmd, shell=True)
+    if type(retour) == bytes:
+        retour = retour.decode("utf-8")
+    lignes = retour.split("\n")
+    lignes = [lig for lig in lignes if len(lig) > 0]
+    if any(not lig.startswith("?? ") for lig in lignes):
+        raise GitException
+    cmd = 'git log -1 --format=format:"%H"'
+    retour = subprocess.check_output(cmd, shell=True)
+    if type(retour) == bytes:
+        retour = retour.decode("utf-8")
+    retour = retour.strip()
+    return retour
+
+GLOBAL_HASH_GIT = git_get_commit()
+#On stocke dans une variable globale, au tout début du programme.
 
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
@@ -137,17 +166,18 @@ def batch_LM():
     nom_rapport="essai.html"
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
-        R.titre("Classe du modèle", 2)
-        R.texte(repr(modele.__class__))
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(fonction=str(inspect.stack()[0][3]),
+                classe_modele=repr(modele.__class__),
+                MD5_git=GLOBAL_HASH_GIT, 
+                chkpt_model = chckpt)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
         R.table(**hparams, colonnes=False)
-        R.titre("Checkpoint du modèle", 3)
-        chckpt = get_ckpt(modele)
-        if type(chckpt) == str:
-            R.texte(chckpt)
-        else:
-            R.texte(repr(chckpt))
+        
         R.titre("Dataset (classe et effectifs)", 2)
         R.table(relations=filtre2.alias, effectifs=filtre2.effectifs)
         dld = utils.data.DataLoader(DARts, batch_size=32)

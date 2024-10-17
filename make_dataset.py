@@ -509,7 +509,12 @@ class EdgeDataset(torchDataset):
         return self.Nadj
 
     def __getitem__(self, idx):
-        return self.X[idx], self.roles[idx], self.sens[idx], self.ARGn[idx]
+        return {
+            "X": self.X[idx].to(dtype=torch.float32),
+            "roles": self.roles[idx].to(dtype=torch.long),
+            "sens": self.sens[idx],
+            "ARGn": self.ARGn[idx].to(dtype=torch.long)
+        }
 
     def redresser_X(self, direction):
         # Direction est un tenseur qui ne contient que des zéros et des uns.
