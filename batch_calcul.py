@@ -159,7 +159,8 @@ def batch_LM():
         R.table(**hparams, colonnes=False)
         
         R.titre("Dataset (classe et effectifs)", 2)
-        R.table(relations=filtre2.alias, effectifs=filtre2.effectifs)
+        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
+        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
         dld = utils.data.DataLoader(DARts, batch_size=32)
         roles_pred = trainer.predict(
             modele,
