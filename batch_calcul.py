@@ -162,8 +162,7 @@ def batch_LM():
     trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
     print("TERMINÉ.")
 
-    nom_rapport="Rapport_modèle_linéaire.html"
-    nom_rapport="essai.html"
+    nom_rapport="Rapport_Logistique.html"
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
         R.titre("Informations de reproductibilité", 2)
