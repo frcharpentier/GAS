@@ -72,7 +72,7 @@ class Classif_Logist(LTN.LightningModule):
 
     def configure_optimizers(self):
         #optimizer = optim.SGD(self.parameters(), lr=self.lr)
-        optimizer = optim.adam(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
     
