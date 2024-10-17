@@ -58,27 +58,6 @@ def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     #pour calculer disp.figure_, qui est une figure matplotlib
     return disp.figure_
 
-def batch_LM_0():
-    nom_rapport="Rapport_modèle_linéaire.html"
-    nom_dataset = "dataset_pipo"
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.titre("Dataset : %s"%nom_dataset)
-        R.texte("Effectifs avant filtrage :")
-        R.table(relations=["un", "deux", "trois"], effectifs=[1,2,3])
-
-    labels = ["un", "deux", "trois"]
-    truth = np.random.randint(0,3, size=(500,))
-    pred = np.random.randint(0,3, size=(500,))
-    erreurs = np.random.choice((0,1), size=(500,), p=(0.2, 0.8))
-    pred = (truth * erreurs) + (pred * (1-erreurs))
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.titre("matrice de confusion", 2)
-        with R.new_img_with_format("svg") as IMG:
-            plot_confusion_matrix(truth, pred, labels, IMG.fullname)
-
-
 
 def filtre_defaut():
     ds = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
