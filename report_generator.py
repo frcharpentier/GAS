@@ -45,7 +45,7 @@ class HTML_TABLE():
         lgmax = max(len(v) for v in argus.values())
         for k in argus.keys():
             if k == "index":
-                liste_lbls = [str(x)[:30] for x in argus[k]]
+                liste_lbls = [str(x)for x in argus[k]]
                 if len(liste_lbls) < lgmax:
                     liste_lbls += [""]*(lgmax-len(self.index))
                 if lignes:
@@ -59,7 +59,7 @@ class HTML_TABLE():
                     self.index.append(k)
                 else:
                     self.liste_cols.append(k)
-                colonne = [str(x)[:30] for x in argus[k]]
+                colonne = [str(x) for x in argus[k]]
                 if len(colonne) < lgmax:
                     colonne += [""]*(lgmax-len(self.index))
                 cols.append(colonne)
