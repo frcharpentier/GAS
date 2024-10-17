@@ -128,7 +128,8 @@ def batch_LM():
     dimension = 288
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    modele = Classif_Logist(dimension, nb_classes, cible="roles", freqs=freqs)
+    cible = "roles"
+    modele = Classif_Logist(dimension, nb_classes, cible=cible, freqs=freqs)
 
     arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
     #trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
@@ -165,7 +166,7 @@ def batch_LM():
             return_predictions=True
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([roles.to(dtype=torch.long) for _,roles,_,_ in dld], axis=0)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
         accuracy = accuracy_score(truth, roles_pred)
         bal_accuracy = balanced_accuracy_score(truth, roles_pred)
         R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
