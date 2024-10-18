@@ -342,7 +342,7 @@ class PermutEdgeDataset(torchDataset):
         self.liste_rolARG = liste_rolARG
         self.freqARGn = freqARGn
 
-    @classmethod
+    @staticmethod
     def renum_freq(edgeDS, ordre):
         assert ordre in ["croissant", "décroissant", "decroissant"]
         if ordre == "decroissant":
