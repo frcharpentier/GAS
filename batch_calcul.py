@@ -1,4 +1,4 @@
-#from interface_git import GLOBAL_HASH_GIT
+from interface_git import GLOBAL_HASH_GIT
 #Garder cette ligne tout en haut.
 
 import os
