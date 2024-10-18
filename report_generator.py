@@ -22,6 +22,22 @@ table, tr, td, th {
     <script src="https://d3js.org/d3.v7.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     -->
+   <script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
 </head>
   <body>
   <h1>REPORT</h1>
@@ -29,7 +45,39 @@ table, tr, td, th {
 </html>
 """
 
-class HTML_TABLE():
+class TEXTE_COPIABLE:
+    def __init__(self, texte, hidden=False, summarise=False, buttonText="copier"):
+        self.texte = texte
+        if summarise and len(texte) < 30:
+            summarise = False
+        if summarise:
+            self.hidden = True
+            self.summarise = True
+        else:
+            self.hidden = hidden
+            self.summarise = False
+        self.buttonText = buttonText
+
+    def rendu(self, S):
+        spanExt = S.new_tag("span")
+        if self.hidden:
+            spanCache = S.new_tag("span")
+            spanCache.append(self.texte)
+            spanCache["hidden"] = True
+            spanExt.append(spanCache)
+            if self.summarise:
+                texteR = self.texte[:29]+"…"
+                spanExt.append(texteR)
+        else:
+            spanExt.append(self.texte)
+        bouton = S.new_tag("button")
+        bouton["onclick"]="COPIER(event)"
+        bouton.append(self.buttonText)
+        spanExt.append(bouton)
+        return spanExt
+        
+
+class HTML_TABLE:
     def __init__(self, lignes = False, **kwargs):   
         cols = []
         self.liste_cols = []
@@ -45,7 +93,7 @@ class HTML_TABLE():
         lgmax = max(len(v) for v in argus.values())
         for k in argus.keys():
             if k == "index":
-                liste_lbls = [str(x)for x in argus[k]]
+                liste_lbls = [str(x) for x in argus[k]]
                 if len(liste_lbls) < lgmax:
                     liste_lbls += [""]*(lgmax-len(self.index))
                 if lignes:
@@ -60,6 +108,7 @@ class HTML_TABLE():
                 else:
                     self.liste_cols.append(k)
                 colonne = [str(x) for x in argus[k]]
+                #colonne = [x for x in argus[k]]
                 if len(colonne) < lgmax:
                     colonne += [""]*(lgmax-len(self.index))
                 cols.append(colonne)
@@ -96,7 +145,11 @@ class HTML_TABLE():
                 rangee.append(case)
             for val in lig:
                 case = S.new_tag("td")
-                case.append(val)
+                if len(val) > 30:
+                    copiable = TEXTE_COPIABLE(val, summarise=True)
+                    case.append(copiable.rendu(S))
+                else:
+                    case.append(val)
                 rangee.append(case)
             table.append(rangee)
             table.append("\n")
@@ -106,7 +159,7 @@ class HTML_TABLE():
     #    colsT = [list(x) for x in zip(self.cols)
             
         
-class NOM_FICHIER():
+class NOM_FICHIER:
     def __init__(self, docu, extension):
         while extension.startswith("."):
             extension = extension[1:]
@@ -134,7 +187,7 @@ class NOM_FICHIER():
         return True 
     
 
-class RESSOURCE():
+class RESSOURCE:
     def __init__(self, docu, extension="bin"):
         while extension.startswith("."):
             extension = extension[1:]
@@ -160,7 +213,7 @@ class RESSOURCE():
             return False
         return True 
 
-class HTML_IMAGE():
+class HTML_IMAGE:
     def __init__(self, docu, extension):
         while extension.startswith("."):
             extension = extension[1:]
@@ -279,6 +332,13 @@ class HTML_REPORT:
                 par.append(txt)
         self.S.body.append(par)
         self.S.body.append("\n")
+
+    def texte_copiable(self, texte, hidden=False, summarise=False, buttonText="copier"):
+        elt = TEXTE_COPIABLE(texte, hidden, summarise, buttonText)
+        par = self.S.new_tag("p")
+        par.append(elt.rendu(self.S))
+        self.S.body.append(par)
+        self.S.body.append("\n")
         
     def texte(self, txt):
         self.text(txt)
@@ -316,6 +376,17 @@ class HTML_REPORT:
         return HTML_IMAGE(self, extension)
         
     def table(self, **kwargs):
+        # Deux modes d’utilisation :
+        # En mode colonne : chaque clé de kwarg est un nom de colonne
+        # les arguments nommés sont des listes, dont chaque élément 
+        # est une nouvelle ligne dans le tableau. L’argument spécial
+        # "lignes" permet de spécifier (dans une liste) des noms de lignes.
+        #
+        # Si on met la clé "colonnes" dans kwargs, on passe en mode ligne
+        # Dans ce mode, les arguments nommés deviennent des noms de ligne, 
+        # et la liste dans "colonnes" représente la liste des noms des colonnes.
+        # On peut aussi mettre "colonnes=False", ce qui fait la même chose, mais
+        # sans noms de colonnes.
         argus = dict()
         lignes = False
         for k, v in kwargs.items():
@@ -358,9 +429,19 @@ def main():
         R.texte("OK")
         R.table(colonnes = False, lig_A = [10,20,30], lig_B = [10,20,40])
         R.texte("OK")
-        R.table(colonnes = ["C1", "C2", "C3"], lig_A = [10,20,30], lig_B = [10,20,40])
+        R.table(colonnes = ["C1", "C2", "C3"], lig_A = [10,20,30], lig_B = [10,"Voici un texte très très long, pour vérifier que la césure se fait bien",40])
         R.texte("OK")
         R.table(colonnes = False, truc1 = 0.28, truc2=0.004)
+        R.texte_copiable("texte à copier")
+        R.texte_copiable("Voici un texte à copier très très long, pour vérifier que la césure se fait bien", summarise=True)
+        R.texte_copiable("""[[1., 0., 0., 0., 0., 0., 0., 0.],
+       [0., 1., 0., 0., 0., 0., 0., 0.],
+       [0., 0., 1., 0., 0., 0., 0., 0.],
+       [0., 0., 0., 1., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 1., 0., 0., 0.],
+       [0., 0., 0., 0., 0., 1., 0., 0.],
+       [0., 0., 0., 0., 0., 0., 1., 0.],
+       [0., 0., 0., 0., 0., 0., 0., 1.]]""", hidden=True, buttonText="Copier la matrice identité")
         R.text("Fin du rapport")
         
     print("Terminé")

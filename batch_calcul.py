@@ -15,6 +15,7 @@ from sklearn.metrics import (confusion_matrix,
     f1_score,
     accuracy_score,
     balanced_accuracy_score,
+    confusion_matrix,
     ConfusionMatrixDisplay)
 
 import numpy as np
@@ -32,10 +33,11 @@ os.environ['CUDA_VISIBLE_DEVICES']='4'
 
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
+    matrix = confusion_matrix(y_true, y_pred)
     fig, ax = plt.subplots(figsize=(20,20))
     disp.plot(xticks_rotation="vertical", ax=ax)
     #pour calculer disp.figure_, qui est une figure matplotlib
-    return disp.figure_
+    return disp.figure_, matrix
 
 
 def filtre_defaut():
@@ -156,8 +158,10 @@ def batch_LM():
         bal_accuracy = balanced_accuracy_score(truth, roles_pred)
         R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
         with R.new_img_with_format("svg") as IMG:
-            fig = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
             fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
 
