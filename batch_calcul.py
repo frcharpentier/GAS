@@ -67,6 +67,8 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True):
 
 def get_ckpt(modele):
     logger = modele.logger
+    if logger is None:
+        return False
     version = logger.version
     if type(version) == int:
         version = "version_%d"%version
@@ -136,6 +138,8 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
         R.table(colonnes=False,
