@@ -215,7 +215,12 @@ def batch_LM_ARGn():
     modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
 
 
-
+# Pour refaire une expérience, le plus simple désormais est de faire ainsi :
+# Sélectionner avec git checkout le bon instantané git, ouvrir une console, lancer python
+# taper : from batch_calcul import batch_LM
+# taper : batch_LM(nom_rapport="rejeu.html",
+#           ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
+#           train=False)
                               
 
 
@@ -227,6 +232,5 @@ if __name__ == "__main__" :
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
     #         train=False)
-"
     #rattraper()
     #essai_train()
