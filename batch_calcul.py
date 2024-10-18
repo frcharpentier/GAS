@@ -67,6 +67,8 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True):
 
 def get_ckpt(modele):
     logger = modele.logger
+    if logger is None:
+        return False
     version = logger.version
     if type(version) == int:
         version = "version_%d"%version
@@ -83,7 +85,7 @@ def get_ckpt(modele):
         return fichiers[0]
     return fichiers
 
-def batch_LM():
+def batch_LM(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -114,24 +116,30 @@ def batch_LM():
     freqs = filtre2.effectifs
     cible = "roles"
     lr = 1.e-5
-    modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    if ckpoint_model:
+        modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
-    arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-    trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
-    #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-    #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-
-    print("Début de l’entrainement")
-    train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
-    valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-    trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-    print("TERMINÉ.")
-
-    nom_rapport="Rapport_Logistique.html"
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
         R.table(colonnes=False,
@@ -211,7 +219,12 @@ def batch_LM_ARGn():
     modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
 
 
-
+# Pour refaire une expérience, le plus simple désormais est de faire ainsi :
+# Sélectionner avec git checkout le bon instantané git, ouvrir une console, lancer python
+# taper : from batch_calcul import batch_LM
+# taper : batch_LM(nom_rapport="rejeu.html",
+#           ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
+#           train=False)
                               
 
 
@@ -219,6 +232,9 @@ def batch_LM_ARGn():
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
-    batch_LM_ARGn()
+    batch_LM(nom_rapport="Rapport_Logistique.html")
+    #batch_LM(nom_rapport="rejeu.html",
+    #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
+    #         train=False)
     #rattraper()
     #essai_train()
