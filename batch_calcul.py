@@ -3,7 +3,7 @@ from interface_git import GLOBAL_HASH_GIT
 
 import os
 import inspect
-#from make_dataset import FusionElimination as FILT, AligDataset
+from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset
 import torch
 from torch import optim, nn, utils, manual_seed
 import random
@@ -184,7 +184,7 @@ def rattraper():
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
 
-def batch_LM_ARGn():
+def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -210,13 +210,29 @@ def batch_LM_ARGn():
 
     DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
 
+    ordre_classes = [ ':ARG0', ':ARG1', ':ARG2', ':ARG3', ':ARG4', ':ARG5', ':ARG6',
+                      ':>BENEFICIARY', ':>CONDITION', ':>LOCATION', ':>MANNER', 
+                      ':>MOD', ':>PURPOSE', ':>TIME', ':>TOPIC', ':degree', ':poss',
+                      ':>AGENT', ':>THEME', ':>PATIENT', ':>EXPERIENCER', ':>CAUSE'
+                    ]
+    
+    DARtr = PermutEdgeDataset(DARtr, ordre_classes)
+    DARdv = PermutEdgeDataset(DARdv, ordre_classes)
+    DARts = PermutEdgeDataset(DARts, ordre_classes)
+
+
     dimension = 288
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
+    nb_classes = 17 # dix-sept classes aux effectifs non nuls
+    liste_classes = DARtr.liste_rolARG[:nb_classes]
+    freqs = DARtr.freqARGn[:nb_classes]
     cible = "ARGn"
     lr = 1.e-5
 
     modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    if ckpoint_model:
+        modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
 
 
 # Pour refaire une expérience, le plus simple désormais est de faire ainsi :
@@ -232,9 +248,13 @@ def batch_LM_ARGn():
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
-    batch_LM(nom_rapport="Rapport_Logistique.html")
+
+    #batch_LM(nom_rapport="Rapport_Logistique.html")
+    batch_LM_ARGn(nom_rapport="Rapport_Logistique.html")
+
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
     #         train=False)
+    
     #rattraper()
     #essai_train()

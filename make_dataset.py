@@ -313,10 +313,22 @@ class PermutEdgeDataset(torchDataset):
     def __init__(self, edgeDS, permut):
         # permut est une liste indexée par le numéro de la classe dans le dataset de départ
         # et dont la valeur à chaque indice donne le nouveau numéro de la classe
+        # permut peut aussi être la liste des classes dans l’ordre souhaité
         self.edgeDS = edgeDS
-        nb_classes = 1 + len(edgeDS.liste_rolARG)
+        nb_classes = len(edgeDS.liste_rolARG)
         assert type(permut) in (list, tuple)
         permut = list(permut)
+        
+        if all(type(i) == str for i in permut):
+            assert len(permut) == nb_classes
+            assert all(c in edgeDS.liste_rolARG for c in permut)
+            assert all(c in permut for c in edgeDS.liste_rolARG)
+            prmt = [None] * nb_classes
+            for i, C in enumerate(permut):
+                j = edgeDS.liste_rolARG.index(C)
+                prmt[j] = i
+            permut = prmt
+         
         assert all(type(i) == int for i in permut)
         mini = min(permut)
         N = 1 +max(permut)
@@ -338,9 +350,9 @@ class PermutEdgeDataset(torchDataset):
         for i in range(nb_classes):
             j = permut[i]
             liste_rolARG[j] = edgeDS.liste_rolARG[i]
-            freqARGn[j] = edgeDS.freqARGn[i]
+            freqARGn[j] = edgeDS.freqARGn[i].item()
         self.liste_rolARG = liste_rolARG
-        self.freqARGn = freqARGn
+        self.freqARGn = torch.tensor(freqARGn)
 
     @staticmethod
     def renum_freq(edgeDS, ordre):
@@ -368,6 +380,8 @@ class PermutEdgeDataset(torchDataset):
             "sens": self.edgeDS.sens[idx],
             "ARGn": self.permut[self.edgeDS.ARGn[idx]]
         }
+
+
 
 
 class EdgeDataset(torchDataset):
@@ -1080,13 +1094,6 @@ def test_dataset():
             print("    ÉCHEC TEST !!", RESULTATS, maxi)
 
         #print(RESU0, RESU1, RESU2, RESU3)
-
-
-
-
-
-
-
 
 
 
