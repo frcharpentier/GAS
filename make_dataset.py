@@ -309,6 +309,65 @@ class FusionElimination(TRF.BaseTransform):
             data.msk1 = data.msk1 & self.agarder[roles]
         return data
 
+class PermutEdgeDataset(torchDataset):
+    def __init__(self, edgeDS, permut):
+        # permut est une liste indexée par le numéro de la classe dans le dataset de départ
+        # et dont la valeur à chaque indice donne le nouveau numéro de la classe
+        self.edgeDS = edgeDS
+        nb_classes = 1 + len(edgeDS.liste_rolARG)
+        assert type(permut) in (list, tuple)
+        permut = list(permut)
+        assert all(type(i) == int for i in permut)
+        mini = min(permut)
+        N = 1 +max(permut)
+        assert len(permut) == N - mini
+        assert all(i in permut for i in range(mini, N))
+        # Toutes les lignes ci-dessus servent à vérifier que permut encode une permutation
+        assert mini >= 0
+        assert N <= nb_classes
+        # Ces lignes pour vérifier que permut encode une permutation d’un sous ensemble de {0,...,classe_max}
+
+        if mini > 0:
+            permut = list(range(0, mini)) + permut
+        if N < nb_classes:
+            permut = permut + list(range(N, nb_classes))
+        
+        self.permut = torch.tensor(permut)
+        liste_rolARG = [None] * nb_classes
+        freqARGn = [None] * nb_classes
+        for i in range(nb_classes):
+            j = permut[i]
+            liste_rolARG[j] = edgeDS.liste_rolARG[i]
+            freqARGn[j] = edgeDS.freqARGn[i]
+        self.liste_rolARG = liste_rolARG
+        self.freqARGn = freqARGn
+
+    @classmethod
+    def renum_freq(edgeDS, ordre):
+        assert ordre in ["croissant", "décroissant", "decroissant"]
+        if ordre == "decroissant":
+            ordre = "décroissant"
+        if ordre == "décroissant":
+            reverse = True
+        else:
+            reverse = False
+        invpermut = [i for i, t in sorted(enumerate(edgeDS.freqARGn), key=lambda x: x[1], reverse=reverse)]
+        permut = [None] * len(invpermut)
+        for i,j in enumerate(invpermut):
+            permut[j] = i
+
+        return PermutEdgeDataset(edgeDS, permut)
+
+
+    def __len__(self):
+        return self.edgeDS.Nadj
+    
+    def __getitem__(self, idx):
+        return {
+            "X": self.edgeDS.X[idx],
+            "sens": self.edgeDS.sens[idx],
+            "ARGn": self.permut[self.edgeDS.ARGn[idx]]
+        }
 
 
 class EdgeDataset(torchDataset):
