@@ -1,3 +1,6 @@
+#from interface_git import GLOBAL_HASH_GIT
+#Garder cette ligne tout en haut.
+
 import os
 import inspect
 #from make_dataset import FusionElimination as FILT, AligDataset
@@ -24,32 +27,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 os.environ['CUDA_VISIBLE_DEVICES']='4'
 
 
-class GitException(Exception):
-    def __init__(self):
-        super().__init__("Il y a des fichiers modifiés dans le repo git. Veillez à les soumettre, puis relancez.")
-    
-def git_get_commit():
-    # Provoque une exception salutaire s’il y a des fichiers
-    # modifiés dans le répo git. Dans le cas contraire,
-    # renvoie le hash md5 du dernier instantané git.
-    import subprocess
-    
-    cmd = "git status --porcelain"
-    retour = subprocess.check_output(cmd, shell=True)
-    if type(retour) == bytes:
-        retour = retour.decode("utf-8")
-    lignes = retour.split("\n")
-    lignes = [lig for lig in lignes if len(lig) > 0]
-    if any(not lig.startswith("?? ") for lig in lignes):
-        raise GitException
-    cmd = 'git log -1 --format=format:"%H"'
-    retour = subprocess.check_output(cmd, shell=True)
-    if type(retour) == bytes:
-        retour = retour.decode("utf-8")
-    retour = retour.strip()
-    return retour
 
-GLOBAL_HASH_GIT = git_get_commit()
 #On stocke dans une variable globale, au tout début du programme.
 
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
@@ -105,16 +83,19 @@ def get_ckpt(modele):
 
 def batch_LM():
     filtre = filtre_defaut()
-    def pour_fusion(C, liste):
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
         if C.startswith(":") and C[1] != ">":
             CC = ":>" + C[1:].upper()
-            if CC in liste:
+            if CC in noms_classes:
                 return CC
         return C
-    noms_classes = [k for k in filtre.alias]
+    
     filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
     filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
     filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
@@ -191,36 +172,41 @@ def rattraper():
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
 
-def essai_val():
-    DGRtr = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    DGRdv = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev")
-    DGRts = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
-    noms_classes = [k for k in DGRtr.filtre.alias]
+def batch_LM_ARGn():
+    filtre = filtre_defaut()
+    noms_classes = [k for k in filtre.alias]
 
-    filtre = DGRtr.filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
     filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al, noms_classes))
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
     filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
     filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
     filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
-    DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="train")
-    DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="dev")
-    DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre2, QscalK=True, split="test")
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr = EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train")
-    DARts = EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test")
-    test_loader = utils.data.DataLoader(DARts)
+    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    modele = Classif_Logist.load_from_checkpoint("./lightning_logs/version_2/checkpoints/epoch=49-step=442950.ckpt",
-                                                 dim=dimension, nb_classes=nb_classes, noms_classes=noms_classes, freqs = freqs)
-    print("OK.")
+    cible = "ARGn"
+    lr = 1.e-5
+
+    modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+
+
 
                               
 
@@ -229,6 +215,6 @@ def essai_val():
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
-    batch_LM()
+    batch_LM_ARGn()
     #rattraper()
     #essai_train()
