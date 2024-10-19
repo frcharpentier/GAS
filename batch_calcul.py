@@ -184,7 +184,7 @@ def rattraper():
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
 def batch_LM_VerbAtlas_ARGn():
-    nom_rapport = "Rapport_Logistique.html"
+    nom_rapport = "pipo.html" #"Rapport_Logistique.html"
     ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -347,7 +347,8 @@ if __name__ == "__main__" :
     random.seed(53)
 
     #batch_LM(nom_rapport="Rapport_Logistique.html")
-    batch_LM_ARGn(nom_rapport="Rapport_Logistique.html")
+    batch_LM_VerbAtlas_ARGn()
+    #batch_LM_ARGn(nom_rapport="Rapport_Logistique.html")
 
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
