@@ -183,6 +183,103 @@ def rattraper():
     modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
+def batch_LM_VerbAtlas_ARGn():
+    nom_rapport = "Rapport_Logistique.html"
+    ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
+    filtre = filtre_defaut()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
+    cible = "roles"
+    modele = Classif_Logist.load_from_checkpoint(ckpt)
+    trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    ordre_classes = [ ':ARG0', ':ARG1', ':ARG2', ':ARG3', ':ARG4', ':ARG5', ':ARG6',
+                      ':>BENEFICIARY', ':>CONDITION', ':>LOCATION', ':>MANNER', 
+                      ':>MOD', ':>PURPOSE', ':>TIME', ':>TOPIC', ':degree', ':poss',
+                      ':>AGENT', ':>THEME', ':>PATIENT', ':>EXPERIENCER', ':>CAUSE'
+                    ]
+    # Construction de la permutation
+    permut = [None] * len(ordre_classes)
+    for i, C in enumerate(DARts.liste_rolARG):
+        j = ordre_classes.index(C)
+        permut[i] = j
+
+    permut = torch.tensor(permut)
+
+    dld = utils.data.DataLoader(DARts, batch_size=32)
+    VerbAtlas_pred = trainer.predict(
+        modele,
+        dataloaders=dld,
+        return_predictions=True
+    )
+    VerbAtlas_pred = torch.concatenate(VerbAtlas_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+    VerbAtlas_truth = torch.concatenate([batch["roles"] for batch in dld], axis=0)
+    ARGn_truth = torch.concatenate([batch["ARGn"] for batch in dld], axis=0)
+    # Construisons les prédictions pour ARGn : Chaque fois que le rôle VerbAtlas prédit est identique
+    # au rôle VerbAtlas réel, on prend le rôle ARGn réel. Sinon, on garde le rôle VerbAtlas prédit.
+    reussites = (VerbAtlas_pred == VerbAtlas_truth)
+    echecs = ~reussites
+    ARGn_pred = (reussites * ARGn_truth) + (echecs * VerbAtlas_pred)
+
+    # Renumérotation des prédictions et des réalités
+    ARGn_pred = permut[ARGn_pred]
+    ARGn_truth = permut[ARGn_truth]
+    accuracy = accuracy_score(ARGn_truth, ARGn_pred)
+    bal_accuracy = balanced_accuracy_score(ARGn_truth, ARGn_pred)
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre("Note", 2)
+        R.texte("""Cette expérience montre la capacité d’un classificateur linéaire entraîné sur l’étiquetage sémantique VerbAtlas
+à détecter correctement les rôles étiquetés normalement selon PropBank (AMR).
+Chaque fois que le classificateur détecte la bonne étiquette VerbAtlas, on remplace par l’étiquette AMR (puisqu’elle serait déterministe) pour calculer les scores.
+Si l’étiquette n’est pas correctement détectée, on laisse l’étiquette telle quelle.
+Certaines étiquettes VerbAtlas n’apparaissent jamais dans l’étiquetage PropBank (agent, patient...), ce qui explique que certaines lignes de la matrice de confusion
+soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balanced accuracy), ces lignes sont omises.
+(La nullité d’une ligne n’est pas du tout gênante pour le calcul de l’exactitude, en revanche.)""")
+        R.titre("Informations de reproductibilité", 2)
+        R.table(colonnes=False,
+                fonction=str(inspect.stack()[0][3]),
+                classe_modele=repr(modele.__class__),
+                MD5_git=GLOBAL_HASH_GIT, 
+                chkpt_model = ckpt)
+        R.titre("paramètres d’instanciation du modèle", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et effectifs)", 2)
+        R.table(relations=DARtr.liste_rolARG, effectifs=DARts.freqARGn)
+        
+        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(ARGn_truth, ARGn_pred, ordre_classes)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+
 
 def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
