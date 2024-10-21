@@ -376,9 +376,9 @@ class PermutEdgeDataset(torchDataset):
     
     def __getitem__(self, idx):
         return {
-            "X": self.edgeDS.X[idx],
+            "X": self.edgeDS.X[idx].to(dtype=torch.float32),
             "sens": self.edgeDS.sens[idx],
-            "ARGn": self.permut[self.edgeDS.ARGn[idx]]
+            "ARGn": self.permut[self.edgeDS.ARGn[idx]].to(dtype=torch.long)
         }
 
 

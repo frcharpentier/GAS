@@ -122,7 +122,7 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
@@ -310,6 +310,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
     ordre_classes = [ ':ARG0', ':ARG1', ':ARG2', ':ARG3', ':ARG4', ':ARG5', ':ARG6',
                       ':>BENEFICIARY', ':>CONDITION', ':>LOCATION', ':>MANNER', 
                       ':>MOD', ':>PURPOSE', ':>TIME', ':>TOPIC', ':degree', ':poss',
+                      # Les classes listées après cette ligne ont un effectif nul pour l'étiquette ARGn
                       ':>AGENT', ':>THEME', ':>PATIENT', ':>EXPERIENCER', ':>CAUSE'
                     ]
     
@@ -320,6 +321,8 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
 
     dimension = 288
     nb_classes = 17 # dix-sept classes aux effectifs non nuls
+    assert len(DARtr.liste_rolARG) == len(ordre_classes)
+    assert all(x==y for x, y in zip(DARtr.liste_rolARG, ordre_classes))
     liste_classes = DARtr.liste_rolARG[:nb_classes]
     freqs = DARtr.freqARGn[:nb_classes]
     cible = "ARGn"
@@ -330,6 +333,58 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
     else:
         modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre("Note", 2)
+        R.texte("Expérience de classification sur les rôles PropBank sans passer par VerbAtlas")
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                fonction=str(inspect.stack()[0][3]),
+                classe_modele=repr(modele.__class__),
+                MD5_git=GLOBAL_HASH_GIT, 
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et fréquences)", 2)
+        #groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
+        R.table(relations=ordre_classes, fréquences=freqs + [0]*(len(ordre_classes) - nb_classes))
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        accuracy = accuracy_score(truth, roles_pred)
+        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, liste_classes)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
 
 
 # Pour refaire une expérience, le plus simple désormais est de faire ainsi :
@@ -347,8 +402,8 @@ if __name__ == "__main__" :
     random.seed(53)
 
     #batch_LM(nom_rapport="Rapport_Logistique.html")
-    batch_LM_VerbAtlas_ARGn()
-    #batch_LM_ARGn(nom_rapport="Rapport_Logistique.html")
+    #batch_LM_VerbAtlas_ARGn()
+    batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
 
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
