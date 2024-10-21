@@ -9,7 +9,6 @@ from torchmetrics.aggregation import CatMetric
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 
-
 class Classif_Logist(LTN.LightningModule):
     # modèle linéaire à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR. 
@@ -76,13 +75,16 @@ class Classif_Logist(LTN.LightningModule):
         return optimizer
 
     
-class Classif_Bil_Sym(nn.Module):
+class Classif_Bil_Sym(LTN.LightningModule):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = roles VerbAtlas ou étiquettes = roles AMR.
 
-    def __init__(self, dim, nb_classes, rang=2, freqs = None):
+    def __init__(self, dim, nb_classes, rang=2, cible="roles", lr=1.e-5, freqs = None):
         super(Classif_Bil_Sym, self).__init__()
-        if freqs:
+        if not freqs is None:
+            if type(freqs) is list:
+                assert len(freqs) == nb_classes
+                freqs = torch.Tensor(freqs)
             assert freqs.shape == (nb_classes,)
         self.weight = nn.Parameter(torch.empty(nb_classes, rang, dim))
         nn.init.xavier_normal_(self.weight)
@@ -90,10 +92,12 @@ class Classif_Bil_Sym(nn.Module):
         nn.init.xavier_normal_(self.diag)
         self.bias = nn.Parameter(torch.empty(nb_classes, ))
         nn.init.normal_(self.bias)
+        self.lr = lr
         self.freqs = freqs
         self.pondus = freqs.max() / freqs
         #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
         self.nb_classes = nb_classes
+        self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # X est un tenseur de format (b, dim, 2)
@@ -122,40 +126,48 @@ class Classif_Bil_Sym(nn.Module):
         # Y est un tenseur (b, nb_classes,1,1)
         return Y.reshape(-1, self.nb_classes)
 
-
-class Classif_Bil_Sym_0(nn.Module):
-    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
-    # étiquettes = roles VerbAtlas ou étiquettes = roles AMR.
-
-    def __init__(self, dim, nb_classes, rang=2, freqs = None):
-        super(Classif_Bil_Sym_0, self).__init__()
-        if freqs:
-            assert freqs.shape == (nb_classes,)
-        self.weight = nn.Parameter(torch.empty(nb_classes, dim, rang))
-        nn.init.xavier_normal_(self.weight)
-        self.diag = nn.Parameter(torch.empty(nb_classes, rang))
-        nn.init.xavier_normal_(self.diag)
-        self.bias = nn.Parameter(torch.empty(nb_classes, ))
-        nn.init.normal_(self.bias)
-        self.freqs = freqs
+    def predict_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        return logits.argmax(axis=1).to(device="cpu")
+    
+    def training_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch[self.cible])
+        self.log("train_loss", perte)
+        return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch[self.cible])
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
         
-    def forward(self, X):
-        # X est un tenseur de format (b, dim, 2)
-        # weight est défini dans __init__.
-        X1 = X[:,:,0]
-        X2 = X[:,:,1]
-        Z = torch.einsum("bk, nkr -> bnr", X1, self.weight)
-        # Z est un tenseur de format (b, nb_classes, rang)
-        Z1 = Z * torch.unsqueeze(self.diag, 0)
-        # multiplication par la matrice diagonale
+
+    def on_test_start(self):
+        self.accuPred = CatMetric()
+        self.accuTrue = CatMetric()
+    
+    def test_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        roles_pred = logits.argmax(axis=1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(batch[self.cible])
+
+    def on_test_end(self):
+        roles = self.accuTrue.compute().cpu().numpy()
+        roles_pred = self.accuPred.compute().cpu().numpy()
         
-        Z2 = torch.einsum("bk, nkr -> bnr", X2, self.weight)
-        # Z2 est un tenseur de format (b, nb_classes, rang)
-        Y = (Z1 * Z2).sum(axis=2)
-        # Équivalent (mais sans doute plus rapide) à
-        # torch.einsum("bnr, bnr -> bn", Z1, Z2)
-        Y = Y + self.bias.view(1,-1)
-        return Y
+
+    def configure_optimizers(self):
+        #optimizer = optim.SGD(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
+
+
+
     
 
     

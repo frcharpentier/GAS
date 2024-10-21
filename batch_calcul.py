@@ -44,6 +44,7 @@ def filtre_defaut():
     ds = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
     return ds.filtre
 
+
 def faire_datasets_edges(filtre, train=True, dev=True, test=True):
     if train:
         DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
@@ -62,6 +63,27 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True):
         datasets += (EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev"),)
     if test:
         datasets += (EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test"),)
+    
+    return datasets
+
+def faire_datasets_sym(filtre, train=True, dev=True, test=True):
+    if train:
+        DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre, QscalK=True, split="train")
+    if dev:
+        DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre, QscalK=True, split="dev")
+    if test:
+        DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
+                            transform=filtre, QscalK=True, split="test")
+        
+    datasets = ()
+    if train:
+        datasets += (EdgeDataset(DGRtr_f2, "./edges_f_QK_train"),)
+    if dev:
+        datasets += (EdgeDataset(DGRdv_f2, "./edges_f_QK_dev"),)
+    if test:
+        datasets += (EdgeDataset(DGRts_f2, "./edges_f_QK_test"),)
     
     return datasets
 
@@ -386,6 +408,93 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
+def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
+    filtre = filtre_defaut()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_sym(filtre2, True, True, True)
+
+    dimension = 288
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    cible = "roles"
+    lr = 1.e-5
+    rang = 2
+    if ckpoint_model:
+        modele = Classif_Bil_Sym.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Bil_Sym(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                fonction=str(inspect.stack()[0][3]),
+                classe_modele=repr(modele.__class__),
+                MD5_git=GLOBAL_HASH_GIT, 
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et effectifs)", 2)
+        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
+        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        accuracy = accuracy_score(truth, roles_pred)
+        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
 
 # Pour refaire une expérience, le plus simple désormais est de faire ainsi :
 # Sélectionner avec git checkout le bon instantané git, ouvrir une console, lancer python
@@ -404,9 +513,10 @@ if __name__ == "__main__" :
     #batch_LM(nom_rapport="Rapport_Logistique.html")
     #batch_LM_VerbAtlas_ARGn()
     #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
-    batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
-                  ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
-                  train=False)
+    #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
+    #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
+    #              train=False)
+    batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
 
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
