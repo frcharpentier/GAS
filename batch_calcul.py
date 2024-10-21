@@ -367,7 +367,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         
         R.titre("Dataset (classe et fréquences)", 2)
         #groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=ordre_classes, fréquences=freqs + [0]*(len(ordre_classes) - nb_classes))
+        R.table(relations=ordre_classes, fréquences=freqs.numpy().tolist() + [0]*(len(ordre_classes) - nb_classes))
         dld = utils.data.DataLoader(DARts, batch_size=32)
         roles_pred = trainer.predict(
             modele,
@@ -403,7 +403,10 @@ if __name__ == "__main__" :
 
     #batch_LM(nom_rapport="Rapport_Logistique.html")
     #batch_LM_VerbAtlas_ARGn()
-    batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
+    #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
+    batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
+                  ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
+                  train=False)
 
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
