@@ -98,6 +98,7 @@ class Classif_Bil_Sym(LTN.LightningModule):
         self.pondus = freqs.max() / freqs
         #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
         self.nb_classes = nb_classes
+        self.save_hyperparameters()
         self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
