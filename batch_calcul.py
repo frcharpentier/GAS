@@ -392,7 +392,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
-def batch_antisym(nom_rapport, ckpoint_model=None, train=True):
+def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -427,7 +427,7 @@ def batch_antisym(nom_rapport, ckpoint_model=None, train=True):
     if ckpoint_model:
         modele = Classif_Bil_Antisym.load_from_checkpoint(ckpoint_model)
     else:
-        modele = Classif_Bil_Antisym(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+        modele = Classif_Bil_Antisym(dimension, rang=rang, lr=lr)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
         trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
@@ -441,6 +441,42 @@ def batch_antisym(nom_rapport, ckpoint_model=None, train=True):
         print("TERMINÉ.")
     else:
         trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                fonction=str(inspect.stack()[0][3]),
+                classe_modele=repr(modele.__class__),
+                MD5_git=GLOBAL_HASH_GIT, 
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        accuracy = accuracy_score(truth, roles_pred)
+        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
 
 def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
@@ -550,7 +586,10 @@ if __name__ == "__main__" :
     #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
     #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
     #              train=False)
-    batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
+
+    #batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
+
+    batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html")
 
     #batch_LM(nom_rapport="rejeu.html",
     #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",

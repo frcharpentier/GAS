@@ -173,12 +173,9 @@ class Classif_Bil_Sym(LTN.LightningModule):
     
 
     
-#class AntiSymetrique(nn.Module):
-#    def forward(self, X):
-#        A = X.triu(1)
-#        return A - (A.transpose(-1,-2))
 
-class Classif_Bil_Antisym(nn.Module):
+
+class Classif_Bil_Antisym(LTN.LightningModule):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = sens
 
@@ -197,12 +194,12 @@ class Classif_Bil_Antisym(nn.Module):
         self.lr = lr
         self.save_hyperparameters()
         if freqs is None:
-            self.loss = nn.CrossEntropyLoss(reduction="mean")
+            self.loss = nn.BCELoss(reduction="mean")
         else:
             self.freqs = freqs
             self.pondus = freqs.max() / freqs
             #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
-            self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
+            self.loss = nn.BCELoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # X : (b, dim, 2)
