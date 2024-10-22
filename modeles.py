@@ -182,16 +182,27 @@ class Classif_Bil_Antisym(nn.Module):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = sens
 
-    def __init__(self, dim, rang=2, freqs = None):
+    def __init__(self, dim, rang=2, lr=1.e-5, freqs = None):
         # On n’a que deux classes, a priori.
         super(Classif_Bil_Antisym, self).__init__()
-        if freqs:
+        if not freqs is None:
+            if type(freqs) is list:
+                assert len(freqs) == 2
+                freqs = torch.Tensor(freqs)
             assert freqs.shape == (2,)
         self.weight = nn.Parameter(torch.empty(rang, dim))
         nn.init.xavier_normal_(self.weight)
         self.antisym = nn.Parameter(torch.empty(rang,rang))
         nn.init.xavier_normal_(self.antisym)
-        self.freqs = freqs
+        self.lr = lr
+        self.save_hyperparameters()
+        if freqs is None:
+            self.loss = nn.CrossEntropyLoss(reduction="mean")
+        else:
+            self.freqs = freqs
+            self.pondus = freqs.max() / freqs
+            #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
+            self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # X : (b, dim, 2)
@@ -205,45 +216,49 @@ class Classif_Bil_Antisym(nn.Module):
         Y0 = Y[...,0].unsqueeze(-2)
         Y = torch.matmul(Y0, Y1)
         return Y.reshape(-1)
-
-class Classif_Bil_Antisym_0(nn.Module):
-    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
-    # étiquettes = sens
-
-    def __init__(self, dim, rang=2, freqs = None):
-        # On n’a que deux classes, a priori.
-        super(Classif_Bil_Antisym_0, self).__init__()
-        if freqs:
-            assert freqs.shape == (2,)
-        self.weight = nn.Parameter(torch.empty(dim, rang))
-        nn.init.xavier_normal_(self.weight)
-        self.antisym = nn.Parameter(torch.empty(rang,rang))
-        nn.init.xavier_normal_(self.antisym)
-        self.freqs = freqs
-
-    def forward(self, X):
-        # X est un tenseur de format (b, dim, 2)
-        # weight est défini dans __init__.
-        X1 = X[:,:,0]
-        X2 = X[:,:,1]
-        Z = X1 @ self.weight
-        # Équivalent plus rapide de Z = torch.einsum("bk, kr -> br", X1, self.weight)
-        # Z est un tenseur de format (b, rang)
-
-        A = self.antisym.triu(1)
-        A = A - (A.T)
-
-        Z1 = Z @ A
-        # Multiplication par la matrice antisymétrique de rang R.
-
-        Z2 = X2 @ self.weight
-        # Équivalent plus rapide de Z2 = torch.einsum("bk, kr -> br", X1, self.weight)
-        # Z2 est un tenseur de format (b, rang)
-        Y = (Z1 * Z2).sum(axis=1)
-        # Équivalent (mais sans doute plus rapide) à
-        # torch.einsum("br, br -> b", Z1, Z2)
+    
+    def predict_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        preds = (logits > 0)*1
+        return preds.to(device="cpu")
+    
+    def training_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch["sens"])
+        self.log("train_loss", perte)
+        return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch["sens"])
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
         
-        return Y.reshape(-1)
+
+    def on_test_start(self):
+        self.accuPred = CatMetric()
+        self.accuTrue = CatMetric()
+    
+    def test_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        roles_pred = ((logits > 0)*1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(batch["sens"])
+
+    def on_test_end(self):
+        roles = self.accuTrue.compute().cpu().numpy()
+        roles_pred = self.accuPred.compute().cpu().numpy()
+        
+
+    def configure_optimizers(self):
+        #optimizer = optim.SGD(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
+
+
     
 
 def test_sym_antisym():

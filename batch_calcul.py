@@ -34,7 +34,10 @@ os.environ['CUDA_VISIBLE_DEVICES']='4'
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
     matrix = confusion_matrix(y_true, y_pred)
-    fig, ax = plt.subplots(figsize=(20,20))
+    NN, _ = confusion_matrix.shape
+    if NN < 7:
+        NN = 7
+    fig, ax = plt.subplots(figsize=(NN,NN))
     disp.plot(xticks_rotation="vertical", ax=ax)
     #pour calculer disp.figure_, qui est une figure matplotlib
     return disp.figure_, matrix
@@ -66,8 +69,6 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeD
     
     return datasets
 
-def faire_datasets_sym(filtre, train=True, dev=True, test=True):
-    return faire_datasets_edges(filtre, train, dev, test, CLASSE = EdgeDataset)
 
 
 def get_ckpt(modele):
@@ -391,6 +392,56 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
+def batch_antisym(nom_rapport, ckpoint_model=None, train=True):
+    filtre = filtre_defaut()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
+
+    dimension = 144
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    cible = "roles"
+    lr = 1.e-4
+    rang = 3
+    if ckpoint_model:
+        modele = Classif_Bil_Antisym.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Bil_Antisym(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
 def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -415,7 +466,7 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
                             ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
                             ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr, DARdv, DARts = faire_datasets_sym(filtre2, True, True, True)
+    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
 
     dimension = 144
     nb_classes = len(filtre2.alias)
