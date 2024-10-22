@@ -438,7 +438,7 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
     cible = "roles"
-    lr = 3.e-5
+    lr = 1.e-4
     rang = 2
     if ckpoint_model:
         modele = Classif_Bil_Sym.load_from_checkpoint(ckpoint_model)
