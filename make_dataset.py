@@ -589,14 +589,16 @@ class EdgeDataset(torchDataset):
             "ARGn": self.ARGn[idx].to(dtype=torch.long)
         }
 
-    def redresser_X(self, direction):
+    def redresser_X(self, direction, reshape=True):
         # Direction est un tenseur qui ne contient que des zéros et des uns.
         if not direction.dtype == torch.long:
             direction = direction.to(dtype = torch.long)
         indices = torch.column_stack((direction, 1-direction)).view(-1,1,2)
         #assert all(indices[i, 0, 0] == T[i] for i in range(self.Nadj))
         #assert all(indices[i, 0, 1] == 1-T[i] for i in range(self.Nadj))
-        X = torch.take_along_dim(self.X, indices, dim=2).transpose(1,2).reshape(-1, 2*self.dimension)
+        X = torch.take_along_dim(self.X, indices, dim=2)
+        if reshape:
+            X = X.transpose(1,2).reshape(-1, 2*self.dimension)
         if False and self.debug_idSNT:
             print("Vérification de la permutation de X :")
             for i in tqdm(range(self.Nadj)):
@@ -619,7 +621,7 @@ class EdgeDatasetMono(EdgeDataset):
 class EdgeDatasetRdmDir(EdgeDataset):
     def __init__(self, aligDS, repertoire):
         super().__init__(aligDS, repertoire)
-        self.permutation_aleatoire(self)
+        self.permutation_aleatoire()
 
     def permutation_aleatoire(self):
         self.redresser_X(torch.randint(0,2,(self.Nadj,), dtype=torch.long))

@@ -45,7 +45,7 @@ def filtre_defaut():
     return ds.filtre
 
 
-def faire_datasets_edges(filtre, train=True, dev=True, test=True):
+def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
     if train:
         DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
                             transform=filtre, QscalK=True, split="train")
@@ -58,34 +58,17 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True):
         
     datasets = ()
     if train:
-        datasets += (EdgeDatasetMono(DGRtr_f2, "./edges_f_QK_train"),)
+        datasets += (CLASSE(DGRtr_f2, "./edges_f_QK_train"),)
     if dev:
-        datasets += (EdgeDatasetMono(DGRdv_f2, "./edges_f_QK_dev"),)
+        datasets += (CLASSE(DGRdv_f2, "./edges_f_QK_dev"),)
     if test:
-        datasets += (EdgeDatasetMono(DGRts_f2, "./edges_f_QK_test"),)
+        datasets += (CLASSE(DGRts_f2, "./edges_f_QK_test"),)
     
     return datasets
 
 def faire_datasets_sym(filtre, train=True, dev=True, test=True):
-    if train:
-        DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="train")
-    if dev:
-        DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="dev")
-    if test:
-        DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="test")
-        
-    datasets = ()
-    if train:
-        datasets += (EdgeDataset(DGRtr_f2, "./edges_f_QK_train"),)
-    if dev:
-        datasets += (EdgeDataset(DGRdv_f2, "./edges_f_QK_dev"),)
-    if test:
-        datasets += (EdgeDataset(DGRts_f2, "./edges_f_QK_test"),)
-    
-    return datasets
+    return faire_datasets_edges(filtre, train, dev, test, CLASSE = EdgeDataset)
+
 
 def get_ckpt(modele):
     logger = modele.logger
@@ -439,7 +422,7 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
     freqs = filtre2.effectifs
     cible = "roles"
     lr = 1.e-4
-    rang = 2
+    rang = 3
     if ckpoint_model:
         modele = Classif_Bil_Sym.load_from_checkpoint(ckpoint_model)
     else:
