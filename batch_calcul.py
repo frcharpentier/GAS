@@ -418,7 +418,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
     dimension = 144
     lr = 1.e-4
-    rang = 2 # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
+    rang = 8 # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
 
     if ckpoint_model:
         modele = Classif_Bil_Antisym.load_from_checkpoint(ckpoint_model)
