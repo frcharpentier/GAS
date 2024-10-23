@@ -1,5 +1,16 @@
-from interface_git import GLOBAL_HASH_GIT
-#Garder cette ligne tout en haut.
+from interface_git import nettoyer_logs_lightning, git_get_commit
+DEBUG = False
+if DEBUG:
+    print("""
+DDD   EEEE  BBB   U   U   GGG
+D  D  E     B  B  U   U  G
+D  D  EEE   BBB   U   U  G  GG
+D  D  E     B  B  U   U  G   G
+DDD   EEEE  BBB    UUU    GGG
+""")
+nettoyer_logs_lightning()
+GLOBAL_HASH_GIT = git_get_commit(DEBUG)
+#Garder ces lignes tout en haut.
 
 import os
 import inspect
@@ -396,27 +407,29 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
+    #def pour_fusion(C):
+    #    nonlocal noms_classes
+    #    if C.startswith(":") and C[1] != ">":
+    #        CC = ":>" + C[1:].upper()
+    #        if CC in noms_classes:
+    #            return CC
+    #    return C
     
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    #filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    #filtre = filtre.eliminer(":>POLARITY")
+    #filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    #filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    #filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    #filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+    #filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+    #                        ":>CONDITION", ":degree", ":>EXPERIENCER",
+    #                        ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+    #                        ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+    filtre2 = filtre
 
     DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
+    
 
     dimension = 144
     nb_classes = len(filtre2.alias)
@@ -430,7 +443,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         modele = Classif_Bil_Antisym(dimension, rang=rang, lr=lr)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     

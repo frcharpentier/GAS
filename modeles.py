@@ -194,12 +194,12 @@ class Classif_Bil_Antisym(LTN.LightningModule):
         self.lr = lr
         self.save_hyperparameters()
         if freqs is None:
-            self.loss = nn.BCELoss(reduction="mean")
+            self.loss = nn.BCEWithLogitsLoss(reduction="mean")
         else:
             self.freqs = freqs
             self.pondus = freqs.max() / freqs
             #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
-            self.loss = nn.BCELoss(weight = self.pondus, reduction="mean")
+            self.loss = nn.BCEWithLogitsLoss(weight = self.pondus, reduction="mean")
 
     def forward(self, X):
         # X : (b, dim, 2)

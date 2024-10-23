@@ -574,7 +574,8 @@ class EdgeDataset(torchDataset):
             sens = torch.as_tensor(np.fromfile(F, dtype="int8"))
         assert sens.dtype == torch.int8
         assert sens.shape == (Nadj,)
-        self.sens = sens.to(dtype=torch.bfloat16)
+        #self.sens = sens.to(dtype=torch.bfloat16)
+        self.sens = sens.to(dtype=torch.float32)
         self.Nadj = Nadj
 
 
