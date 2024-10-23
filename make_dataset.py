@@ -612,6 +612,14 @@ class EdgeDataset(torchDataset):
                     assert all(X[i,k + self.dimension].item() == self.X[i,k,0].item() for k in range(self.dimension))
             print("Vérification terminée") 
         self.X = X.contiguous()
+
+    def permuter_X1_X2(self, direction):
+        # On inverse l’ordre des deux vecteurs colonnes de X, ainsi que l’étiquette "sens"
+        # L’inversion est cohérente.
+        typ = self.sens.dtype
+        sens = ((self.sens != direction)*1).to(dtype=typ)
+        self.sens = sens
+        self.redresser_X(direction, reshape=False)
     
 
 class EdgeDatasetMono(EdgeDataset):

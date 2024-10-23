@@ -45,7 +45,7 @@ os.environ['CUDA_VISIBLE_DEVICES']='4'
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
     matrix = confusion_matrix(y_true, y_pred)
-    NN, _ = confusion_matrix.shape
+    NN, _ = matrix.shape
     if NN < 7:
         NN = 7
     fig, ax = plt.subplots(figsize=(NN,NN))
@@ -405,45 +405,28 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
 
 def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
 
-    #def pour_fusion(C):
-    #    nonlocal noms_classes
-    #    if C.startswith(":") and C[1] != ">":
-    #        CC = ":>" + C[1:].upper()
-    #        if CC in noms_classes:
-    #            return CC
-    #    return C
-    
-    #filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    #filtre = filtre.eliminer(":>POLARITY")
-    #filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    #filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    #filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    #filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
-
-    #filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-    #                        ":>CONDITION", ":degree", ":>EXPERIENCER",
-    #                        ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-    #                        ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
     filtre2 = filtre
 
     DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
     
+    #Permutation aléatoire pour équilibrer les datasets
+    DARtr.permuter_X1_X2(torch.randint(0,2,(DARtr.Nadj,), dtype=torch.long))
+    DARdv.permuter_X1_X2(torch.randint(0,2,(DARdv.Nadj,), dtype=torch.long))
+    DARts.permuter_X1_X2(torch.randint(0,2,(DARts.Nadj,), dtype=torch.long))
+
 
     dimension = 144
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
     lr = 1.e-4
-    rang = 3
+    rang = 2 # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
+
     if ckpoint_model:
         modele = Classif_Bil_Antisym.load_from_checkpoint(ckpoint_model)
     else:
         modele = Classif_Bil_Antisym(dimension, rang=rang, lr=lr)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=50, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(max_epochs=30, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
@@ -479,12 +462,12 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
             return_predictions=True
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
         accuracy = accuracy_score(truth, roles_pred)
         bal_accuracy = balanced_accuracy_score(truth, roles_pred)
         R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
         with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig, matrix = plot_confusion_matrix(truth, roles_pred)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
