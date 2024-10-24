@@ -573,7 +573,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
 
 
-def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
+def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
     fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -605,7 +605,6 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
     freqs = filtre2.effectifs
     cible = "roles"
     lr = 1.e-4
-    rang = 3
     if ckpoint_model:
         modele = Classif_Bil_Sym.load_from_checkpoint(ckpoint_model)
     else:
