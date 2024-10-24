@@ -102,7 +102,54 @@ def get_ckpt(modele):
         return fichiers[0]
     return fichiers
 
+def calculer_exactitudes(truth, pred, freqs = None):
+    M = confusion_matrix(truth, pred)
+    effectifs = M.sum(axis=1)
+    diago = np.diag(M)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rappels = diago / effectifs
+    if np.any(np.isnan(rappels)):
+        rappels = rappels[~np.isnan(rappels)]
+        # élimination des valeurs nan
+    bal_acc = np.mean(rappels)
+    # bal_acc : exactitude équilibrée
+    n_classes = len(rappels)
+    hasard = 1 / n_classes
+    bal_acc_adj = (bal_acc - hasard)/(1-hasard)
+    # bal_acc_adj : exactitude équilibrée, et rééchelonnée entre hasard et perfection
+    sum_diag = diago.sum()
+    total = effectifs.sum()
+    acc = sum_diag / total
+    # acc : exactitude
+    acc_adj = (acc - hasard) / (1-hasard)
+    # acc_adj : exactitude rééchelonnée entre hasard (uniforme) et perfection
+    if not freqs is None:
+        if type(freqs) == list:
+            freqs = np.array(freqs)
+        freqs = freqs / freqs.sum()
+        hasard2 = (freqs**2).sum()
+        # hasard2 : exactitude d’un classificateur au hasard qui suit la distribution freq
+        acc_adj2 = (acc - hasard2) / (1-hasard2)
+        # acc_adj2 : exactitude rééchelonnée entre hasard2 et perfection
+    else:
+        acc_adj2 = None
+    return {"acc":acc, "acc_adj":acc_adj, "acc_adj2":acc_adj2,
+            "bal_acc": bal_acc, "bal_acc_adj": bal_acc_adj}
+
+
+def get_appel_fonction():
+    F2 = inspect.stack()[1]
+    fonction = F2.function
+    arguments = inspect.getargvalues(F2.frame).locals
+    arguments = {k: v for k, v in arguments}
+    return fonction, arguments
+
+def str_appel_fonction(fonction, arguments):
+    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments) + ")"
+
 def batch_LM(nom_rapport, ckpoint_model=None, train=True):
+    fonction, arguments = get_appel_fonction()
+
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -153,12 +200,16 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.titre("Pour réexécuter :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
+        arguments["ckpoint_model"] = chckpt
+        arguments["train"] = False
         R.table(colonnes=False,
                 fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
@@ -179,9 +230,17 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-        accuracy = accuracy_score(truth, roles_pred)
-        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+
+        R.titre("Pour recalculer ces statistiques :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
             fig.savefig(IMG.fullname)
@@ -201,6 +260,7 @@ def rattraper():
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
 def batch_LM_VerbAtlas_ARGn():
+    fonction, arguments = get_appel_fonction()
     nom_rapport = "Rapport_Logistique.html"
     ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
     filtre = filtre_defaut()
@@ -288,6 +348,9 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
         R.titre("Dataset (classe et effectifs)", 2)
         R.table(relations=DARtr.liste_rolARG, effectifs=DARts.freqARGn)
         
+        R.titre("Pour recalculer ces statistiques :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+        
         R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(ARGn_truth, ARGn_pred, ordre_classes)
@@ -299,6 +362,7 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 
 
 def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
+    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -367,12 +431,18 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
         R.titre("Note", 2)
         R.texte("Expérience de classification sur les rôles PropBank sans passer par VerbAtlas")
+        
+        R.titre("Pour réexécuter :",2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
+        arguments["ckpoint_model"] = chckpt
+        arguments["train"] = False
         R.table(colonnes=False,
                 fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
@@ -393,9 +463,18 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-        accuracy = accuracy_score(truth, roles_pred)
-        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        
+        R.titre("Pour recalculer ces statistiques :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(truth, roles_pred, liste_classes)
             fig.savefig(IMG.fullname)
@@ -404,6 +483,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
 
 def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
+    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
 
     filtre2 = filtre
@@ -440,12 +520,17 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.titre("Pour réexécuter :",2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
+        arguments["ckpoint_model"] = chckpt
+        arguments["train"] = False
         R.table(colonnes=False,
                 fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
@@ -463,9 +548,17 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
-        accuracy = accuracy_score(truth, roles_pred)
-        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        
+        R.titre("Pour recalculer ces statistiques :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(truth, roles_pred)
             fig.savefig(IMG.fullname)
@@ -475,6 +568,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
 
 def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
+    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -526,12 +620,17 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.titre("Pour réexécuter :",2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
+        arguments["ckpoint_model"] = chckpt
+        arguments["train"] = False
         R.table(colonnes=False,
                 fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
@@ -552,9 +651,18 @@ def batch_Bilin(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-        accuracy = accuracy_score(truth, roles_pred)
-        bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+
+        R.titre("Pour recalculer ces statistiques :", 2)
+        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
             fig.savefig(IMG.fullname)
