@@ -141,7 +141,7 @@ def get_appel_fonction():
     F2 = inspect.stack()[1]
     fonction = F2.function
     arguments = inspect.getargvalues(F2.frame).locals
-    arguments = {k: v for k, v in arguments}
+    arguments = {k: v for k, v in arguments.items()}
     return fonction, arguments
 
 def str_appel_fonction(fonction, arguments):
