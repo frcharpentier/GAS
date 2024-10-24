@@ -319,8 +319,7 @@ def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
     # Renumérotation des prédictions et des réalités
     ARGn_pred = permut[ARGn_pred]
     ARGn_truth = permut[ARGn_truth]
-    #accuracy = accuracy_score(ARGn_truth, ARGn_pred)
-    #bal_accuracy = balanced_accuracy_score(ARGn_truth, ARGn_pred)
+    
     freqs = [None] * len(DARtr.freqARGn)
     for i, frq in enumerate(DARtr.freqARGn.numpy().tolist()):
         freqs[permut[i].item()] = frq
@@ -348,7 +347,7 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
         R.table(**hparams, colonnes=False)
         
         R.titre("Dataset (classe et effectifs)", 2)
-        R.table(relations=DARtr.liste_rolARG, effectifs=DARts.freqARGn)
+        R.table(relations=DARtr.liste_rolARG, fréquences=DARts.freqARGn.numpy().tolist())
         
         R.titre("Pour recalculer ces statistiques :", 2)
         R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
