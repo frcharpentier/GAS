@@ -235,8 +235,6 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
         R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
         R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
@@ -321,8 +319,13 @@ def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
     # Renumérotation des prédictions et des réalités
     ARGn_pred = permut[ARGn_pred]
     ARGn_truth = permut[ARGn_truth]
-    accuracy = accuracy_score(ARGn_truth, ARGn_pred)
-    bal_accuracy = balanced_accuracy_score(ARGn_truth, ARGn_pred)
+    #accuracy = accuracy_score(ARGn_truth, ARGn_pred)
+    #bal_accuracy = balanced_accuracy_score(ARGn_truth, ARGn_pred)
+    freqs = [None] * len(DARtr.freqARGn)
+    for i, frq in enumerate(DARtr.freqARGn.numpy().tolist()):
+        freqs[permut[i].item()] = frq
+
+    exactitudes = calculer_exactitudes(ARGn_truth, ARGn_pred, freqs)
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
@@ -350,13 +353,18 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
         R.titre("Pour recalculer ces statistiques :", 2)
         R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
         
-        R.titre("Accuracy : %f, balanced accuracy : %f"%(accuracy, bal_accuracy), 2)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
         with R.new_img_with_format("svg") as IMG:
             fig, matrix = plot_confusion_matrix(ARGn_truth, ARGn_pred, ordre_classes)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
+
 
 
 
