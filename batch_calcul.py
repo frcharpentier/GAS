@@ -145,7 +145,7 @@ def get_appel_fonction():
     return fonction, arguments
 
 def str_appel_fonction(fonction, arguments):
-    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments) + ")"
+    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
 
 def batch_LM(nom_rapport, ckpoint_model=None, train=True):
     fonction, arguments = get_appel_fonction()
