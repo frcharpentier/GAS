@@ -16,6 +16,11 @@ table, tr, td, th {
   border-collapse: collapse;
   border: 1px solid;
 }
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
     </style>
     
     <!--
@@ -60,6 +65,7 @@ class TEXTE_COPIABLE:
 
     def rendu(self, S):
         spanExt = S.new_tag("span")
+        spanExt["class"] = "ttyp"
         if self.hidden:
             spanCache = S.new_tag("span")
             spanCache.append(self.texte)
@@ -264,6 +270,8 @@ class CLASSE_SKLEARN:
 
 class HTML_REPORT:
     MD5_GIT = False
+    exe_python = False
+    commande = False
     def __init__(self, fichier):
         #print("init", file=sys.stderr)
         self.dirname = os.path.dirname(fichier)
@@ -341,6 +349,19 @@ class HTML_REPORT:
         par.append(elt.rendu(self.S))
         self.S.body.append(par)
         self.S.body.append("\n")
+
+    def reexecution(self):
+        self.titre("Pour réexécuter :", 2)
+        if all([HTML_REPORT.MD5_GIT, HTML_REPORT.exe_python, HTML_REPORT.commande]):
+            self.texte("Numéro MD5 de l’instantané GIT :")
+            self.texte_copiable(HTML_REPORT.MD5_GIT)
+            self.texte("Commandes :")
+            self.texte_copiable(HTML_REPORT.exe_python)
+            self.texte("ou")
+            self.texte_copiable(HTML_REPORT.commande)
+        else:
+            self.texte("Infos indisponibles")
+
         
     def texte(self, txt):
         self.text(txt)

@@ -4,7 +4,7 @@ DEBUG = True
 
 import os
 import fire
-import inspect
+#import inspect
 from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset
 import torch
 from torch import optim, nn, utils, manual_seed
@@ -128,18 +128,17 @@ def calculer_exactitudes(truth, pred, freqs = None):
             "bal_acc": bal_acc, "bal_acc_adj": bal_acc_adj}
 
 
-def get_appel_fonction():
-    F2 = inspect.stack()[1]
-    fonction = F2.function
-    arguments = inspect.getargvalues(F2.frame).locals
-    arguments = {k: v for k, v in arguments.items()}
-    return fonction, arguments
+#def get_appel_fonction():
+#    F2 = inspect.stack()[1]
+#    fonction = F2.function
+#    arguments = inspect.getargvalues(F2.frame).locals
+#    arguments = {k: v for k, v in arguments.items()}
+#    return fonction, arguments
 
-def str_appel_fonction(fonction, arguments):
-    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
+#def str_appel_fonction(fonction, arguments):
+#    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
 
 def batch_LM(nom_rapport, ckpoint_model=None, train=True):
-    fonction, arguments = get_appel_fonction()
 
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -191,20 +190,15 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
-        R.titre("Pour réexécuter :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
-        arguments["ckpoint_model"] = chckpt
-        arguments["train"] = False
+        
         R.table(colonnes=False,
-                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
-                MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = chckpt)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
@@ -221,9 +215,6 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        R.titre("Pour recalculer ces statistiques :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
@@ -249,7 +240,6 @@ def rattraper():
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
 def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
-    fonction, arguments = get_appel_fonction()
     ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -329,9 +319,7 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 (La nullité d’une ligne n’est pas du tout gênante pour le calcul de l’exactitude, en revanche.)""")
         R.titre("Informations de reproductibilité", 2)
         R.table(colonnes=False,
-                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
-                MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = ckpt)
         R.titre("paramètres d’instanciation du modèle", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
@@ -340,8 +328,6 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
         R.titre("Dataset (classe et effectifs)", 2)
         R.table(relations=DARtr.liste_rolARG, fréquences=DARts.freqARGn.numpy().tolist())
         
-        R.titre("Pour recalculer ces statistiques :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
         
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
         R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
@@ -359,7 +345,6 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 
 
 def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
-    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -428,9 +413,6 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
         R.titre("Note", 2)
         R.texte("Expérience de classification sur les rôles PropBank sans passer par VerbAtlas")
-        
-        R.titre("Pour réexécuter :",2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
@@ -438,12 +420,8 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
-        arguments["ckpoint_model"] = chckpt
-        arguments["train"] = False
         R.table(colonnes=False,
-                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
-                MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = chckpt)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
@@ -461,8 +439,6 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
         
-        R.titre("Pour recalculer ces statistiques :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         #accuracy = accuracy_score(truth, roles_pred)
@@ -480,7 +456,6 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
 
 def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
-    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
 
     filtre2 = filtre
@@ -517,21 +492,14 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
-        R.titre("Pour réexécuter :",2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
-
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
-        arguments["ckpoint_model"] = chckpt
-        arguments["train"] = False
         R.table(colonnes=False,
-                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
-                MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = chckpt)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
@@ -545,9 +513,6 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
-        
-        R.titre("Pour recalculer ces statistiques :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         exactitudes = calculer_exactitudes(truth, roles_pred)
         #accuracy = accuracy_score(truth, roles_pred)
@@ -565,7 +530,6 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
 
 def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
-    fonction, arguments = get_appel_fonction()
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -616,21 +580,14 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
-        R.titre("Pour réexécuter :",2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
-
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
             chckpt = ckpoint_model
         if not type(chckpt) == str:
             chckpt = repr(chckpt)
-        arguments["ckpoint_model"] = chckpt
-        arguments["train"] = False
         R.table(colonnes=False,
-                fonction=str(inspect.stack()[0][3]),
                 classe_modele=repr(modele.__class__),
-                MD5_git=GLOBAL_HASH_GIT, 
                 chkpt_model = chckpt)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
@@ -647,9 +604,6 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
         truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        R.titre("Pour recalculer ces statistiques :", 2)
-        R.texte_copiable(str_appel_fonction(fonction, arguments), hidden=False)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         #accuracy = accuracy_score(truth, roles_pred)
@@ -696,7 +650,7 @@ DDD   EEEE  BBB    UUU    GGG
 
         #batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
 
-        batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html")
+        batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html", DEBUG=True)
 
         #batch_LM(nom_rapport="rejeu.html",
         #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
