@@ -192,6 +192,7 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.reexecution()
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
@@ -312,6 +313,7 @@ def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.reexecution()
         R.titre("Note", 2)
         R.texte("""Cette expérience montre la capacité d’un classificateur linéaire entraîné sur l’étiquetage sémantique VerbAtlas
 à détecter correctement les rôles étiquetés normalement selon PropBank (AMR).
@@ -414,6 +416,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.reexecution()
         R.titre("Note", 2)
         R.texte("Expérience de classification sur les rôles PropBank sans passer par VerbAtlas")
 
@@ -459,7 +462,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
 
 @autoinspect
-def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
+def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
 
     filtre2 = filtre
@@ -482,7 +485,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         modele = Classif_Bil_Antisym(dimension, rang=rang, lr=lr)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=30, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
@@ -496,6 +499,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.reexecution()
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
@@ -584,6 +588,7 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.reexecution()
         R.titre("Informations de reproductibilité", 2)
         chckpt = get_ckpt(modele)
         if not chckpt and (not ckpoint_model is None):
@@ -654,7 +659,7 @@ DDD   EEEE  BBB    UUU    GGG
 
         #batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
 
-        batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html", DEBUG=True)
+        batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
 
         #batch_LM(nom_rapport="rejeu.html",
         #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
