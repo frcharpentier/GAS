@@ -263,6 +263,7 @@ class CLASSE_SKLEARN:
 
 
 class HTML_REPORT:
+    MD5_GIT = False
     def __init__(self, fichier):
         #print("init", file=sys.stderr)
         self.dirname = os.path.dirname(fichier)
@@ -317,6 +318,7 @@ class HTML_REPORT:
         
     def titre(self, txt, niveau=1):
         self.h(txt, niveau)
+
         
     def text(self, txt):
         #print("txt", file=sys.stderr)

@@ -3,7 +3,7 @@ import types
 
 # La classe Maillon est un décorateur qu’on peut ajouter à une fonction pour faire des
 # filtres enchainables. Le premier argument de la fonction est une source itérable
-# sur laquelle la fonction fait une boucle for, et fait des traitement. La fonction
+# sur laquelle la fonction fait une boucle for, et fait des traitements. La fonction
 # possède l’instruction yield.
 
 class MAILLON(object):

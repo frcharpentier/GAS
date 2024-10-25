@@ -1,18 +1,9 @@
-from interface_git import nettoyer_logs_lightning, git_get_commit
-DEBUG = False
-if DEBUG:
-    print("""
-DDD   EEEE  BBB   U   U   GGG
-D  D  E     B  B  U   U  G
-D  D  EEE   BBB   U   U  G  GG
-D  D  E     B  B  U   U  G   G
-DDD   EEEE  BBB    UUU    GGG
-""")
+from interface_git import nettoyer_logs_lightning
 nettoyer_logs_lightning()
-GLOBAL_HASH_GIT = git_get_commit(DEBUG)
-#Garder ces lignes tout en haut.
+DEBUG = True
 
 import os
+import fire
 import inspect
 from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset
 import torch
@@ -688,21 +679,30 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
+    if DEBUG:
+        print("""
+DDD   EEEE  BBB   U   U   GGG
+D  D  E     B  B  U   U  G
+D  D  EEE   BBB   U   U  G  GG
+D  D  E     B  B  U   U  G   G
+DDD   EEEE  BBB    UUU    GGG
+""")
+        #batch_LM(nom_rapport="Rapport_Logistique.html")
+        #batch_LM_VerbAtlas_ARGn()
+        #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
+        #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
+        #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
+        #              train=False)
 
-    #batch_LM(nom_rapport="Rapport_Logistique.html")
-    #batch_LM_VerbAtlas_ARGn()
-    #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html")
-    #batch_LM_ARGn(nom_rapport="logistiq_ARGn.html",
-    #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt",
-    #              train=False)
+        #batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
 
-    #batch_Bilin(nom_rapport = "Rapport_Bilin_Sym.html")
+        batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html")
 
-    batch_Antisym(nom_rapport = "Rapport_Bilin_Antisym.html")
-
-    #batch_LM(nom_rapport="rejeu.html",
-    #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
-    #         train=False)
-    
-    #rattraper()
-    #essai_train()
+        #batch_LM(nom_rapport="rejeu.html",
+        #         ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
+        #         train=False)
+        
+        #rattraper()
+        #essai_train()
+    else:
+        fire.Fire()
