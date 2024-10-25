@@ -1,6 +1,7 @@
+DEBUG = False
 from interface_git import nettoyer_logs_lightning
+from autoinspect import autoinspect
 nettoyer_logs_lightning()
-DEBUG = True
 
 import os
 import fire
@@ -138,6 +139,7 @@ def calculer_exactitudes(truth, pred, freqs = None):
 #def str_appel_fonction(fonction, arguments):
 #    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
 
+@autoinspect
 def batch_LM(nom_rapport, ckpoint_model=None, train=True):
 
     filtre = filtre_defaut()
@@ -239,6 +241,7 @@ def rattraper():
     modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
     
+@autoinspect
 def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
     ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
     filtre = filtre_defaut()
@@ -343,7 +346,7 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 
 
 
-
+@autoinspect
 def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -455,6 +458,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
+@autoinspect
 def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
 
@@ -528,7 +532,7 @@ def batch_Antisym(nom_rapport, ckpoint_model=None, train=True):
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
-
+@autoinspect
 def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
