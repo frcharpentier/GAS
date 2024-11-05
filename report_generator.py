@@ -284,7 +284,7 @@ class HTML_REPORT:
         if os.path.exists(self.fullfigdirname):
             assert os.path.isdir(self.fullfigdirname)
         else:
-            os.mkdir(self.fullfigdirname)
+            os.makedirs(self.fullfigdirname)
         if not os.path.isfile(self.fullname):
             with open(self.fullname, "w", encoding="utf-8") as F:
                 F.write(fichier_vide)
@@ -295,6 +295,13 @@ class HTML_REPORT:
         with open(self.fullname, "r", encoding="utf-8") as F:
             html_code = F.read()
         self.S = BeautifulSoup(html_code, "html.parser")
+        # Mise à jour de l’en-tête avec l’en-tête de "fichier_vide", au cas
+        # où il y aurait des évolutions.
+        S0 = BeautifulSoup(fichier_vide, "html.parser")
+        H0 = S0.head.extract()
+        self.S.head.extract()
+        self.S.insert(0, H0)
+
         
     def flush(self):
         if self.S == None:
