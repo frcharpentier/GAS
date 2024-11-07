@@ -648,6 +648,13 @@ class EdgeDatasetRdmDir(EdgeDataset):
     def permutation_aleatoire(self):
         self.redresser_X(torch.randint(0,2,(self.Nadj,), dtype=torch.long))
 
+    def redirection_aleatoire(self):
+        X = self.X.reshape(-1, 2, self.dimension).transpose(1,2).contiguous()
+        self.X = X
+        self.redresser_X(torch.randint(0,2,(self.Nadj,), dtype=torch.long))
+
+                            
+
 
 
 
