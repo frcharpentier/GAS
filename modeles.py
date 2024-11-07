@@ -108,6 +108,7 @@ class Classif_Bil_Sym(LTN.LightningModule):
 
         X = X.unsqueeze(-3)
         M = self.weight.unsqueeze(0)
+        B = self.weight.unsqueeze(0)
         # X est désormais un tenseur de format (b, 1, dim, 2)
         # et M est un tenseur de format (1, nb_classes, rang, dim)
         # Si on l’ajuste (par conduplication) à un tenseur (b, nb_classes, rang, dim)
@@ -120,13 +121,14 @@ class Classif_Bil_Sym(LTN.LightningModule):
         Y = torch.matmul(M, X)
         # Y est un tenseur de format (b, nb_classes, rang, 2)
         
-        Y0 = (Y[...,0] * self.diag.unsqueeze(0)).unsqueeze(-2)
-        # Y0 est un tenseur (b, nb_classes, 1, rang)
-        Y1 = Y[...,1].unsqueeze(-1)
-        # Y1 est un tenseur (b, nb_classes, rang, 1)
-        Y = torch.matmul(Y0,Y1)
-        # Y est un tenseur (b, nb_classes,1,1)
-        return Y.reshape(-1, self.nb_classes)
+        Y0 = Y[...,0] * (self.diag.unsqueeze(0))
+        # Y0 est un tenseur (b, nb_classes, rang)
+        Y1 = Y[...,1]
+        # Y1 est un tenseur (b, nb_classes, rang)
+        Y = (Y0*Y1).sum(axis=-1)
+        # Y est un tenseur (b, nb_classes)
+        Y = Y+B # ajout du biais
+        return Y
 
     def predict_step(self, batch, batch_idx):
         logits = self.forward(batch["X"])
