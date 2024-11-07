@@ -623,22 +623,32 @@ class EdgeDataset(torchDataset):
     
 
 class EdgeDatasetMono(EdgeDataset):
+    # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
+    # un vecteur de double dimension, dans un ordre déterminé par le sens
+    # de l’arête
     def __init__(self, aligDS, repertoire):
         super().__init__(aligDS, repertoire)
         self.redresser_X(self.sens)
 
 class EdgeDatasetMonoEnvers(EdgeDataset):
+    # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
+    # un vecteur de double dimension, dans un ordre déterminé par le sens
+    # de l’arête, le sens inverse du dataset ci-dessus
     def __init__(self, aligDS, repertoire):
         super().__init__(aligDS, repertoire)
         self.redresser_X(1-self.sens)
         
 class EdgeDatasetRdmDir(EdgeDataset):
+    # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
+    # un vecteur de double dimension, dans un ordre aléatoire
     def __init__(self, aligDS, repertoire):
         super().__init__(aligDS, repertoire)
         self.permutation_aleatoire()
 
     def permutation_aleatoire(self):
         self.redresser_X(torch.randint(0,2,(self.Nadj,), dtype=torch.long))
+
+
 
 
 class AligDataset(geoDataset):
