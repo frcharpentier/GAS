@@ -30,8 +30,6 @@ import lightning as LTN
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import Callback, EarlyStopping
 
-from lightning.pytorch.
-
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 os.environ['CUDA_VISIBLE_DEVICES']='4'
 
