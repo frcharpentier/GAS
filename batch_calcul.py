@@ -140,7 +140,7 @@ def calculer_exactitudes(truth, pred, freqs = None):
 #    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
 
 @autoinspect
-def batch_LM(nom_rapport, ckpoint_model=None, train=True):
+def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
 
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
@@ -183,7 +183,7 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True):
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
         print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
@@ -349,7 +349,7 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 
 
 @autoinspect
-def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
+def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -407,7 +407,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
     
         print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
@@ -462,7 +462,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True):
         R.ligne()
 
 @autoinspect
-def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True):
+def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
     filtre = filtre_defaut()
 
     filtre2 = filtre
@@ -490,7 +490,7 @@ def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True):
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
         print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
@@ -537,7 +537,7 @@ def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True):
         R.ligne()
 
 @autoinspect
-def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
+def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False):
     filtre = filtre_defaut()
     noms_classes = [k for k in filtre.alias]
 
@@ -579,7 +579,7 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
         print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8)
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
