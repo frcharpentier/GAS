@@ -626,6 +626,11 @@ class EdgeDatasetMono(EdgeDataset):
     def __init__(self, aligDS, repertoire):
         super().__init__(aligDS, repertoire)
         self.redresser_X(self.sens)
+
+class EdgeDatasetMonoEnvers(EdgeDataset):
+    def __init__(self, aligDS, repertoire):
+        super().__init__(aligDS, repertoire)
+        self.redresser_X(1-self.sens)
         
 class EdgeDatasetRdmDir(EdgeDataset):
     def __init__(self, aligDS, repertoire):

@@ -22,7 +22,9 @@ from sklearn.metrics import (confusion_matrix,
     ConfusionMatrixDisplay)
 
 import numpy as np
-from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
+from make_dataset import ( AligDataset, EdgeDataset,
+                          EdgeDatasetMono, EdgeDatasetRdmDir,
+                          EdgeDatasetMonoEnvers)
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Antisym
 import lightning as LTN
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
@@ -241,6 +243,84 @@ def rattraper():
     trainer = LTN.Trainer(devices=1, accelerator="gpu")
     modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
+
+@autoinspect
+def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None):
+    dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
+                    "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
+                    "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
+    
+    assert nom_dataset in dico_classes
+
+    filtre = filtre_defaut()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = dico_classes[nom_dataset])
+    cible = "roles"
+    freqs = filtre2.effectifs
+    modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
+    trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+    print("TERMINÉ.")
+
     
 @autoinspect
 def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
