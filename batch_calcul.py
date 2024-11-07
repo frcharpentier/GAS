@@ -640,8 +640,8 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True):
 
 
 if __name__ == "__main__" :
-    manual_seed(53)
-    random.seed(53)
+    #manual_seed(53)
+    #random.seed(53)
     if DEBUG:
         print("""
 DDD   EEEE  BBB   U   U   GGG
