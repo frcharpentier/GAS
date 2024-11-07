@@ -59,7 +59,7 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
 
     def on_train_epoch_start(self, trainer, pl_module):
         print("Nouvelle époque")
-        self.train_ds.permutation_aleatoire()
+        self.train_ds.redirection_aleatoire()
 
 def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
     if train:
