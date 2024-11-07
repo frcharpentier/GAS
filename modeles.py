@@ -131,6 +131,10 @@ class Classif_Bil_Sym(LTN.LightningModule):
         Y = (Y0*Y1).sum(axis=-1)
         # Y est un tenseur (b, nb_classes)
         Y = Y+B # ajout du biais
+
+        # Ni softmax ni log softmax.
+        # Utiliser la perte "Entropie croisée à partir des logits"
+        # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         return Y
 
     def predict_step(self, batch, batch_idx):
