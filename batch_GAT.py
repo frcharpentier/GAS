@@ -69,7 +69,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         datasets += (dsTRAIN,)
 
         if CLASSE == EdgeDataset:
-            dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masquer_sommets_dist = False)
+            dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masques="1")
         datasets += (dsTRAIN,)
     if dev:
         dsDEV = AligDataset("./dataset_QK_dev",
@@ -77,7 +77,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                             transform=filtre,
                             QscalK=True, split="dev")
         if CLASSE == EdgeDataset:
-            dsDEV = CLASSE(dsDEV, "./edges_f_QK_dev", masquer_sommets_dist = False)
+            dsDEV = CLASSE(dsDEV, "./edges_f_QK_dev", masques="1")
         datasets += (dsDEV,)
     if test:
         dsTEST = AligDataset("./dataset_QK_test",
@@ -85,7 +85,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                              transform=filtre,
                              QscalK=True, split="test")
         if CLASSE == EdgeDataset:
-            dsTEST = CLASSE(dsTEST, "./edges_f_QK_test", masquer_sommets_dist = False)
+            dsTEST = CLASSE(dsTEST, "./edges_f_QK_test", masques="1")
         datasets += (dsTEST,)
 
     return datasets
