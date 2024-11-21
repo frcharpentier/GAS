@@ -33,7 +33,7 @@ from batch_calcul import filtre_defaut, plot_confusion_matrix
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 os.environ['CUDA_VISIBLE_DEVICES']='4'
 
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True):
+def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset):
     if filtre == "defaut":
         filtre = filtre_defaut()
         noms_classes = [k for k in filtre.alias]
@@ -64,18 +64,28 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True):
                               "./AMR_et_graphes_phrases_explct",
                               transform=filtre,
                               QscalK=True, split="train")
+        
+        ## DEBUG
+        datasets += (dsTRAIN,)
+
+        if CLASSE == EdgeDataset:
+            dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masquer_sommets_dist = False)
         datasets += (dsTRAIN,)
     if dev:
         dsDEV = AligDataset("./dataset_QK_dev",
                             "./AMR_et_graphes_phrases_explct",
                             transform=filtre,
                             QscalK=True, split="dev")
+        if CLASSE == EdgeDataset:
+            dsDEV = CLASSE(dsDEV, "./edges_f_QK_dev", masquer_sommets_dist = False)
         datasets += (dsDEV,)
     if test:
         dsTEST = AligDataset("./dataset_QK_test",
                              "./AMR_et_graphes_phrases_explct",
                              transform=filtre,
                              QscalK=True, split="test")
+        if CLASSE == EdgeDataset:
+            dsTEST = CLASSE(dsTEST, "./edges_f_QK_test", masquer_sommets_dist = False)
         datasets += (dsTEST,)
 
     return datasets
@@ -88,8 +98,8 @@ def batch_GAT_classif():
 
 
 def test():
-    (ds,) = faire_datasets_grph(train=True, dev=False, test=False)
-    filtr = ds.filtre
+    (DS, ds) = faire_datasets_grph(train=True, dev=False, test=False, CLASSE=EdgeDataset)
+    
     
 
 if __name__ == "__main__":
