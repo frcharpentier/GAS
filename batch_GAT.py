@@ -47,6 +47,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         
         filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
         filtre = filtre.eliminer(":>POLARITY")
+        filtre = filtre.eliminer("{syntax}")
         filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
         filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
         filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
@@ -65,8 +66,6 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                               transform=filtre,
                               QscalK=True, split="train")
         
-        ## DEBUG
-        datasets += (dsTRAIN,)
 
         if CLASSE == EdgeDataset:
             dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masques="1")
