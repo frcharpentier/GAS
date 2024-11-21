@@ -18,7 +18,6 @@ from sklearn.metrics import (confusion_matrix,
     f1_score,
     accuracy_score,
     balanced_accuracy_score,
-    confusion_matrix,
     ConfusionMatrixDisplay)
 
 import numpy as np
