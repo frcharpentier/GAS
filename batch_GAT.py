@@ -35,6 +35,7 @@ os.environ['CUDA_VISIBLE_DEVICES']='4'
 
 def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True):
     if filtre == "defaut":
+        filtre = filtre_defaut()
         noms_classes = [k for k in filtre.alias]
         def pour_fusion(C):
             nonlocal noms_classes
@@ -43,7 +44,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True):
                 if CC in noms_classes:
                     return CC
             return C
-        filtre = filtre_defaut()
+        
         filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
         filtre = filtre.eliminer(":>POLARITY")
         filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
@@ -83,13 +84,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True):
 def batch_GAT_classif():
     pass
 
-@autoinspect
-def stats_graphe_adjoint(nom_rapport):
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        (ds,) = faire_datasets_grph(train=True, dev=False, test=False)
-        filtr = ds.filtre
+
 
 
 def test():

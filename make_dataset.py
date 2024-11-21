@@ -498,13 +498,13 @@ class EdgeDataset(torchDataset):
     def process(self, aligDS):
         print("Construction des fichiers")
         self.lire_liste_roles()
-        FX = open(self.fichier_edge, "wb")
+        FX = open(self.fichier_edge, "wb")             #fichier edge_data.bin
         if self.debug_idSNT:
             self.table_debug = [0]
             NN = 0
-        Froles = open(self.fichier_edge_labels, "wb")
-        FARGn = open(self.fichier_ARGn_labels, "wb")
-        Fsens = open(self.fichier_sens, "wb")
+        Froles = open(self.fichier_edge_labels, "wb")  #fichier edge_labels.bin
+        FARGn = open(self.fichier_ARGn_labels, "wb")   #fichier edge_ARGn.bin
+        Fsens = open(self.fichier_sens, "wb")          #fichier edge_dir.bin
         try:
             for data in tqdm(aligDS):
                 msk = data.msk1 & data.msk2 & data.msk_iso
