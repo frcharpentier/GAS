@@ -385,7 +385,7 @@ class PermutEdgeDataset(torchDataset):
 
 
 class EdgeDataset(torchDataset):
-    def __init__(self, aligDS, repertoire): #, transform=None):
+    def __init__(self, aligDS, repertoire, masquer_sommets_dist = True): #, transform=None):
         self.gros_fichier = aligDS.processed_paths[0]
         self.filtre = aligDS.filtre
         
@@ -396,6 +396,7 @@ class EdgeDataset(torchDataset):
         self.fichier_sens = osp.join(repertoire, "edge_dir.bin")
         self.fichier_digests = osp.join(repertoire, "digests.txt")
         self.liste_roles = None
+        self.msk_sommets_dist = masquer_sommets_dist
         self.debug_idSNT = aligDS.debug_idSNT
         if self.debug_idSNT:
             self.liste_idSNT = aligDS.liste_idSNT
@@ -425,11 +426,18 @@ class EdgeDataset(torchDataset):
                 if verification:
                     if HH != digests["filtre_roles"]:
                         verification = False
+                if verification:
+                    if not "msk_sommets_dist" in digests:
+                        verification = False
+                if verification:
+                    if self.msk_sommets_dist != digests["msk_sommets_dist"]:
+                        verification = False
                 if verification: # vérifier les digests
                     calculer = False
         if calculer:
             dico = {"gros_fichier": ref_digests["gros_fichier"],
-                    "filtre_roles": HH}
+                    "filtre_roles": HH,
+                    "msk_sommets_dist": self.msk_sommets_dist}
             with open(self.fichier_digests, "w", encoding="UTF-8") as F:
                 json.dump(dico, F)
             self.process(aligDS)
@@ -479,7 +487,10 @@ class EdgeDataset(torchDataset):
         self.table_debug = [0]
         NN = 0
         for data in tqdm(aligDS):
-            msk = data.msk1 & data.msk2 & data.msk_iso
+            if self.msk_sommets_dist:
+                msk = data.msk1 & data.msk2 & data.msk_iso
+            else:
+                msk = data.msk1 & data.msk2
             idx = torch.nonzero(msk).view(-1)
             (N,) = idx.shape
             NN += N
@@ -507,7 +518,10 @@ class EdgeDataset(torchDataset):
         Fsens = open(self.fichier_sens, "wb")          #fichier edge_dir.bin
         try:
             for data in tqdm(aligDS):
-                msk = data.msk1 & data.msk2 & data.msk_iso
+                if self.msk_sommets_dist:
+                    msk = data.msk1 & data.msk2 & data.msk_iso
+                else:
+                    msk = data.msk1 & data.msk2
                 idx = torch.nonzero(msk).view(-1)
                 (N,) = idx.shape
                 if self.debug_idSNT:
