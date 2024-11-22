@@ -178,7 +178,117 @@ class Classif_Bil_Sym(LTN.LightningModule):
         return optimizer
 
 
+class Classif_Bil_Sym_2(LTN.LightningModule):
+    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
+    # étiquettes = roles VerbAtlas ou étiquettes = roles AMR.
 
+    def __init__(self, dim, nb_classes, rang=2, cible="roles", lr=1.e-5, freqs = None):
+        super(Classif_Bil_Sym_2, self).__init__()
+        if not freqs is None:
+            if type(freqs) is list:
+                assert len(freqs) == nb_classes
+                freqs = torch.Tensor(freqs)
+            assert freqs.shape == (nb_classes,)
+        self.weight = nn.Parameter(torch.empty(nb_classes, rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.diag = nn.Parameter(torch.empty(nb_classes, rang))
+        nn.init.xavier_normal_(self.diag)
+        self.bias_vecto = nn.Parameter(torch.empty(nb_classes, dim))
+        nn.init.xavier_normal_(self.bias_vecto)
+        self.bias0 = nn.Parameter(torch.empty(nb_classes, ))
+        nn.init.normal_(self.bias0)
+        self.cible = cible
+        self.lr = lr
+        self.freqs = freqs
+        self.pondus = freqs.max() / freqs
+        #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
+        self.nb_classes = nb_classes
+        self.save_hyperparameters()
+        self.loss = nn.CrossEntropyLoss(weight = self.pondus, reduction="mean")
+
+    def forward(self, X):
+        # X est un tenseur de format (b, dim, 2)
+        # On commence par le transformer en un tenseur (b, 1, dim, 2)
+        # Qui s’ajustera (par conduplication) à un tenseur (b, nb_classes, dim, 2)
+
+        X = X.unsqueeze(-3)
+        # bias_vecto est un tenseur de format (nb_classes, dim)
+        # On en faait un tenseur (1, nb_clases, dim, 1)
+        # Pour le soustraire à X (Par conduplication)
+        B = self.bias_vecto.unsqueeze(0).unsqueeze(-1)
+        Xb = X-B
+
+        M = self.weight.unsqueeze(0)
+        # Xb est un tenseur de format (b, nb_classes, dim, 2)
+        # et M est un tenseur de format (1, nb_classes, rang, dim)
+        # Si on l’ajuste (par conduplication) à un tenseur (b, nb_classes, rang, dim)
+        # alors M et X sont envisageables comme des tenseurs (b, nb_classes)
+        # de matrices (rang, dim) pour M et (dim, 2) pour X.
+        # Si on multiple (matriciellement) point à point les éléments de ces tenseurs,
+        # on obtient un tenseur (b, nb_classes) de matrices (rang, 2),
+        # C’est-à-dire un tenseur (b, nb_classes, rang, 2).
+
+        Y = torch.matmul(M, Xb)
+        # Y est un tenseur de format (b, nb_classes, rang, 2)
+        
+        Y0 = Y[...,0] * (self.diag.unsqueeze(0))
+        # Extraction de la colonne zéro, et multiplication point à point par diag,
+        # (Ce qui revient à multiplier matriciellement par une matrice diagonale)
+        # Y0 est un tenseur (b, nb_classes, rang)
+        Y1 = Y[...,1]
+        # Extraction de la colonne 1
+        # Y1 est un tenseur (b, nb_classes, rang)
+        Y = (Y0*Y1).sum(axis=-1)
+        # Y est un tenseur (b, nb_classes)
+
+        #ajout du biais
+        Y = Y + (self.bias0.unsqueeze(0))
+        
+
+        # Ni softmax ni log softmax.
+        # Utiliser la perte "Entropie croisée à partir des logits"
+        # (nn.CrossEntropyLoss ou NNF.cross_entropy)
+        return Y
+
+    def predict_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        return logits.argmax(axis=1).to(device="cpu")
+    
+    def training_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch[self.cible])
+        self.log("train_loss", perte)
+        return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch[self.cible])
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
+        
+
+    def on_test_start(self):
+        self.accuPred = CatMetric()
+        self.accuTrue = CatMetric()
+    
+    def test_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        roles_pred = logits.argmax(axis=1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(batch[self.cible])
+
+    def on_test_end(self):
+        roles = self.accuTrue.compute().cpu().numpy()
+        roles_pred = self.accuPred.compute().cpu().numpy()
+        
+
+    def configure_optimizers(self):
+        #optimizer = optim.SGD(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
     
 
     
