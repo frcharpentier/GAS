@@ -222,7 +222,7 @@ class Classif_Bil_Sym_2(LTN.LightningModule):
         # Xb est un tenseur de format (b, nb_classes, dim, 2)
         # et M est un tenseur de format (1, nb_classes, rang, dim)
         # Si on l’ajuste (par conduplication) à un tenseur (b, nb_classes, rang, dim)
-        # alors M et X sont envisageables comme des tenseurs (b, nb_classes)
+        # alors M et Xb sont envisageables comme des tenseurs (b, nb_classes)
         # de matrices (rang, dim) pour M et (dim, 2) pour X.
         # Si on multiple (matriciellement) point à point les éléments de ces tenseurs,
         # on obtient un tenseur (b, nb_classes) de matrices (rang, 2),
