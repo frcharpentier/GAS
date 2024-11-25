@@ -83,6 +83,7 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeD
 
 
 def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset):
+    assert CLASSE in [AligDataset, EdgeDataset]
     if filtre == "defaut":
         filtre = filtre_defaut()
         noms_classes = [k for k in filtre.alias]
@@ -116,7 +117,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                               QscalK=True, split="train")
         
 
-        if CLASSE == EdgeDataset:
+        if CLASSE != AligDataset:
             dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masques="1")
         datasets += (dsTRAIN,)
     if dev:
@@ -124,7 +125,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                             "./AMR_et_graphes_phrases_explct",
                             transform=filtre,
                             QscalK=True, split="dev")
-        if CLASSE == EdgeDataset:
+        if CLASSE != AligDataset:
             dsDEV = CLASSE(dsDEV, "./edges_f_QK_dev", masques="1")
         datasets += (dsDEV,)
     if test:
@@ -132,7 +133,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
                              "./AMR_et_graphes_phrases_explct",
                              transform=filtre,
                              QscalK=True, split="test")
-        if CLASSE == EdgeDataset:
+        if CLASSE != AligDataset:
             dsTEST = CLASSE(dsTEST, "./edges_f_QK_test", masques="1")
         datasets += (dsTEST,)
 

@@ -291,9 +291,6 @@ class Classif_Bil_Sym_2(LTN.LightningModule):
         return optimizer
     
 
-    
-
-
 class Classif_Bil_Antisym(LTN.LightningModule):
     # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
     # étiquettes = sens
@@ -375,6 +372,97 @@ class Classif_Bil_Antisym(LTN.LightningModule):
         return optimizer
 
 
+class Classif_Bil_Antisym_2(LTN.LightningModule):
+    # modèle bilinéaire symétrique à utiliser avec le dataset d’arêtes
+    # étiquettes = sens
+
+    def __init__(self, dim, rang=2, lr=1.e-5, freqs = None):
+        # On n’a que deux classes, a priori.
+        super(Classif_Bil_Antisym_2, self).__init__()
+        if not freqs is None:
+            if type(freqs) is list:
+                assert len(freqs) == 2
+                freqs = torch.Tensor(freqs)
+            assert freqs.shape == (2,)
+        self.weight = nn.Parameter(torch.empty(rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.antisym = nn.Parameter(torch.empty(rang,rang))
+        nn.init.xavier_normal_(self.antisym)
+        self.bias_vecto = nn.Parameter(torch.empty(dim,))
+        nn.init.normal_(self.bias_vecto)
+        self.lr = lr
+        self.save_hyperparameters()
+        if freqs is None:
+            self.loss = nn.BCEWithLogitsLoss(reduction="mean")
+        else:
+            self.freqs = freqs
+            self.pondus = freqs.max() / freqs
+            #Calcul de la pondération. La classe majoritaire prendra la pondération 1,0.
+            self.loss = nn.BCEWithLogitsLoss(weight = self.pondus, reduction="mean")
+
+    def forward(self, X):
+        # X : (b, dim, 2)
+        W = self.weight.unsqueeze(0)
+        # w : (1, r, dim)
+        B = self.bias_vecto.unsqueeze(0).unsqueeze(-1)
+        # B : (1, dim, 1) et X-B : (b, dim, 2)
+        Y = torch.matmul(W, (X-B))
+        # Y : (b, r, 2)
+        B1 = torch.matmul(W, B) # shape: (1, r, 1)
+        A = self.antisym.triu(1)
+        A = A - (A.T)
+        A = A.unsqueeze(0) # shape: (1, r, r)
+        Y1 = Y[...,1].unsqueeze(-1) # shape: (b, r, 1)
+        Y1 = torch.matmul(A, Y1)    # shape: (b, r, 1)
+        B2 = torch.matmul(A, B1) # shape: (1, r, 1)
+        tBMB = (B1.squeeze() * B2.squeeze()).sum() # shape: ()
+
+        Y0 = Y[...,0].unsqueeze(-2)  # shape: (b, 1, r)
+        Y = torch.matmul(Y0, Y1)     # shape: (b, 1, 1)
+        Y = Y.reshape(-1)            # shape: (b,)
+        Y = Y + tBMB.unsqueeze(0)    # shape: (b,)
+        return Y
+    
+    def predict_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        preds = (logits > 0)*1
+        return preds.to(device="cpu")
+    
+    def training_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch["sens"])
+        self.log("train_loss", perte)
+        return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        logits = self.forward(batch["X"])
+        perte = self.loss(logits, batch["sens"])
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
+        
+
+    def on_test_start(self):
+        self.accuPred = CatMetric()
+        self.accuTrue = CatMetric()
+    
+    def test_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"])
+        roles_pred = ((logits > 0)*1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(batch["sens"])
+
+    def on_test_end(self):
+        roles = self.accuTrue.compute().cpu().numpy()
+        roles_pred = self.accuPred.compute().cpu().numpy()
+        
+
+    def configure_optimizers(self):
+        #optimizer = optim.SGD(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
     
 
 def test_sym_antisym():
