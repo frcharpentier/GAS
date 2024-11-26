@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import Dataset as torchDataset
 from torch_geometric.data import Dataset as geoDataset, download_url
 from torch_geometric.data import Data
+from torch_geometric.loader import DynamicBatchSampler
 import torch_geometric.transforms as TRF
 from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict, namedtuple
@@ -1017,6 +1018,57 @@ class AligDataset(geoDataset):
                     msk_ARGn = msk_ARGn)
         return data
 
+
+class PersonalSampler(torch.utils.data.sampler.Sampler):
+    r"""Classe qui fait le même travail que le sampler
+    DynamicBatchSampler de torch_geometric.
+    Mais elle le prépare à l’avance, ce qui permet de déterminer
+    le nombre total de batches. (pratique, pour fonctionner avec des
+    barres de progression, et pour faire fonctionner torch Lightning )
+    Les arguments du constructeur sont les mêmes que pour DynamicBatchSampler.
+
+    Args:
+        dataset (Dataset): Dataset to sample from.
+        max_num (int): Size of mini-batch to aim for in number of nodes or
+            edges.
+        mode (str, optional): :obj:`"node"` or :obj:`"edge"` to measure
+            batch size. (default: :obj:`"node"`)
+        shuffle (bool, optional): If set to :obj:`True`, will have the data
+            reshuffled at every epoch. (default: :obj:`False`)
+        skip_too_big (bool, optional): If set to :obj:`True`, skip samples
+            which cannot fit in a batch by itself. (default: :obj:`False`)
+        num_steps (int, optional): The number of mini-batches to draw for a
+            single epoch. If set to :obj:`None`, will iterate through all the
+            underlying examples, but :meth:`__len__` will be :obj:`None` since
+            it is ambiguous. (default: :obj:`None`)
+    """
+    def __init__(self,
+        dataset,
+        max_num,
+        mode = 'node',
+        shuffle = False,
+        skip_too_big = False,
+        num_steps = None,):
+        self.sampler = DynamicBatchSampler(dataset,
+                        max_num, mode, shuffle, skip_too_big, num_steps)
+        
+        print("Préparation des indices pour les batches...", end="")
+        self.samples = [tuple(s) for s in self.sampler]
+        print("Prêt.")
+        self.L       = len(self.samples)
+        self.shuffle = shuffle
+
+    def __iter__(self):
+        if self.shuffle:
+            indices = torch.randperm(self.L).tolist()
+        else:
+            indices = range(self.L)
+        for i in indices:
+            yield list(self.samples[i])
+
+    def __len__(self):
+        return self.L
+        
 
 def essai_chrono():
     nom_fichier = "./AMR_et_graphes_phrases_explct.txt"
