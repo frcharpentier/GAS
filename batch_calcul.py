@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 from interface_git import nettoyer_logs_lightning
 from autoinspect import autoinspect
 nettoyer_logs_lightning()
@@ -948,8 +948,8 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
         R.ligne()
 
 
-#@autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True):
+@autoinspect
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
 
@@ -970,10 +970,8 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
         
-        #trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        trainer = LTN.Trainer(max_epochs=2, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
+        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
+            
         print("Début de l’entrainement")
         sampler = BalancedGraphSampler(DARtr, avg_num=1500,
                                       shuffle=True)
@@ -1058,10 +1056,10 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
         
         
-        #batch_GAT_sym("a_tej.html", 144, 1, 2, )
+        batch_GAT_sym("a_tej.html", 144, 1, 2, )
 
-        chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
-        batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
+        #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
+        #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
 
     else:
         fire.Fire()
