@@ -1035,7 +1035,7 @@ class AligDataset(geoDataset):
 
 
 
-class PersonalSampler(torch.utils.data.sampler.Sampler):
+class BalancedGraphSampler(torch.utils.data.sampler.Sampler):
     r"""Classe qui sélectionne des indices pour regrouper les graphes
     en batches dont le nombre total de sommets vaut avg_num.
     Une tolérance en plus ou en moins est autorisée (10% par défaut.)
