@@ -1017,46 +1017,137 @@ class AligDataset(geoDataset):
                     msk_iso = msk_iso,
                     msk_ARGn = msk_ARGn)
         return data
+    
+    def get_num_nodes(self):
+        self.ouvrir_digests()
+        self.ouvrir_offsets()
+        self.lire_liste_roles()
+        self.ouvrir_gros_fichier()
+        resu = []
+        for offset in self.offsets:  #tqdm(self.offsets, desc="num_nodes"):
+            self.FileHandle.seek(offset)
+        
+            XXX = self.FileHandle.read(self.sizeL)
+            (nbtokens,) = struct.unpack("l", XXX)
+            Nadj = nbtokens * (nbtokens-1) // 2
+            resu.append(Nadj)
+        return resu
+
 
 
 class PersonalSampler(torch.utils.data.sampler.Sampler):
-    r"""Classe qui fait le même travail que le sampler
-    DynamicBatchSampler de torch_geometric.
-    Mais elle le prépare à l’avance, ce qui permet de déterminer
-    le nombre total de batches. (pratique, pour fonctionner avec des
-    barres de progression, et pour faire fonctionner torch Lightning )
-    Les arguments du constructeur sont les mêmes que pour DynamicBatchSampler.
+    r"""Classe qui sélectionne des indices pour regrouper les graphes
+    en batches dont le nombre total de sommets vaut avg_num.
+    Une tolérance en plus ou en moins est autorisée (10% par défaut.)
 
     Args:
         dataset (Dataset): Dataset to sample from.
-        max_num (int): Size of mini-batch to aim for in number of nodes or
+        avg_num (int): Size of mini-batch to aim for in number of nodes or
             edges.
+        tolerance (float): La tolérance. Un nombre réel. (0,1 signifie 10%.)
         mode (str, optional): :obj:`"node"` or :obj:`"edge"` to measure
             batch size. (default: :obj:`"node"`)
-        shuffle (bool, optional): If set to :obj:`True`, will have the data
-            reshuffled at every epoch. (default: :obj:`False`)
-        skip_too_big (bool, optional): If set to :obj:`True`, skip samples
-            which cannot fit in a batch by itself. (default: :obj:`False`)
-        num_steps (int, optional): The number of mini-batches to draw for a
-            single epoch. If set to :obj:`None`, will iterate through all the
-            underlying examples, but :meth:`__len__` will be :obj:`None` since
-            it is ambiguous. (default: :obj:`None`)
+        shuffle: Une fois les graphes associés en batches, ce paramètre détermine
+        s’il faut mélanger ou non l’ordre de ces batches, à chaque époque.
     """
     def __init__(self,
         dataset,
-        max_num,
-        mode = 'node',
-        shuffle = False,
-        skip_too_big = False,
-        num_steps = None,):
-        self.sampler = DynamicBatchSampler(dataset,
-                        max_num, mode, shuffle, skip_too_big, num_steps)
+        avg_num,
+        tolerance = 0.1,
+        mode = 'node', 
+        shuffle=False
+        ):
         
-        print("Préparation des indices pour les batches...", end="")
-        self.samples = [tuple(s) for s in self.sampler]
-        print("Prêt.")
-        self.L       = len(self.samples)
+        if mode != "node":
+            raise NotImplementedError
+        self.dataset = dataset
+        self.avg_num = avg_num
+        self.mode = mode
+        self.tolerance = tolerance
         self.shuffle = shuffle
+
+        self.brasser()
+        
+
+
+    @staticmethod
+    def regroupement_aleatoire(elements, effectifs, mini, maxi):
+        # fonction qui regroupe les éléments de façon que leurs effectifs
+        # cumulés soient compris entre mini et maxi.
+        # renvoie une liste de groupes, et une liste d’éléments non regroupés,
+        # pour recommencer.
+        #assert len(elements) == len(effectifs)
+        assert mini <= maxi
+        indices = torch.randperm(len(effectifs)).tolist()
+        samples = []
+        mineurs = []
+        eff_mineurs = []
+        cur_sample = ()
+        eff_sample = ()
+        
+        cumul_eff = 0
+        NNN = len(effectifs)
+        #itr = iter(indices)
+        
+        for i in indices:  #tqdm(indices, desc="regroupement"):
+            eff = effectifs[i]
+            elt = elements[i]
+            if eff > maxi:
+                continue
+            elif cumul_eff + eff <= maxi:
+                cur_sample += (elt,)
+                eff_sample += (eff,)
+                cumul_eff += eff
+            else:
+                if cumul_eff < mini:
+                    mineurs.append(cur_sample)
+                    eff_mineurs.extend(eff_sample)
+                else:
+                    samples.append(cur_sample)
+                
+                cur_sample = (elt,)
+                eff_sample = (eff,)
+                cumul_eff = eff
+        if len(cur_sample) > 0:
+            if cumul_eff < mini:
+                mineurs.append(cur_sample)
+                eff_mineurs.extend(eff_sample)
+            else:
+                samples.append(cur_sample)
+
+        return samples, mineurs, eff_mineurs
+    
+
+    def brasser(self):
+        samples = []
+        effectifs = self.dataset.get_num_nodes()
+        N = len(effectifs)
+        elements = [x for x in range(N)]
+        maxi = int(0.5 + (1+self.tolerance)*self.avg_num)
+        mini = int(0.5 + (1-self.tolerance)*self.avg_num)
+        while True:
+            samples0, mineurs, eff_mineurs = PersonalSampler.regroupement_aleatoire(
+                elements, effectifs, mini, maxi)
+            samples.extend(samples0)
+            if len(eff_mineurs) == 0:
+                break
+            if N == len(eff_mineurs):
+                samples.extend(mineurs)
+                break
+            elements = []
+            for mn in mineurs:
+                elements.extend(mn)
+            effectifs = eff_mineurs
+            N = len(effectifs)
+        self.samples = samples
+        self.L = len(samples)
+        
+
+
+
+    
+
+
 
     def __iter__(self):
         if self.shuffle:
