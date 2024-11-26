@@ -37,7 +37,6 @@ class GAT_role_classif(LTN.LightningModule):
         self.bias0 = nn.Parameter(torch.empty(dim_h1, ))
         nn.init.normal_(self.bias0)
 
-        self.cible = cible
         self.lr = lr
         self.dim_h1 = dim_h1
         self.dim_h2 = dim_h2
@@ -45,7 +44,7 @@ class GAT_role_classif(LTN.LightningModule):
         self.nb_classes = nb_classes
 
         self.gat_layers = nn.ModuleList()
-        if self.dropout_p is None:
+        if dropout_p is None:
             self.dropout_p = 0
             #dropout_p = 0
         else:
@@ -136,24 +135,26 @@ class GAT_role_classif(LTN.LightningModule):
     def training_step(self, batch, batch_idx):
         logits = self.forward(batch.x, batch.edge_index)
         logits = logits[batch.msk1]
-        y1 = batch.y1[batch.msk1]
+        y1 = batch.y1[batch.msk1].to(dtype=torch.int64)
+        (bs,) = y1.shape
         # À tester : Cette sélection d’indices propage-t-elle correctement
         # le gradient ?
         # Réponse : On dirait bien que oui.
         perte = self.loss(logits, y1)
-        self.log("train_loss", perte)
+        self.log("train_loss", perte, batch_size=bs)
         return perte
     
     def validation_step(self, batch, batch_idx):
         #Boucle de validation
-        logits = self.forward(batch.x)
+        logits = self.forward(batch.x, batch.edge_index)
         logits = logits[batch.msk1]
-        y1 = batch.y1[batch.msk1]
+        y1 = batch.y1[batch.msk1].to(dtype=torch.int64)
+        (bs,) = y1.shape
         perte = self.loss(logits, y1)
         # Lu dans la documentation :
         #Si on l'appelle depuis la fonction validation_step, la fonction log
         #accumule les valeurs pour toute l'époché
-        self.log("val_loss", perte)
+        self.log("val_loss", perte, batch_size=bs)
         
 
     def on_test_start(self):

@@ -950,7 +950,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 #@autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
 
     dimension = 144
@@ -963,7 +963,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
     else:
         modele = GAT_role_classif(dimension, h, h,
                                   nbheads, nbcouches, 
-                                  rang=rang,
+                                  rang_sim=rang,
                                   dropout_p=dropout_p,
                                   nb_classes=nb_classes,
                                   lr=lr, freqs=freqs)
@@ -975,10 +975,18 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
         print("Début de l’entrainement")
-        sampler = DynamicBatchSampler(DARtr, max_num=1600, shuffle=True, skip_too_big=True)
+        sampler = DynamicBatchSampler(DARtr, max_num=1600,
+                                      shuffle=True,
+                                      skip_too_big=True,
+                                      num_steps=5000)
+        
+        svalid = DynamicBatchSampler(DARdv, max_num=1600,
+                                      shuffle=False,
+                                      skip_too_big=True,
+                                      num_steps=70)
         
         train_loader = GeoDataLoader(DARtr, batch_sampler=sampler, num_workers=1)
-        valid_loader = GeoDataLoader(DARdv, num_workers=1)
+        valid_loader = GeoDataLoader(DARdv, batch_sampler=svalid, num_workers=1)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
