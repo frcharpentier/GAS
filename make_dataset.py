@@ -1126,7 +1126,7 @@ class BalancedGraphSampler(torch.utils.data.sampler.Sampler):
         maxi = int(0.5 + (1+self.tolerance)*self.avg_num)
         mini = int(0.5 + (1-self.tolerance)*self.avg_num)
         while True:
-            samples0, mineurs, eff_mineurs = PersonalSampler.regroupement_aleatoire(
+            samples0, mineurs, eff_mineurs = BalancedGraphSampler.regroupement_aleatoire(
                 elements, effectifs, mini, maxi)
             samples.extend(samples0)
             if len(eff_mineurs) == 0:

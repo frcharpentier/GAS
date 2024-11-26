@@ -162,7 +162,7 @@ class GAT_role_classif(LTN.LightningModule):
         self.accuTrue = CatMetric()
     
     def test_step(self, batch, batch_idx):
-        logits = self.forward(batch.x)
+        logits = self.forward(batch.x, batch.edge_index)
         logits = logits[batch.msk1]
         roles_pred = logits.argmax(axis=1).to(device="cpu")
         self.accuPred.update(roles_pred)

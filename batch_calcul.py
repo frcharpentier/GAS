@@ -6,7 +6,7 @@ nettoyer_logs_lightning()
 import os
 import fire
 #import inspect
-from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset
+from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset, BalancedGraphSampler
 import torch
 from torch import optim, nn, utils, manual_seed
 import random
@@ -970,23 +970,19 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
         
-        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(max_epochs=2, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
         print("Début de l’entrainement")
-        sampler = DynamicBatchSampler(DARtr, max_num=1600,
-                                      shuffle=True,
-                                      skip_too_big=True,
-                                      num_steps=5000)
+        sampler = BalancedGraphSampler(DARtr, avg_num=1500,
+                                      shuffle=True)
         
-        svalid = DynamicBatchSampler(DARdv, max_num=1600,
-                                      shuffle=False,
-                                      skip_too_big=True,
-                                      num_steps=70)
+        samp_dev = BalancedGraphSampler(DARdv, avg_num=1500,
+                                      shuffle=False)
         
         train_loader = GeoDataLoader(DARtr, batch_sampler=sampler, num_workers=1)
-        valid_loader = GeoDataLoader(DARdv, batch_sampler=svalid, num_workers=1)
+        valid_loader = GeoDataLoader(DARdv, batch_sampler=samp_dev, num_workers=1)
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
@@ -1011,14 +1007,16 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         R.titre("Dataset (classe et effectifs)", 2)
         groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
         R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
+        samp_tst = BalancedGraphSampler(DARts, avg_num=1500,
+                                      shuffle=False)
+        dld = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
         roles_pred = trainer.predict(
             modele,
             dataloaders=dld,
             return_predictions=True
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        truth = torch.concatenate([batch.y1[batch.msk1] for batch in dld], axis=0)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         #accuracy = accuracy_score(truth, roles_pred)
@@ -1029,7 +1027,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
 
         with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, filtre.alias)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
@@ -1058,7 +1056,12 @@ DDD   EEEE  BBB    UUU    GGG
 """)
         #batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
-        batch_GAT_sym("a_tej.html", 144, 1, 2, )
+        
+        
+        #batch_GAT_sym("a_tej.html", 144, 1, 2, )
+
+        chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
+        batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
 
     else:
         fire.Fire()
