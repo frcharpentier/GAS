@@ -3,6 +3,7 @@ from torch import optim, nn
 import torch.nn.functional as NNF
 import lightning as LTN
 import random
+import datetime
 from torchmetrics.aggregation import CatMetric
 from torch_geometric.nn import GATv2Conv
 
@@ -133,6 +134,8 @@ class GAT_role_classif(LTN.LightningModule):
         return logits.argmax(axis=1).to(device="cpu")
     
     def training_step(self, batch, batch_idx):
+        self.top_post_transfer = torch.cuda.Event(enable_timing=True)
+        self.top_post_transfer.record()
         logits = self.forward(batch.x, batch.edge_index)
         logits = logits[batch.msk1]
         y1 = batch.y1[batch.msk1].to(dtype=torch.int64)
@@ -178,5 +181,41 @@ class GAT_role_classif(LTN.LightningModule):
         #optimizer = optim.SGD(self.parameters(), lr=self.lr)
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
+    
+    def on_train_epoch_start(self):
+        self.duree_GPU = 0
+        self.duree_transfert = 0
+        self.duree_totale = datetime.datetime.now()
+        #self.dans_epoch_train=True
 
+    def on_train_epoch_end(self):
+        self.duree_totale = datetime.datetime.now() - self.duree_totale
+        print("##STATS## Durée totale : %s"%str(self.duree_totale))
+        print("##STATS## Durée GPU : %s"%str(self.duree_GPU))
+        print("##STATS## Durée transfert : %s"%str(self.duree_transfert))
+
+    def on_train_batch_start(self, b, idx):
+        self.top_debut = torch.cuda.Event(enable_timing=True)
+        self.top_fin = torch.cuda.Event(enable_timing=True)
+        #self.top_post_transfer = torch.cuda.Event(enable_timing=True)
+        self.transfer_record = False
+        self.top_debut.record()
+
+    def on_train_batch_end(self, outs, b, idx):
+        self.top_fin.record()
+        torch.cuda.synchronize()
+        #if self.transfer_record:
+        self.duree_GPU += self.top_post_transfer.elapsed_time(self.top_fin)
+        self.duree_transfert += self.top_debut.elapsed_time(self.top_post_transfer)
+        #self.transfer_record = False
+
+    #def on_after_batch_transfer(self, b, idx):
+    #    print("############ BATCH TRANSFER END")
+    #    if self.dans_epoch_train and self.dans_batch_train:
+    #        #if hasattr(self, "top_post_transfer"):
+    #        self.top_post_transfer.record()
+    #        #self.transfer_record = True
+    #    return b
+
+        
 

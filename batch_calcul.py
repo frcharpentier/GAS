@@ -1,4 +1,4 @@
-DEBUG = False
+DEBUG = True
 from interface_git import nettoyer_logs_lightning
 from autoinspect import autoinspect
 nettoyer_logs_lightning()
@@ -948,7 +948,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
         R.ligne()
 
 
-@autoinspect
+#@autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
@@ -1056,7 +1056,7 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
         
         
-        batch_GAT_sym("a_tej.html", 144, 1, 2, )
+        batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
