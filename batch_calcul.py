@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 from interface_git import nettoyer_logs_lightning
 from autoinspect import autoinspect
 nettoyer_logs_lightning()
@@ -948,7 +948,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
         R.ligne()
 
 
-#@autoinspect
+@autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
@@ -968,7 +968,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
                                   nb_classes=nb_classes,
                                   lr=lr, freqs=freqs)
     if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=8)
         
         trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
             

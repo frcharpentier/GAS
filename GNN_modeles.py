@@ -1,4 +1,5 @@
 import torch
+from typing import Optional, List
 from torch import optim, nn
 import torch.nn.functional as NNF
 import lightning as LTN
@@ -11,7 +12,16 @@ from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetR
 
 
 class GAT_role_classif(LTN.LightningModule):
-    def __init__(self, dim_in, dim_h1, dim_h2, heads, nb_couches, rang_sim, dropout_p, nb_classes, lr, freqs=None):
+    def __init__(self, dim_in: int,
+                 dim_h1:int,
+                 dim_h2: int,
+                 heads: int,
+                 nb_couches: int,
+                 rang_sim: int,
+                 dropout_p: float,
+                 nb_classes: int,
+                 lr: float,
+                 freqs: Optional[List[float]] = None):
         # dim_in : Les nœuds du graphe adjoint sont décrits par une
         #          paire de vecteurs descripteurs. dim_in est leur dimension.
         # dim_h1 : dimension de la sortie de la première couche symétrique
@@ -23,11 +33,14 @@ class GAT_role_classif(LTN.LightningModule):
         # On termine par une couche de classification linéaire.
         super(GAT_role_classif, self).__init__()
 
+        #if not freqs is None:
+        #    if type(freqs) is list:
+        #        assert len(freqs) == nb_classes
+        #        freqs = torch.Tensor(freqs)
+        #    assert freqs.shape == (nb_classes,)
+
         if not freqs is None:
-            if type(freqs) is list:
-                assert len(freqs) == nb_classes
-                freqs = torch.Tensor(freqs)
-            assert freqs.shape == (nb_classes,)
+            freqs = torch.Tensor(freqs)
             
         self.weight = nn.Parameter(torch.empty(dim_h1, rang_sim, dim_in))
         nn.init.xavier_normal_(self.weight)
@@ -97,13 +110,14 @@ class GAT_role_classif(LTN.LightningModule):
         Y = torch.matmul(M, Xb)
         # Y est un tenseur de format (b, dim_h1, rang, 2)
         
-        Y0 = Y[...,0] * (self.diag.unsqueeze(0))
+        Y0: torch.Tensor = Y[...,0] * (self.diag.unsqueeze(0))
         # Extraction de la colonne zéro, et multiplication point à point par diag,
         # (Ce qui revient à multiplier matriciellement par une matrice diagonale)
         # Y0 est un tenseur (b, dim_h1, rang)
-        Y1 = Y[...,1]
+        Y1: torch.Tensor = Y[...,1]
         # Y1 est un tenseur (b, dim_h1, rang)
-        H = (Y0*Y1).sum(axis=-1)
+
+        H: torch.Tensor = torch.sum((Y0*Y1), dim=-1)
         # H est un tenseur (b, dim_h1)
         # ajout du biais :
         H = H + (self.bias0.unsqueeze(0))
@@ -182,32 +196,32 @@ class GAT_role_classif(LTN.LightningModule):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
     
-    def on_train_epoch_start(self):
-        self.duree_GPU = 0
-        self.duree_transfert = 0
-        self.duree_totale = datetime.datetime.now()
-        #self.dans_epoch_train=True
+    #def on_train_epoch_start(self):
+    #    self.duree_GPU = 0
+    #    self.duree_transfert = 0
+    #    self.duree_totale = datetime.datetime.now()
+    #    #self.dans_epoch_train=True
 
-    def on_train_epoch_end(self):
-        self.duree_totale = datetime.datetime.now() - self.duree_totale
-        print("##STATS## Durée totale : %s"%str(self.duree_totale))
-        print("##STATS## Durée GPU : %s"%str(self.duree_GPU))
-        print("##STATS## Durée transfert : %s"%str(self.duree_transfert))
+    #def on_train_epoch_end(self):
+    #    self.duree_totale = datetime.datetime.now() - self.duree_totale
+    #    print("##STATS## Durée totale : %s"%str(self.duree_totale))
+    #    print("##STATS## Durée GPU : %s"%str(self.duree_GPU))
+    #    print("##STATS## Durée transfert : %s"%str(self.duree_transfert))
 
-    def on_train_batch_start(self, b, idx):
-        self.top_debut = torch.cuda.Event(enable_timing=True)
-        self.top_fin = torch.cuda.Event(enable_timing=True)
-        #self.top_post_transfer = torch.cuda.Event(enable_timing=True)
-        self.transfer_record = False
-        self.top_debut.record()
+    #def on_train_batch_start(self, b, idx):
+    #    self.top_debut = torch.cuda.Event(enable_timing=True)
+    #    self.top_fin = torch.cuda.Event(enable_timing=True)
+    #    #self.top_post_transfer = torch.cuda.Event(enable_timing=True)
+    #    self.transfer_record = False
+    #    self.top_debut.record()
 
-    def on_train_batch_end(self, outs, b, idx):
-        self.top_fin.record()
-        torch.cuda.synchronize()
-        #if self.transfer_record:
-        self.duree_GPU += self.top_post_transfer.elapsed_time(self.top_fin)
-        self.duree_transfert += self.top_debut.elapsed_time(self.top_post_transfer)
-        #self.transfer_record = False
+    #def on_train_batch_end(self, outs, b, idx):
+    #    self.top_fin.record()
+    #    torch.cuda.synchronize()
+    #    #if self.transfer_record:
+    #    self.duree_GPU += self.top_post_transfer.elapsed_time(self.top_fin)
+    #    self.duree_transfert += self.top_debut.elapsed_time(self.top_post_transfer)
+    #    #self.transfer_record = False
 
     #def on_after_batch_transfer(self, b, idx):
     #    print("############ BATCH TRANSFER END")
@@ -219,3 +233,22 @@ class GAT_role_classif(LTN.LightningModule):
 
         
 
+if __name__ == "__main__":
+    dimension = 144
+    h = 1
+    nbcouches=2
+    dropout_p = 0.3
+    nbheads=1
+    rang=8
+    nb_classes=21
+    freqs=[1.]*nb_classes
+    lr = 1.e-4
+    modele = GAT_role_classif(dimension, h, h,
+                                  nbheads, nbcouches, 
+                                  rang_sim=rang,
+                                  dropout_p=dropout_p,
+                                  nb_classes=nb_classes,
+                                  lr=lr, freqs=freqs)
+    
+    moele = modele.to_torchscript()
+    print("coucou")
