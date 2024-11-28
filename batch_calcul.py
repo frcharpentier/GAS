@@ -31,7 +31,7 @@ from GNN_modeles import GAT_role_classif
 from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoader
 
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import Callback, EarlyStopping
+from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 os.environ['CUDA_VISIBLE_DEVICES']='4'
@@ -949,7 +949,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 
 @autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150):
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
 
@@ -968,9 +968,12 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
                                   nb_classes=nb_classes,
                                   lr=lr, freqs=freqs)
     if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=8)
-        
-        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
+        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
+        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        trainer = LTN.Trainer(max_epochs=max_epochs,
+                              devices=1, accelerator="gpu",
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
             
         print("Début de l’entrainement")
         sampler = BalancedGraphSampler(DARtr, avg_num=1500,
@@ -984,20 +987,37 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
+        svg_meilleur = None
+        svg_dernier = None
         trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
         R.reexecution()
         R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
+        if svg_meilleur:
+            chckpt_last = svg_dernier.best_model_path
+            chckpt_best = svg_meilleur.best_model_path
+            if type(chckpt_last) is str:
+                if len(chckpt_last) == 0:
+                    chckpt_last = False
+            if type(chckpt_best) is str:
+                if len(chckpt_best) == 0:
+                    chckpt_best = False
+        else:
+            chckpt_last = ckpoint_model
+            if not type(chckpt_last) == str:
+                chckpt_last = repr(chckpt_last)
+            chckpt_best = False
+        checkpoints = {"chkpt_dernier": chckpt_last}
+        if chckpt_best:
+            if chckpt_best == chckpt_last:
+                checkpoints["chckpt_meilleur"]= "(voir dernier)"
+            else:
+                checkpoints["chckpt_meilleur"]= chckpt_best
         R.table(colonnes=False,
                 classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
+                **checkpoints)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
         R.table(**hparams, colonnes=False)
@@ -1056,7 +1076,8 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
         
         
-        batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
+        #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
+        batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
