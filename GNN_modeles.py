@@ -50,6 +50,7 @@ class GAT_role_classif(LTN.LightningModule):
         nn.init.xavier_normal_(self.bias_vecto)
         self.bias0 = nn.Parameter(torch.empty(dim_h1, ))
         nn.init.normal_(self.bias0)
+        self.nb_couches = nb_couches
 
         self.lr = lr
         self.dim_h1 = dim_h1
@@ -64,19 +65,13 @@ class GAT_role_classif(LTN.LightningModule):
         else:
             self.dropout_p = dropout_p
 
-        assert nb_couches > 0
+        if nb_couches > 0:
         
-        #    if nb_couches == 1:
-        #        self.gat_layers.append(GATv2Conv(in_channels = dim_h1, out_channels = nb_classes, heads=1))
-        #    else:
-        #        self.gat_layers.append(GATv2Conv(in_channels = dim_h1, out_channels = dim_h2, heads=heads))
-        #        for _ in range(1, nb_couches-1):
-        #            self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = dim_h2, heads=heads))
-        #        self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = nb_classes, heads=1))
-        
-        self.gat_layers.append(GATv2Conv(in_channels = dim_h1, out_channels = dim_h2, heads=heads))
-        for _ in range(1, nb_couches):
-            self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = dim_h2, heads=heads))
+            self.gat_layers.append(GATv2Conv(in_channels = dim_h1, out_channels = dim_h2, heads=heads))
+            for _ in range(1, nb_couches):
+                self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = dim_h2, heads=heads))
+        else:
+            pass
 
         # Ajout d’une classification linéaire finale
         self.lin = nn.Linear(heads*dim_h2, self.nb_classes, bias=True)
@@ -122,7 +117,9 @@ class GAT_role_classif(LTN.LightningModule):
         # ajout du biais :
         H = H + (self.bias0.unsqueeze(0))
         
-        if self.dropout_p:
+        if self.nb_couches == 0:
+            H = nn.functional.relu(H)
+        elif self.dropout_p:
             for gat in self.gat_layers:
                 Hgat = H
                 Hgat = nn.functional.dropout(Hgat, self.dropout_p, training=self.training)

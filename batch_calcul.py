@@ -949,6 +949,104 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 
 @autoinspect
+def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5):
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
+    filtre = DARtr.filtre
+
+    dimension = 144
+    nb_classes = len(filtre.alias)
+    freqs = filtre.effectifs
+    cible = "roles"
+    lr = 1.e-4
+    nbheads = 1
+    nbcouches = 0
+    dropout_p = 0.
+    if ckpoint_model:
+        modele = GAT_role_classif.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = GAT_role_classif(dimension, h, h,
+                                  nbheads, nbcouches, 
+                                  rang_sim=rang,
+                                  dropout_p=dropout_p,
+                                  nb_classes=nb_classes,
+                                  lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
+        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
+        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        trainer = LTN.Trainer(max_epochs=max_epochs,
+                              devices=1, accelerator="gpu",
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+            
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        if svg_meilleur:
+            chckpt_last = svg_dernier.best_model_path
+            chckpt_best = svg_meilleur.best_model_path
+            if type(chckpt_last) is str:
+                if len(chckpt_last) == 0:
+                    chckpt_last = False
+            if type(chckpt_best) is str:
+                if len(chckpt_best) == 0:
+                    chckpt_best = False
+        else:
+            chckpt_last = ckpoint_model
+            if not type(chckpt_last) == str:
+                chckpt_last = repr(chckpt_last)
+            chckpt_best = False
+        checkpoints = {"chkpt_dernier": chckpt_last}
+        if chckpt_best:
+            if chckpt_best == chckpt_last:
+                checkpoints["chckpt_meilleur"]= "(voir dernier)"
+            else:
+                checkpoints["chckpt_meilleur"]= chckpt_best
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                **checkpoints)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et effectifs)", 2)
+        groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
+        R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
+        
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+
+@autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
     filtre = DARtr.filtre
