@@ -27,7 +27,7 @@ from make_dataset import ( AligDataset, EdgeDataset,
 
 import lightning as LTN
 from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Sym_2, Classif_Bil_Antisym
-from GNN_modeles import GAT_role_classif
+from GNN_modeles import GAT_role_classif, GAT_sans_GAT
 from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoader
 
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
@@ -958,17 +958,16 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
     freqs = filtre.effectifs
     cible = "roles"
     lr = 1.e-4
-    nbheads = 1
-    nbcouches = 0
-    dropout_p = 0.
+    #nbheads = 1
+    #nbcouches = 0
+    #dropout_p = 0.
     if ckpoint_model:
-        modele = GAT_role_classif.load_from_checkpoint(ckpoint_model)
+        modele = GAT_sans_GAT.load_from_checkpoint(ckpoint_model)
     else:
-        modele = GAT_role_classif(dimension, h, h,
-                                  nbheads, nbcouches, 
+        modele = GAT_sans_GAT(dimension, h, 
                                   rang_sim=rang,
-                                  dropout_p=dropout_p,
                                   nb_classes=nb_classes,
+                                  cible = cible,
                                   lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
@@ -1020,7 +1019,7 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
         R.titre("Dataset (classe et effectifs)", 2)
         groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
         R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-        
+
         dld = utils.data.DataLoader(DARts, batch_size=32)
         roles_pred = trainer.predict(
             modele,
@@ -1175,7 +1174,8 @@ DDD   EEEE  BBB    UUU    GGG
         
         
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
-        batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
+        #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
+        batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)

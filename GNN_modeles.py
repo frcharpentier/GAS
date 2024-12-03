@@ -145,8 +145,8 @@ class GAT_role_classif(LTN.LightningModule):
         return logits.argmax(axis=1).to(device="cpu")
     
     def training_step(self, batch, batch_idx):
-        self.top_post_transfer = torch.cuda.Event(enable_timing=True)
-        self.top_post_transfer.record()
+        #self.top_post_transfer = torch.cuda.Event(enable_timing=True)
+        #self.top_post_transfer.record()
         logits = self.forward(batch.x, batch.edge_index)
         logits = logits[batch.msk1]
         y1 = batch.y1[batch.msk1].to(dtype=torch.int64)
@@ -227,6 +227,58 @@ class GAT_role_classif(LTN.LightningModule):
     #        self.top_post_transfer.record()
     #        #self.transfer_record = True
     #    return b
+
+class GAT_sans_GAT(GAT_role_classif):
+    def __init__(self, dim_in: int,
+                 dim_h1:int,
+                 #dim_h2: int,
+                 #heads: int,
+                 #nb_couches: int,
+                 rang_sim: int,
+                 #dropout_p: float,
+                 nb_classes: int,
+                 cible,
+                 lr: float,
+                 freqs: Optional[List[float]] = None):
+    
+        super(GAT_sans_GAT, self).__init__(
+                dim_in = dim_in,
+                dim_h1 = dim_h1,
+                dim_h2 = dim_h1,
+                heads = 1,
+                nb_couches = 0,
+                rang_sim = rang_sim,
+                dropout_p = 0.,
+                nb_classes = nb_classes,
+                lr = lr,
+                freqs = freqs
+        )
+        self.cible = cible
+
+    def predict_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"], None)
+        return logits.argmax(axis=1).to(device="cpu")
+    
+    def training_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"], None)
+        perte = self.loss(logits, batch[self.cible])
+        self.log("train_loss", perte)
+        return perte
+    
+    def validation_step(self, batch, batch_idx):
+        #Boucle de validation
+        logits = self.forward(batch["X"], None)
+        perte = self.loss(logits, batch[self.cible])
+        # Lu dans la documentation :
+        #Si on l'appelle depuis la fonction validation_step, la fonction log
+        #accumule les valeurs pour toute l'époché
+        self.log("val_loss", perte)
+
+    def test_step(self, batch, batch_idx):
+        logits = self.forward(batch["X"], None)
+        roles_pred = logits.argmax(axis=1).to(device="cpu")
+        self.accuPred.update(roles_pred)
+        self.accuTrue.update(batch[self.cible])
 
         
 
