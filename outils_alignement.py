@@ -207,10 +207,19 @@ class ALIGNEUR:
             toks_transformer = [x[lpf:] if x.startswith(self.ch_debut) else "¤"+x for x in toks_transformer]
 
         toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
-        assert toksV[0] == self.tok1
-        assert toksV[-1] == self.tokn
-        toksV = toksV[1:-1] #Éliminons les tokens CLS et SEP.
-        rel_tg, rel_mg = aligneur_seq(motsH, toksV, zeroV = 1)
+        if self.tok1 == None:
+            zeroV = 0
+        else:
+            assert toksV[0] == self.tok1
+            toksV = toksV[1:] #Éliminons le token CLS
+            zeroV = 1
+        if self.tokn == None:
+            pass
+        else:
+            assert toksV[-1] == self.tokn
+            toksV = toksV[:-1] #Éliminons le token SEP
+        
+        rel_tg, rel_mg = aligneur_seq(motsH, toksV, zeroV = zeroV)
         return rel_tg, rel_mg, toks_transformer
     
 
