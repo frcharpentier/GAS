@@ -792,7 +792,13 @@ class AligDataset(geoDataset):
                     ligne = ligne.strip()
                     if depart and ligne.startswith(lbl_modname):
                         model_name = ligne[len(lbl_modname):]
-                        attn.select_modele("minbert://"+ model_name)
+                        if "bert" in model_name:
+                            model_name = "minbert://"+ model_name
+                        elif "gpt" in model_name:
+                            model_name = "mingpt://" + model_name
+                        else:
+                            model_name = "XXXX" # ERROR
+                        attn.select_modele(model_name)
                     elif etat == 0:
                         if ligne.startswith(lbl_id):
                             ligne = ligne[len(lbl_id):]
