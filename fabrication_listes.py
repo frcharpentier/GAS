@@ -574,5 +574,5 @@ def refaire_probleme():
 if __name__ == "__main__":
     #refaire_probleme()
     #construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True, court=False)
-    construire_graphes(fichier_out="./AMR_et_graphes_phrases_GPT_explct.txt", split=True, court=False, nom_modele="gpt-2")
+    construire_graphes(fichier_out="./AMR_et_graphes_phrases_GPT_explct.txt", split=True, court=False, nom_modele="gpt2")
     #construire_graphes(fichier_out="./a_tej.txt", split=False, court=True)
