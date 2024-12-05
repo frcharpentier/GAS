@@ -1,9 +1,12 @@
 DEBUG = False
+import os
+#os.environ['CUDA_VISIBLE_DEVICES']='1,4'
+os.environ['CUDA_VISIBLE_DEVICES']='3'
+
 from interface_git import nettoyer_logs_lightning
 from autoinspect import autoinspect
 nettoyer_logs_lightning()
 
-import os
 import fire
 #import inspect
 from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset, BalancedGraphSampler
@@ -33,10 +36,6 @@ from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoa
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 
-#os.environ['CUDA_VISIBLE_DEVICES']='1,4'
-os.environ['CUDA_VISIBLE_DEVICES']='4'
-
-
 
 #On stocke dans une variable globale, au tout début du programme.
 
@@ -54,6 +53,10 @@ def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
 
 def filtre_defaut():
     ds = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    return ds.filtre
+
+def filtre_defaut_GPT():
+    ds = AligDataset("./dataset_QK_GPT_train", "./AMR_et_graphes_phrases_GPT_explct", QscalK=True, split="train")
     return ds.filtre
 
 class PERMUT_DIR_AT_EPOCH_START(Callback):
@@ -82,6 +85,27 @@ def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeD
         datasets += (CLASSE(DGRdv_f2, "./edges_f_QK_dev"),)
     if test:
         datasets += (CLASSE(DGRts_f2, "./edges_f_QK_test"),)
+    
+    return datasets
+
+def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    if train:
+        DGRtr_f2 = AligDataset("./dataset_QK_GPT_train", "./AMR_et_graphes_phrases_GPT_explct",
+                            transform=filtre, QscalK=True, split="train")
+    if dev:
+        DGRdv_f2 = AligDataset("./dataset_QK_GPT_dev", "./AMR_et_graphes_phrases_GPT_explct",
+                            transform=filtre, QscalK=True, split="dev")
+    if test:
+        DGRts_f2 = AligDataset("./dataset_QK_GPT_test", "./AMR_et_graphes_phrases_GPT_explct",
+                            transform=filtre, QscalK=True, split="test")
+        
+    datasets = ()
+    if train:
+        datasets += (CLASSE(DGRtr_f2, "./edges_f_QK_GPT_train"),)
+    if dev:
+        datasets += (CLASSE(DGRdv_f2, "./edges_f_QK_GPT_dev"),)
+    if test:
+        datasets += (CLASSE(DGRts_f2, "./edges_f_QK_GPT_test"),)
     
     return datasets
 
@@ -876,6 +900,100 @@ def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=Fal
 
 
 @autoinspect
+def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False):
+    filtre = filtre_defaut_GPT()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDataset)
+
+    dimension = 144
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    cible = "roles"
+    lr = 1.e-4
+    if ckpoint_model:
+        modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et effectifs)", 2)
+        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
+        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+
+@autoinspect
 def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
     filtre = DARtr.filtre
@@ -1175,7 +1293,8 @@ DDD   EEEE  BBB    UUU    GGG
         
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
         #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
-        batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8)
+        #batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8)
+        batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
