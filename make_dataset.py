@@ -498,7 +498,7 @@ class EdgeDataset(torchDataset):
             masques = (data.msk1, data.msk2, data.msk_iso)
             msk = masques[msk_idx[0]]
             for mmm in msk_idx[1:]:
-                msk = msk & mmm
+                msk = msk & masques[mmm]
             idx = torch.nonzero(msk).view(-1)
             (N,) = idx.shape
             NN += N
@@ -531,7 +531,7 @@ class EdgeDataset(torchDataset):
                 masques = (data.msk1, data.msk2, data.msk_iso)
                 msk = masques[msk_idx[0]]
                 for mmm in msk_idx[1:]:
-                    msk = msk & mmm
+                    msk = msk & masques[mmm]
                 idx = torch.nonzero(msk).view(-1)
                 (N,) = idx.shape
                 if self.debug_idSNT:
