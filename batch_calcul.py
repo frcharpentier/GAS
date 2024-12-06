@@ -1,7 +1,7 @@
 DEBUG = False
 import os
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
-os.environ['CUDA_VISIBLE_DEVICES']='3'
+#os.environ['CUDA_VISIBLE_DEVICES']='3'
 
 from interface_git import nettoyer_logs_lightning
 from autoinspect import autoinspect
@@ -29,7 +29,9 @@ from make_dataset import ( AligDataset, EdgeDataset,
                           EdgeDatasetMonoEnvers)
 
 import lightning as LTN
-from modeles import Classif_Logist, Classif_Bil_Sym, Classif_Bil_Sym_2, Classif_Bil_Antisym
+from modeles import (Classif_Logist, Classif_Bil_Sym,
+                     Classif_Bil_Sym_2, Classif_Bil_Antisym,
+                     Classif_Bil_Antisym_2)
 from GNN_modeles import GAT_role_classif, GAT_sans_GAT
 from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoader
 
@@ -994,6 +996,81 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
 
 
 @autoinspect
+def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
+    filtre = filtre_defaut_GPT()
+
+    filtre2 = filtre
+
+    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDataset)
+    
+    #Permutation aléatoire pour équilibrer les datasets
+    DARtr.permuter_X1_X2(torch.randint(0,2,(DARtr.Nadj,), dtype=torch.long))
+    DARdv.permuter_X1_X2(torch.randint(0,2,(DARdv.Nadj,), dtype=torch.long))
+    DARts.permuter_X1_X2(torch.randint(0,2,(DARts.Nadj,), dtype=torch.long))
+
+
+    dimension = 144
+    lr = 1.e-4
+    rang = rang # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
+
+    if ckpoint_model:
+        modele = Classif_Bil_Antisym_2.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Bil_Antisym_2(dimension, rang=rang, lr=lr)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+@autoinspect
 def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
     filtre = DARtr.filtre
@@ -1294,7 +1371,8 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
         #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
         #batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8)
-        batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
+        #batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
+        batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
