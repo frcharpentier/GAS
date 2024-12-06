@@ -112,10 +112,22 @@ def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = 
     return datasets
 
 
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset):
+def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta"):
     assert CLASSE in [AligDataset, EdgeDataset]
+    assert transfo in ["roberta", "GPT2"]
+    if filtre == "roberta":
+        rep_ds_grph = "./dataset_QK_"
+        rep_ds_edge = "./edges_f_QK_"
+        rep_data =    "./AMR_et_graphes_phrases_explct"
+    else:
+        rep_ds_grph = "./dataset_QK_GPT_"
+        rep_ds_edge = "./edges_f_QK_GPT_"
+        rep_data =    "./AMR_et_graphes_phrases_GPT_explct"
     if filtre == "defaut":
-        filtre = filtre_defaut()
+        if transfo == "roberta":
+            filtre = filtre_defaut()
+        else:
+            filtre = filtre_defaut_GPT()
         noms_classes = [k for k in filtre.alias]
         def pour_fusion(C):
             nonlocal noms_classes
@@ -141,30 +153,30 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         filtre = filtre.garder(*a_garder)
     datasets = ()
     if train:
-        dsTRAIN = AligDataset("./dataset_QK_train",
-                              "./AMR_et_graphes_phrases_explct",
+        dsTRAIN = AligDataset(rep_ds_grph + "train",
+                              rep_data,
                               transform=filtre,
                               QscalK=True, split="train")
         
 
         if CLASSE != AligDataset:
-            dsTRAIN = CLASSE(dsTRAIN, "./edges_f_QK_train", masques="1")
+            dsTRAIN = CLASSE(dsTRAIN, rep_ds_edge + "train", masques="1")
         datasets += (dsTRAIN,)
     if dev:
-        dsDEV = AligDataset("./dataset_QK_dev",
-                            "./AMR_et_graphes_phrases_explct",
+        dsDEV = AligDataset(rep_ds_grph + "dev",
+                            rep_data,
                             transform=filtre,
                             QscalK=True, split="dev")
         if CLASSE != AligDataset:
-            dsDEV = CLASSE(dsDEV, "./edges_f_QK_dev", masques="1")
+            dsDEV = CLASSE(dsDEV, rep_ds_edge + "dev", masques="1")
         datasets += (dsDEV,)
     if test:
-        dsTEST = AligDataset("./dataset_QK_test",
-                             "./AMR_et_graphes_phrases_explct",
+        dsTEST = AligDataset(rep_ds_grph + "test",
+                             rep_data,
                              transform=filtre,
                              QscalK=True, split="test")
         if CLASSE != AligDataset:
-            dsTEST = CLASSE(dsTEST, "./edges_f_QK_test", masques="1")
+            dsTEST = CLASSE(dsTEST, rep_ds_edge + "test", masques="1")
         datasets += (dsTEST,)
 
     return datasets
@@ -1144,8 +1156,9 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 
 @autoinspect
-def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
+def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta"):
+    assert transfo in ["roberta", "GPT2"]
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
     filtre = DARtr.filtre
 
     dimension = 144
@@ -1241,8 +1254,9 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 
 @autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset)
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, transfo="roberta"):
+    assert transfo in ["roberta", "GPT2"]
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo)
     filtre = DARtr.filtre
 
     dimension = 144
@@ -1372,9 +1386,9 @@ DDD   EEEE  BBB    UUU    GGG
         
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
         #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
-        #batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8)
+        batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8, transfo="GPT2")
         #batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
-        batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
+        #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
