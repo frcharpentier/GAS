@@ -1349,6 +1349,8 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
 # taper : batch_LM(nom_rapport="rejeu.html",
 #           ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt",
 #           train=False)
+# Pour exécuter en tâche de fond, lancer dans un shell :
+# CUDA_VISIBLE_DEVICES=1 nohup python ./batch_calcul.py batch_LM --nom_rapport rejeu.html .... > ./nohup_12.txt &
                               
 
 
