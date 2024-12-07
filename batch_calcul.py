@@ -115,7 +115,7 @@ def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = 
 def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta"):
     assert CLASSE in [AligDataset, EdgeDataset]
     assert transfo in ["roberta", "GPT2"]
-    if filtre == "roberta":
+    if transfo == "roberta":
         rep_ds_grph = "./dataset_QK_"
         rep_ds_edge = "./edges_f_QK_"
         rep_data =    "./AMR_et_graphes_phrases_explct"
