@@ -453,7 +453,7 @@ def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
                             ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
                             ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDataset)
+    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDatasetMono)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
@@ -1480,12 +1480,14 @@ DDD   EEEE  BBB    UUU    GGG
         
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
         #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
-        batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8, transfo="GPT2")
+        #batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8, transfo="GPT2")
         #batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
         #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
 
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
+
+        batch_LM_GPT(nom_rapport = "./Rapport_LM_GPT.html")
 
     else:
         fire.Fire()
