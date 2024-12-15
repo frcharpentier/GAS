@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head>
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Note</h2>
+<p>Cette expérience montre la capacité d’un classificateur linéaire entraîné sur l’étiquetage sémantique VerbAtlas<br/>
+à détecter correctement les rôles étiquetés normalement selon PropBank (AMR).<br/>
+Chaque fois que le classificateur détecte la bonne étiquette VerbAtlas, on remplace par l’étiquette AMR (puisqu’elle serait déterministe) pour calculer les scores.<br/>
+Si l’étiquette n’est pas correctement détectée, on laisse l’étiquette telle quelle.<br/>
+Certaines étiquettes VerbAtlas n’apparaissent jamais dans l’étiquetage PropBank (agent, patient...), ce qui explique que certaines lignes de la matrice de confusion<br/>
+soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balanced accuracy), ces lignes sont omises.<br/>
+(La nullité d’une ligne n’est pas du tout gênante pour le calcul de l’exactitude, en revanche.)</p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>fonction</th><td>batch_LM_VerbAtlas_ARGn</td></tr>
+<tr><th>classe_modele</th><td><span><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>MD5_git</th><td><span><span hidden="True">c8deacc490970750630852d0459f06e4244eaed5</span>c8deacc490970750630852d0459f0…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modèle</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>fréquences</th></tr>
+<tr><td>:&gt;AGENT</td><td>0.0</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>0.0013372234534472227</td></tr>
+<tr><td>:&gt;CAUSE</td><td>0.0</td></tr>
+<tr><td>:&gt;CONDITION</td><td>0.004862630739808083</td></tr>
+<tr><td>:degree</td><td>0.010089959017932415</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>0.0</td></tr>
+<tr><td>:&gt;LOCATION</td><td>0.03452467918395996</td></tr>
+<tr><td>:&gt;MANNER</td><td>0.01337223406881094</td></tr>
+<tr><td>:&gt;MOD</td><td>0.20398736000061035</td></tr>
+<tr><td>:&gt;PATIENT</td><td>0.0</td></tr>
+<tr><td>:poss</td><td>0.031363967806100845</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>0.01154874823987484</td></tr>
+<tr><td>:&gt;THEME</td><td>0.0</td></tr>
+<tr><td>:&gt;TIME</td><td>0.040846098214387894</td></tr>
+<tr><td>:&gt;TOPIC</td><td>0.009117432869970798</td></tr>
+<tr><td>:ARG0</td><td>0.2605154514312744</td></tr>
+<tr><td>:ARG1</td><td>0.34998783469200134</td></tr>
+<tr><td>:ARG2</td><td>0.024677850306034088</td></tr>
+<tr><td>:ARG3</td><td>0.0023097496014088392</td></tr>
+<tr><td>:ARG4</td><td>0.00012156576849520206</td></tr>
+<tr><td>:ARG5</td><td>0.0008509603794664145</td></tr>
+<tr><td>:ARG6</td><td>0.00048626307398080826</td></tr>
+</table>
+<h2>Pour recalculer ces statistiques :</h2>
+<p><span class="ttyp">batch_LM_VerbAtlas_ARGn(nom_rapport='Rejeu_ARGn.html')<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Exactitude : 0.569414, exactitude équilibrée : 0.578597</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.552259</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.542502</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.427101</h2>
+<img src="Rejeu_ARGn_PJ/PJ_559719.svg"/>
+(Image stockée dans Rejeu_ARGn_PJ/PJ_559719.svg)
+<p><span><span hidden="True">[[1176, 0, 0, 0, 0, 0, 0, 50, 28, 93, 46, 61, 13, 12, 41, 1, 121, 106, 127, 76, 166, 26], [0, 1357, 0, 0, 0, 0, 0, 176, 42, 71, 50, 84, 67, 7, 344, 5, 62, 93, 130, 315, 66, 10], [0, 0, 73, 0, 0, 0, 0, 25, 5, 8, 5, 13, 12, 0, 22, 1, 2, 9, 14, 10, 3, 1], [0, 0, 0, 5, 0, 0, 0, 1, 0, 2, 1, 0, 2, 0, 1, 0, 1, 0, 0, 3, 1, 2], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0], [0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 2, 0], [0, 0, 0, 0, 0, 0, 0, 1, 24, 0, 3, 0, 2, 2, 1, 0, 0, 3, 3, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0, 6, 1, 207, 7, 22, 2, 3, 0, 0, 15, 6, 7, 6, 1, 1], [0, 0, 0, 0, 0, 0, 0, 3, 3, 2, 71, 7, 6, 4, 2, 7, 0, 1, 1, 2, 1, 0], [0, 0, 0, 0, 0, 0, 0, 20, 5, 45, 104, 1153, 52, 39, 43, 59, 91, 11, 36, 12, 4, 4], [0, 0, 0, 0, 0, 0, 0, 2, 1, 2, 1, 9, 74, 0, 4, 0, 0, 0, 2, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 2, 23, 18, 25, 18, 7, 222, 1, 4, 3, 6, 1, 1, 2, 3], [0, 0, 0, 0, 0, 0, 0, 6, 0, 2, 0, 22, 9, 1, 25, 0, 2, 0, 4, 4, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 7, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 4, 1, 6, 1, 10, 0, 0, 7, 0, 218, 3, 3, 3, 2, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Note</h2>
+<p>Expérience de classification sur les rôles PropBank sans passer par VerbAtlas</p>
+<h2>Pour réexécuter :</h2>
+<p><span class="ttyp">batch_LM_ARGn(nom_rapport='Rejeu_ARGn.html', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt', train=False)<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>fonction</th><td>batch_LM_ARGn</td></tr>
+<tr><th>classe_modele</th><td><span><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>MD5_git</th><td><span><span hidden="True">c8deacc490970750630852d0459f06e4244eaed5</span>c8deacc490970750630852d0459f0…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>17</td></tr>
+<tr><th>cible</th><td>ARGn</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span><span hidden="True">tensor([2.8334e-01, 3.6283e-01, 2.1443e-02, 3.7879e-03, 2.6901e-04, 7.9403e-04,
+        3.6447e-04, 2.0914e-03, 6.6256e-03, 2.6259e-02, 1.4041e-02, 1.8039e-01,
+        9.4632e-03, 3.6013e-02, 9.6064e-03, 1.2874e-02, 2.9813e-02])</span>tensor([2.8334e-01, 3.6283e-0…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et fréquences)</h2>
+<table><tr><th>relations</th><th>fréquences</th></tr>
+<tr><td>:ARG0</td><td>0.28334149718284607</td></tr>
+<tr><td>:ARG1</td><td>0.36282655596733093</td></tr>
+<tr><td>:ARG2</td><td>0.021443044766783714</td></tr>
+<tr><td>:ARG3</td><td>0.0037878951989114285</td></tr>
+<tr><td>:ARG4</td><td>0.0002690143301151693</td></tr>
+<tr><td>:ARG5</td><td>0.000794026127550751</td></tr>
+<tr><td>:ARG6</td><td>0.0003644710232038051</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>0.0020913693588227034</td></tr>
+<tr><td>:&gt;CONDITION</td><td>0.0066255624406039715</td></tr>
+<tr><td>:&gt;LOCATION</td><td>0.026259269565343857</td></tr>
+<tr><td>:&gt;MANNER</td><td>0.0140408119186759</td></tr>
+<tr><td>:&gt;MOD</td><td>0.18038712441921234</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>0.009463229216635227</td></tr>
+<tr><td>:&gt;TIME</td><td>0.03601320832967758</td></tr>
+<tr><td>:&gt;TOPIC</td><td>0.00960641447454691</td></tr>
+<tr><td>:degree</td><td>0.012873637489974499</td></tr>
+<tr><td>:poss</td><td>0.02981286123394966</td></tr>
+<tr><td>:&gt;AGENT</td><td>0</td></tr>
+<tr><td>:&gt;THEME</td><td>0</td></tr>
+<tr><td>:&gt;PATIENT</td><td>0</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>0</td></tr>
+<tr><td>:&gt;CAUSE</td><td>0</td></tr>
+</table>
+<h2>Pour recalculer ces statistiques :</h2>
+<p><span class="ttyp">batch_LM_ARGn(nom_rapport='Rejeu_ARGn.html', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_8/checkpoints/epoch=99-step=360200.ckpt', train=False)<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Exactitude : 0.639558, exactitude équilibrée : 0.626130</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.602763</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.617030</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.520428</h2>
+<img src="Rejeu_ARGn_PJ/PJ_592284.svg"/>
+(Image stockée dans Rejeu_ARGn_PJ/PJ_592284.svg)
+<p><span><span hidden="True">[[1480, 149, 71, 3, 0, 8, 1, 33, 35, 90, 43, 53, 16, 20, 16, 2, 123], [215, 1702, 356, 11, 4, 38, 2, 35, 42, 51, 52, 86, 63, 14, 123, 3, 82], [16, 36, 64, 3, 0, 2, 0, 6, 3, 20, 5, 9, 15, 1, 15, 1, 7], [0, 1, 2, 8, 0, 0, 0, 0, 1, 2, 1, 0, 1, 1, 1, 0, 1], [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [2, 0, 1, 0, 1, 0, 0, 6, 0, 1, 0, 0, 0, 0, 0, 0, 0], [2, 3, 4, 0, 0, 0, 0, 1, 25, 0, 3, 0, 1, 1, 0, 0, 0], [4, 4, 10, 0, 0, 2, 1, 2, 1, 212, 8, 21, 4, 6, 0, 0, 9], [1, 4, 1, 0, 0, 0, 0, 1, 4, 5, 70, 5, 7, 5, 1, 6, 0], [12, 22, 35, 5, 3, 3, 1, 1, 8, 80, 115, 1049, 25, 55, 113, 60, 91], [0, 2, 2, 1, 0, 0, 0, 0, 3, 0, 1, 9, 73, 0, 4, 0, 0], [5, 1, 8, 1, 0, 0, 0, 3, 21, 16, 24, 11, 5, 235, 1, 4, 1], [0, 5, 2, 0, 0, 0, 1, 4, 0, 3, 1, 14, 1, 0, 43, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 0, 0, 0, 68, 0], [5, 6, 6, 0, 0, 0, 0, 2, 2, 4, 0, 13, 1, 0, 3, 0, 216]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

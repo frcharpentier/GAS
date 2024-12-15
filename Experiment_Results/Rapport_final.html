@@ -1,0 +1,47 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+   
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head><!DOCTYPE html>
+
+<html>
+<body>
+<h1>Rapport Final</h1>
+
+
+
+
+</body>
+</html>

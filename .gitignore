@@ -1,10 +1,10 @@
 .ipynb_checkpoints/
 __pycache__/
 algebre_relationnelle.js
-*.svg
-*.png
+/*.svg
+/*.png
 *.bak
-*.html
+/*.html
 *.txt
 *.pdf
 plot_subgraph.ipynb

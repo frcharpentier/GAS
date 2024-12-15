@@ -1,0 +1,203 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">5150c1fca57318c33ad4eb47967e1373f9f7c149<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">essais_LM(nom_rapport='Rapport_essais_LM.html', nom_dataset='EdgeDatasetMono', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">essais_LM --nom_rapport Rapport_essais_LM.html --nom_dataset EdgeDatasetMono --ckpoint_model /home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Exactitude : 0.569414, exactitude équilibrée : 0.602247</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.573836</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.538658</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.480451</h2>
+<img src="Rapport_essais_LM_PJ/PJ_647120.svg"/>
+(Image stockée dans Rapport_essais_LM_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[1029, 41, 25, 25, 1, 145, 79, 44, 55, 76, 87, 11, 133, 7, 38], [15, 71, 1, 3, 0, 4, 9, 4, 11, 8, 5, 5, 15, 0, 9], [1, 0, 2, 0, 0, 2, 0, 0, 2, 1, 2, 1, 0, 0, 0], [3, 1, 0, 30, 0, 0, 0, 3, 0, 1, 0, 2, 4, 2, 5], [0, 0, 0, 0, 71, 0, 0, 5, 7, 0, 0, 0, 0, 0, 0], [31, 8, 0, 1, 0, 152, 8, 4, 7, 20, 12, 1, 10, 1, 2], [10, 9, 1, 3, 1, 2, 229, 9, 28, 11, 16, 4, 20, 3, 1], [1, 3, 0, 3, 7, 1, 2, 71, 7, 2, 0, 6, 1, 4, 2], [11, 20, 4, 5, 59, 4, 45, 104, 1153, 12, 91, 52, 37, 39, 43], [31, 44, 1, 3, 1, 11, 20, 6, 9, 234, 8, 7, 75, 1, 13], [3, 4, 0, 1, 0, 2, 6, 1, 10, 3, 218, 0, 3, 0, 7], [0, 3, 0, 2, 0, 0, 2, 2, 9, 0, 0, 77, 3, 0, 4], [126, 143, 10, 38, 4, 73, 57, 38, 60, 286, 69, 57, 878, 7, 341], [6, 2, 3, 23, 4, 2, 18, 25, 18, 1, 3, 7, 1, 223, 1], [4, 18, 2, 5, 0, 2, 3, 3, 30, 12, 4, 19, 32, 4, 246]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<p>Jeu de test où le sens des arêtes a été entièrement inversé</p>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">5150c1fca57318c33ad4eb47967e1373f9f7c149<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">essais_LM(nom_rapport='Rapport_essais_LM.html', nom_dataset='EdgeDatasetMonoEnvers', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">essais_LM --nom_rapport Rapport_essais_LM.html --nom_dataset EdgeDatasetMonoEnvers --ckpoint_model /home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Exactitude : 0.046560, exactitude équilibrée : 0.041442</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : -0.027027</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : -0.021543</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : -0.150429</h2>
+<img src="Rapport_essais_LM_PJ/PJ_894652.svg"/>
+(Image stockée dans Rapport_essais_LM_PJ/PJ_894652.svg)
+<p><span class="ttyp"><span hidden="True">[[26, 3, 5, 93, 16, 11, 63, 136, 727, 7, 17, 386, 206, 17, 83], [0, 1, 1, 11, 1, 1, 8, 46, 55, 0, 4, 11, 12, 4, 5], [0, 0, 0, 1, 0, 0, 0, 2, 2, 0, 0, 2, 3, 1, 0], [1, 0, 0, 9, 0, 4, 1, 10, 4, 0, 3, 7, 2, 7, 3], [0, 0, 0, 0, 2, 0, 0, 3, 2, 0, 0, 0, 75, 0, 1], [1, 5, 0, 21, 3, 0, 4, 16, 110, 3, 4, 26, 53, 0, 11], [9, 7, 3, 5, 5, 1, 23, 19, 105, 1, 38, 46, 60, 7, 18], [4, 0, 2, 4, 1, 0, 4, 16, 5, 0, 2, 13, 54, 1, 4], [29, 16, 3, 8, 4, 15, 204, 126, 208, 83, 24, 9, 908, 17, 25], [2, 1, 1, 4, 16, 0, 12, 116, 269, 0, 0, 19, 16, 4, 4], [3, 2, 1, 11, 1, 2, 67, 21, 96, 2, 1, 11, 28, 3, 9], [14, 0, 2, 3, 2, 2, 11, 42, 2, 0, 1, 0, 12, 9, 2], [36, 11, 16, 49, 133, 38, 75, 586, 884, 3, 21, 68, 90, 144, 33], [4, 0, 1, 17, 1, 1, 2, 18, 17, 2, 6, 27, 204, 4, 33], [14, 2, 5, 32, 21, 7, 17, 151, 66, 2, 3, 5, 16, 40, 3]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<p>Entrainement sur dataset augmenté par orientation aléatoire des arêtes.</p>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">222f2e48e08d5d975d3767d3c68c409d4e1ff304<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_LM_dir_augmentee(nom_rapport='Rapport_essais_LM.html')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_LM_dir_augmentee --nom_rapport Rapport_essais_LM.html<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>125958</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9372</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1573</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5234</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5625</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15584</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>27017</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8205</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>94525</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>29141</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>16092</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5905</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>149030</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>31380</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19555</td></tr>
+</table>
+<h2>Exactitude : 0.434841, exactitude équilibrée : 0.466675</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.428580</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.394472</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.318074</h2>
+<img src="Rapport_essais_LM_PJ/PJ_933378.svg"/>
+(Image stockée dans Rapport_essais_LM_PJ/PJ_933378.svg)
+<p><span class="ttyp"><span hidden="True">[[871, 54, 12, 20, 7, 232, 72, 37, 99, 75, 109, 59, 69, 23, 57], [10, 45, 1, 0, 1, 10, 12, 3, 11, 13, 10, 8, 16, 2, 18], [1, 0, 0, 0, 0, 1, 1, 1, 2, 0, 3, 1, 0, 0, 1], [3, 2, 0, 17, 1, 1, 0, 4, 1, 2, 2, 12, 0, 3, 3], [0, 0, 0, 0, 64, 0, 0, 8, 10, 1, 0, 0, 0, 0, 0], [34, 9, 2, 3, 1, 129, 3, 6, 13, 16, 24, 4, 8, 2, 3], [12, 19, 1, 2, 4, 3, 158, 9, 46, 9, 40, 18, 11, 8, 7], [1, 1, 1, 0, 9, 2, 2, 50, 4, 3, 1, 16, 3, 7, 10], [35, 37, 5, 7, 78, 11, 59, 98, 1024, 49, 132, 25, 40, 46, 33], [27, 51, 1, 2, 5, 18, 12, 19, 40, 203, 10, 13, 37, 1, 25], [9, 3, 0, 1, 0, 3, 10, 0, 15, 3, 208, 0, 2, 0, 4], [2, 2, 1, 3, 0, 0, 5, 6, 8, 0, 2, 60, 4, 3, 6], [120, 153, 6, 37, 86, 84, 64, 132, 296, 305, 90, 72, 344, 40, 358], [8, 4, 0, 18, 5, 4, 19, 23, 28, 2, 4, 23, 9, 183, 7], [3, 21, 1, 8, 1, 2, 7, 12, 34, 15, 8, 21, 22, 8, 221]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<p>Test sur dataset d’arêtes orienté normalement.</p>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">222f2e48e08d5d975d3767d3c68c409d4e1ff304<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">essais_LM(nom_rapport='Rapport_essais_LM.html', nom_dataset='EdgeDatasetMono', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">essais_LM --nom_rapport Rapport_essais_LM.html --nom_dataset EdgeDatasetMono --ckpoint_model /home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Exactitude : 0.432166, exactitude équilibrée : 0.466317</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.428197</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.391607</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.314847</h2>
+<img src="Rapport_essais_LM_PJ/PJ_226549.svg"/>
+(Image stockée dans Rapport_essais_LM_PJ/PJ_226549.svg)
+<p><span class="ttyp"><span hidden="True">[[868, 55, 12, 22, 6, 233, 70, 39, 98, 70, 108, 60, 73, 20, 62], [11, 49, 1, 0, 0, 9, 13, 4, 10, 15, 11, 7, 10, 2, 18], [1, 0, 0, 0, 0, 1, 1, 1, 2, 0, 3, 1, 0, 0, 1], [3, 2, 0, 16, 1, 1, 1, 4, 0, 1, 2, 10, 2, 4, 4], [0, 0, 0, 0, 66, 0, 0, 8, 8, 1, 0, 0, 0, 0, 0], [28, 9, 2, 3, 1, 136, 4, 5, 13, 15, 23, 4, 9, 2, 3], [13, 22, 1, 2, 2, 3, 151, 7, 50, 8, 44, 15, 11, 10, 8], [1, 3, 2, 0, 8, 2, 1, 48, 5, 2, 1, 18, 5, 7, 7], [31, 44, 9, 7, 76, 12, 58, 108, 1007, 56, 135, 22, 37, 46, 31], [24, 59, 1, 2, 5, 17, 12, 18, 44, 195, 14, 15, 34, 0, 24], [9, 3, 0, 1, 0, 3, 10, 0, 14, 2, 210, 0, 0, 1, 5], [2, 2, 1, 4, 1, 0, 6, 6, 8, 0, 2, 59, 3, 2, 6], [120, 145, 6, 37, 79, 87, 62, 139, 308, 296, 92, 77, 343, 38, 358], [7, 5, 0, 17, 6, 3, 19, 22, 28, 2, 5, 26, 8, 183, 6], [4, 20, 1, 6, 3, 2, 7, 12, 32, 14, 7, 22, 23, 7, 224]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<p>Test sur dataset d’arêtes orienté à l’envers.</p>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">222f2e48e08d5d975d3767d3c68c409d4e1ff304<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">essais_LM(nom_rapport='Rapport_essais_LM.html', nom_dataset='EdgeDatasetMonoEnvers', ckpoint_model='/home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">essais_LM --nom_rapport Rapport_essais_LM.html --nom_dataset EdgeDatasetMonoEnvers --ckpoint_model /home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Logist'&gt;</span>&lt;class 'modeles.Classif_Logis…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_23/checkpoints/epoch=99-step=360200.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>288</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>1e-05</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([125958.,   9372.,   1573.,   5234.,   5625.,  15584.,  27017.,   8205.,
+         94525.,  29141.,  16092.,   5905., 149030.,  31380.,  19555.])</span>tensor([125958.,   9372.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Exactitude : 0.438123, exactitude équilibrée : 0.468608</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.430651</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.397989</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.322034</h2>
+<img src="Rapport_essais_LM_PJ/PJ_478662.svg"/>
+(Image stockée dans Rapport_essais_LM_PJ/PJ_478662.svg)
+<p><span class="ttyp"><span hidden="True">[[879, 47, 11, 18, 7, 225, 77, 35, 99, 79, 113, 57, 71, 23, 55], [11, 45, 1, 0, 1, 9, 13, 3, 11, 12, 8, 9, 17, 2, 18], [2, 0, 0, 0, 0, 1, 0, 1, 2, 0, 3, 1, 0, 0, 1], [2, 1, 0, 20, 1, 1, 0, 2, 1, 2, 1, 11, 2, 4, 3], [0, 0, 0, 0, 62, 0, 0, 9, 12, 0, 0, 0, 0, 0, 0], [36, 11, 0, 3, 1, 125, 3, 7, 14, 17, 25, 5, 7, 1, 2], [11, 19, 1, 1, 3, 3, 155, 12, 43, 9, 42, 19, 13, 8, 8], [1, 2, 0, 0, 9, 2, 3, 47, 4, 5, 1, 16, 3, 6, 11], [31, 35, 4, 6, 74, 13, 60, 93, 1023, 46, 140, 30, 39, 48, 37], [31, 51, 0, 3, 6, 15, 15, 22, 37, 209, 9, 9, 36, 1, 20], [9, 2, 0, 1, 0, 3, 12, 0, 15, 3, 207, 0, 2, 0, 4], [1, 2, 0, 3, 1, 0, 5, 7, 7, 0, 2, 60, 3, 3, 8], [130, 142, 6, 35, 85, 86, 62, 127, 281, 314, 92, 73, 359, 45, 350], [9, 3, 0, 16, 6, 5, 17, 20, 25, 2, 5, 24, 8, 190, 7], [2, 21, 0, 9, 0, 2, 7, 11, 32, 16, 8, 20, 23, 10, 223]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

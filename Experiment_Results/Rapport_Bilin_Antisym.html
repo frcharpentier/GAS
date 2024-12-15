@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+</style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head>
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>fonction</th><td>batch_Antisym</td></tr>
+<tr><th>classe_modele</th><td><span><span hidden="True">&lt;class 'modeles.Classif_Bil_Antisym'&gt;</span>&lt;class 'modeles.Classif_Bil_A…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>MD5_git</th><td><span><span hidden="True">ff585cddbdd8b0cc873bc21cb3e229096c56eb5a</span>ff585cddbdd8b0cc873bc21cb3e22…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_13/checkpoints/epoch=29-step=139230.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>rang</th><td>2</td></tr>
+<tr><th>lr</th><td>0.0001</td></tr>
+<tr><th>freqs</th><td>None</td></tr>
+</table>
+<h2>Accuracy : 0.861709, balanced accuracy : 0.861688</h2>
+<img src="Rapport_Bilin_Antisym_PJ/PJ_647120.svg"/>
+(Image stockée dans Rapport_Bilin_Antisym_PJ/PJ_647120.svg)
+<p><span><span hidden="True">[[4528, 717], [715, 4395]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>fonction</th><td>batch_Antisym</td></tr>
+<tr><th>classe_modele</th><td><span><span hidden="True">&lt;class 'modeles.Classif_Bil_Antisym'&gt;</span>&lt;class 'modeles.Classif_Bil_A…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>MD5_git</th><td><span><span hidden="True">a25187857a35826ffa122e7a98cb3454c752f9cb</span>a25187857a35826ffa122e7a98cb3…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_14/checkpoints/epoch=29-step=139230.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+<tr><th>lr</th><td>0.0001</td></tr>
+<tr><th>freqs</th><td>None</td></tr>
+</table>
+<h2>Accuracy : 0.879092, balanced accuracy : 0.879072</h2>
+<img src="Rapport_Bilin_Antisym_PJ/PJ_894652.svg"/>
+(Image stockée dans Rapport_Bilin_Antisym_PJ/PJ_894652.svg)
+<p><span><span hidden="True">[[4619, 626], [626, 4484]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>fonction</th><td>batch_Antisym</td></tr>
+<tr><th>classe_modele</th><td><span><span hidden="True">&lt;class 'modeles.Classif_Bil_Antisym'&gt;</span>&lt;class 'modeles.Classif_Bil_A…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>MD5_git</th><td><span><span hidden="True">7f2f23a03ca946cbac692c0e3012e5facbd937a2</span>7f2f23a03ca946cbac692c0e3012e…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_15/checkpoints/epoch=29-step=139230.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>rang</th><td>18</td></tr>
+<tr><th>lr</th><td>0.0001</td></tr>
+<tr><th>freqs</th><td>None</td></tr>
+</table>
+<h2>Accuracy : 0.882183, balanced accuracy : 0.882185</h2>
+<img src="Rapport_Bilin_Antisym_PJ/PJ_933378.svg"/>
+(Image stockée dans Rapport_Bilin_Antisym_PJ/PJ_933378.svg)
+<p><span><span hidden="True">[[4626, 619], [601, 4509]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>
