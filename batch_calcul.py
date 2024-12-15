@@ -427,6 +427,83 @@ def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None):
 
     print("TERMINÉ.")
 
+@autoinspect
+def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None):
+    dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
+                    "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
+                    "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
+    
+    assert nom_dataset in dico_classes
+
+    filtre = filtre_defaut_GPT()
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = dico_classes[nom_dataset])
+    cible = "roles"
+    freqs = filtre2.effectifs
+    modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
+    trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
+    print("TERMINÉ.")
+
 
 @autoinspect
 def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
@@ -1566,20 +1643,20 @@ D  D  EEE   BBB   U   U  G  GG
 D  D  E     B  B  U   U  G   G
 DDD   EEEE  BBB    UUU    GGG
 """)
+        essais_LM_GPT(nom_rapport="a_tej.html",
+                      nom_dataset="EdgeDatasetMonoEnvers",
+                      ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_45/checkpoints/epoch=99-step=360200.ckpt"
+                    )
         #batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
-        
-        
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
         #batch_GAT_sym("a_tej.html", 64, 1, 2, max_epochs=2)
         #batch_Bilin_tous_tokens2("a_tej.html", h=64, rang=8, transfo="GPT2")
         #batch_Bilin_GPT(nom_rapport='Rapport_Bilin_Sym_GPT.html', rang=8)
         #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
-
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
-
-        batch_LM_GPT(nom_rapport = "./Rapport_LM_GPT.html")
+        #batch_LM_GPT(nom_rapport = "./Rapport_LM_GPT.html")
 
     else:
         fire.Fire()
