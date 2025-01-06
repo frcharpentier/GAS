@@ -15,11 +15,7 @@ transformers (recommended version 4.45.0)
 
 
 
-pip install lightning (version 2.4.0)
-
-
-
-Instructions to build the dataset :
+## Instructions to build the dataset :
 
 Build text files containing the AMRs, the tokenized sentences, and the alignments between the two. The file `fabrication_listes.py` serves this purpose : execute the function `construire_graphes`.
 
