@@ -29,6 +29,10 @@ The function `construire_graphes` assumes you have the LDC_2020_T02 dataset unde
 
 Change the location at the beginning of function `construire_graphes`.
 
+
+
+You will also need a copy of the `pb2va.tsv` file of VerbAtlas. under `../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv`. You can download it from https://verbatlas.org/downloads/VerbAtlas-1.1.0.zip
+
 The function also assumes you have the leamr alignments by Blodgett et al. under the directory `../alignement_AMR/leamr/data-release/alignments/`. Get it at https://github.com/ablodge/leamr/tree/master/data-release/alignments.
 
 
