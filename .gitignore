@@ -6,6 +6,7 @@ algebre_relationnelle.js
 *.bak
 /*.html
 *.txt
+!requirements.txt
 *.pdf
 plot_subgraph.ipynb
 
