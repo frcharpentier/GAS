@@ -1,19 +1,32 @@
 # Graph of Attention for Semantics
 
-Necessary packages :
+## Prerequisites
+
+* Install pytorch with your version of cuda, following the instructions on pytorch.org
+* run `pip install -r requirements.txt`, or install manually the following list
+
+
 
 ```
-fire
-lightning (recommended version 2.4.0)
-scikit-learn
-tqdm
-tensorboard (recommended version 2.18.0)
-torch (recommended version 2.4.1 with cuda)
-torch-geometric (recommenden version 2.6.1)
-transformers (recommended version 4.45.0)
+fire==0.7.0
+jaraco.collections==5.1.0
+lightning==2.4.0
+lxml==5.3.0
+penman==1.3.1
+pickleshare==0.7.5
+pyarrow==17.0.0
+scikit-learn==1.5.2
+seaborn==0.13.2
+sentencepiece==0.2.0
+tomli==2.0.1
+torch-geometric==2.6.1
+transformers==4.45.0
+
 ```
 
+* run the final following command : 
 
+  `pip install git+https://github.com/frcharpentier/amr-utils.git@master`
 
 ## Instructions to build the dataset :
 
@@ -37,7 +50,13 @@ The function also assumes you have the leamr alignments by Blodgett et al. under
 
 
 
-Executing the command given in example will yield three text files : `./AMR_et_graphes_phrases_explct_train.txt`, `./AMR_et_graphes_phrases_explct_dev.txt` and `./AMR_et_graphes_phrases_explct_test.txt.`Those are sufficient to re-run experiments located in the directory `Experiment_results`. Everything uses the file `batch_calcul.py`. This file imports the python module `fire`, allowing to execute a python function from the command line. Each result file gives the command to launch to redo the experiment. In case of a problem, it also gives a md5 checksum of a git snapshot. Use `git checkout` to obtain exactly the same snapshot.
+Executing the command given in example will yield three text files : `./AMR_et_graphes_phrases_explct_train.txt`, `./AMR_et_graphes_phrases_explct_dev.txt` and `./AMR_et_graphes_phrases_explct_test.txt.`
+
+Those are sufficient to re-run experiments located in the directory `Experiment_results`. Everything uses the file `batch_calcul.py`. This file imports the python module `fire`, allowing to execute a python function from the command line. Each result file gives the command to launch to redo the experiment. In case of a problem, it also gives a md5 checksum of a git snapshot. Use `git checkout` to obtain exactly the same snapshot.
+
+
+
+The first run will build torch geometric datasets. This make take a while and will create files on your filesystem of a few gigabytes. Subsequents runs will skip this step, as they will directly read from those files.
 
 
 
