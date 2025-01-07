@@ -206,7 +206,8 @@ class ALIGNEUR:
             lpf = len(self.ch_debut)
             toks_transformer = [x[lpf:] if x.startswith(self.ch_debut) else "¤"+x for x in toks_transformer]
 
-        toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
+        #toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
+        toksV = [self.tokenizer.decode(x).strip() for x in toks_nums]
         if self.tok1 == None:
             zeroV = 0
         else:
@@ -218,7 +219,8 @@ class ALIGNEUR:
         else:
             assert toksV[-1] == self.tokn
             toksV = toksV[:-1] #Éliminons le token SEP
-        
+
+        toksV = [x.lower() for x in toksV]
         rel_tg, rel_mg = aligneur_seq(motsH, toksV, zeroV = zeroV)
         return rel_tg, rel_mg, toks_transformer
     
