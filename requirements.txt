@@ -1,0 +1,13 @@
+fire==0.7.0
+jaraco.collections
+lightning
+lxml
+penman
+pickleshare
+pyarrow
+scikit-learn
+seaborn
+sentencepiece
+tomli
+torch-geometric
+transformers
