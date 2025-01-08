@@ -214,7 +214,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
 
 class TRANSFORMER_ATTENTION:
-    def __init__(self, QscalK = False, dtype=np.float32):
+    def __init__(self, QscalK = False, dtype=np.float32, device="cpu"):
         self.dtype = dtype
         self.modele = None
         self.tokenizer = None
@@ -223,6 +223,7 @@ class TRANSFORMER_ATTENTION:
         self.num_heads = 1
         self.data_att = None #[]
         self.QK = QscalK
+        self.device=device
         #self.suffixes = ["SC", "CS", "Ssep", "Csep"]
         if self.QK:
             self.data_QK = None #[]
@@ -247,6 +248,8 @@ class TRANSFORMER_ATTENTION:
             elif model_name.startswith("huggingface://"):
                 self.model_type = "hf"
                 model_name = model_name[14:]
+                if model_name.startswith("gpt"):
+                    self.type_transformer = "DEC"
 
             if self.type_transformer == "DEC":
                 self.decoder_mask = decoder_mask
@@ -261,6 +264,8 @@ class TRANSFORMER_ATTENTION:
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
             else:
                 self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                if not self.device == "cpu":
+                    self.modele.to(self.device)
                 config = self.modele.config
                 self.model_type = config._name_or_path
                 self.num_layers = config.num_hidden_layers
@@ -288,7 +293,7 @@ class TRANSFORMER_ATTENTION:
         assert (self.modele != None and self.tokenizer != None)
         #snt = argjson["snt"]
         #aretes = argjson["aretes"]
-        if type(snt) is "str":
+        if type(snt) == "str":
             inputs = self.tokenizer(snt, return_tensors='pt')
             input_ids = inputs['input_ids']
             att_mask = inputs["attention_mask"]
@@ -299,8 +304,8 @@ class TRANSFORMER_ATTENTION:
             if type(snt[0]) is str:
                 snt = [ T if T in (self.tok1, self.sep_token) else (self.ch_suite + T[1:] if T.startswith("¤") else self.ch_debut + T) for T in snt]
                 snt = self.tokenizer.convert_tokens_to_ids(snt)
-            input_ids = torch.tensor(snt).reshape(1,-1)
-            att_mask = torch.ones(input_ids.shape, dtype=input_ids.dtype)
+            input_ids = torch.tensor(snt, device=self.device).reshape(1,-1)
+            att_mask = torch.ones(input_ids.shape, dtype=input_ids.dtype, device=self.device)
 
         ntokens = input_ids.shape[-1]
             
@@ -332,7 +337,7 @@ class TRANSFORMER_ATTENTION:
         # Tous sont du même ordre, tous ont les mêmes dimensions.
         # en l’occurrence, (x, h, w, w), où x est le nombre de phrases dans le batch,
         # h est le nombre de têtes, w est le nombre de mots dans la phrase encodée.
-        attention = [X.detach().numpy() for X in attention]
+        attention = [X.detach().cpu().numpy() for X in attention]
 
         if self.type_transformer == "DEC":
             if self.decoder_mask:

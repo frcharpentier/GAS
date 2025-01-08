@@ -683,7 +683,7 @@ class EdgeDatasetRdmDir(EdgeDataset):
 
 
 class AligDataset(geoDataset):
-    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False):
+    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cpu"):
         if not split:
             self.split = False
         else:
@@ -701,6 +701,7 @@ class AligDataset(geoDataset):
         self.liste_ARGn = None
         self.QscalK = QscalK
         self.debug_idSNT = debug_idSNT
+        self.device = device
         self.filtre = transform # Éventuellement remplacé plus tard si cette valeur est None.
         super().__init__(root, transform, pre_transform, pre_filter)
         if self.transform is None:
@@ -776,7 +777,7 @@ class AligDataset(geoDataset):
         etat = 0
         model_name=None
         nb_graphes = 0
-        attn = TRANSFORMER_ATTENTION(QscalK=self.QscalK)
+        attn = TRANSFORMER_ATTENTION(QscalK=self.QscalK, device=self.device)
         pbar = tqdm(total = total_graphes)
 
         # Test du format des floats
@@ -792,12 +793,15 @@ class AligDataset(geoDataset):
                     ligne = ligne.strip()
                     if depart and ligne.startswith(lbl_modname):
                         model_name = ligne[len(lbl_modname):]
-                        if "bert" in model_name:
+                        if model_name.startswith("bert") or model_name.startswith("roberta"):
                             model_name = "minbert://"+ model_name
-                        elif "gpt" in model_name:
+                        elif model_name.startswith("gpt"):
                             model_name = "mingpt://" + model_name
                         else:
-                            model_name = "XXXX" # ERROR
+                            model_name = "huggingface://" + model_name
+                            assert self.QscalK == False, "Seule l’attention après softmax est disponible pour les modèles Huggingface"
+                        #else:
+                        #    model_name = "XXXX" # ERROR
                         attn.select_modele(model_name)
                     elif etat == 0:
                         if ligne.startswith(lbl_id):
@@ -1310,9 +1314,14 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_attn_dev", "./AMR_et_graphes_phrases_explct_dev.txt")
     #ds_test  = AligDataset("./dataset_attn_test", "./AMR_et_graphes_phrases_explct_test.txt")
 
-    ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev") #, debug_idSNT=True)
-    ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+    #ds_train = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
+    #ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev") #, debug_idSNT=True)
+    #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
+
+    ds_train = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="train", device="cuda")
+    ds_dev   = AligDataset("./deberta_att_dev", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="dev", device="cuda") #, debug_idSNT=True)
+    ds_test  = AligDataset("./deberta_att_test", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="test", device="cuda")
+
 
     #ds_test2  = AligDataset("./dataset_QK_test2", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
