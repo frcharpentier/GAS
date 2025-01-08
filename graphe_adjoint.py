@@ -304,8 +304,8 @@ class TRANSFORMER_ATTENTION:
             if type(snt[0]) is str:
                 snt = [ T if T in (self.tok1, self.sep_token) else (self.ch_suite + T[1:] if T.startswith("¤") else self.ch_debut + T) for T in snt]
                 snt = self.tokenizer.convert_tokens_to_ids(snt)
-            input_ids = torch.tensor(snt).reshape(1,-1)
-            att_mask = torch.ones(input_ids.shape, dtype=input_ids.dtype)
+            input_ids = torch.tensor(snt, device=self.device).reshape(1,-1)
+            att_mask = torch.ones(input_ids.shape, dtype=input_ids.dtype, device=self.device)
 
         ntokens = input_ids.shape[-1]
             
@@ -337,7 +337,7 @@ class TRANSFORMER_ATTENTION:
         # Tous sont du même ordre, tous ont les mêmes dimensions.
         # en l’occurrence, (x, h, w, w), où x est le nombre de phrases dans le batch,
         # h est le nombre de têtes, w est le nombre de mots dans la phrase encodée.
-        attention = [X.detach().numpy() for X in attention]
+        attention = [X.detach().cpu().numpy() for X in attention]
 
         if self.type_transformer == "DEC":
             if self.decoder_mask:
