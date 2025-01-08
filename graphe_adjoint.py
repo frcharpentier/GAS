@@ -214,7 +214,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
 
 class TRANSFORMER_ATTENTION:
-    def __init__(self, QscalK = False, dtype=np.float32):
+    def __init__(self, QscalK = False, dtype=np.float32, device="cpu"):
         self.dtype = dtype
         self.modele = None
         self.tokenizer = None
@@ -223,6 +223,7 @@ class TRANSFORMER_ATTENTION:
         self.num_heads = 1
         self.data_att = None #[]
         self.QK = QscalK
+        self.device=device
         #self.suffixes = ["SC", "CS", "Ssep", "Csep"]
         if self.QK:
             self.data_QK = None #[]
@@ -247,6 +248,8 @@ class TRANSFORMER_ATTENTION:
             elif model_name.startswith("huggingface://"):
                 self.model_type = "hf"
                 model_name = model_name[14:]
+                if model_name.startswith("gpt"):
+                    self.type_transformer = "DEC"
 
             if self.type_transformer == "DEC":
                 self.decoder_mask = decoder_mask
@@ -261,6 +264,8 @@ class TRANSFORMER_ATTENTION:
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
             else:
                 self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                if not self.device == "cpu":
+                    self.modele.to(self.device)
                 config = self.modele.config
                 self.model_type = config._name_or_path
                 self.num_layers = config.num_hidden_layers
@@ -288,7 +293,7 @@ class TRANSFORMER_ATTENTION:
         assert (self.modele != None and self.tokenizer != None)
         #snt = argjson["snt"]
         #aretes = argjson["aretes"]
-        if type(snt) is "str":
+        if type(snt) == "str":
             inputs = self.tokenizer(snt, return_tensors='pt')
             input_ids = inputs['input_ids']
             att_mask = inputs["attention_mask"]
