@@ -11,3 +11,4 @@ sentencepiece
 tomli
 torch-geometric
 transformers
+protobuf

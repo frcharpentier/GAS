@@ -22,7 +22,7 @@ sentencepiece==0.2.0
 tomli==2.0.1
 torch-geometric==2.6.1
 transformers==4.45.0
-
+protobuf==5.28.2
 ```
 
 * run the final following command : 
