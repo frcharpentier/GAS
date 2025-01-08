@@ -4,7 +4,7 @@
 
 * Use python version >= 3.11
 * Install pytorch with your version of cuda, following the instructions on pytorch.org
-* run `pip install -r requirements.txt`, or install manually the following list
+* run `pip install -r requirements.txt`, or install manually the following list :
 
 
 
@@ -22,6 +22,7 @@ sentencepiece==0.2.0
 tomli==2.0.1
 torch-geometric==2.6.1
 transformers==4.45.0
+protobuf==5.28.2
 
 ```
 
