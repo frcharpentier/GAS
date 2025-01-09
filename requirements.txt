@@ -1,4 +1,5 @@
 fire==0.7.0
+beautifulsoup4
 jaraco.collections
 lightning
 lxml

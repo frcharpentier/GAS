@@ -10,6 +10,7 @@
 
 ```
 fire==0.7.0
+beautifulsoup4==4.12.3
 jaraco.collections==5.1.0
 lightning==2.4.0
 lxml==5.3.0
