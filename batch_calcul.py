@@ -61,6 +61,10 @@ def filtre_defaut_GPT():
     ds = AligDataset("./dataset_QK_GPT_train", "./AMR_et_graphes_phrases_GPT_explct", QscalK=True, split="train")
     return ds.filtre
 
+def filtre_defaut_deberta():
+    ds = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=True, split="train")
+    return ds.filtre
+
 class PERMUT_DIR_AT_EPOCH_START(Callback):
     def __init__(self, train_ds):
         self.train_ds = train_ds
@@ -69,65 +73,67 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
         print("Nouvelle époque")
         self.train_ds.redirection_aleatoire()
 
-def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    if train:
-        DGRtr_f2 = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="train")
-    if dev:
-        DGRdv_f2 = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="dev")
-    if test:
-        DGRts_f2 = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct",
-                            transform=filtre, QscalK=True, split="test")
-        
-    datasets = ()
-    if train:
-        datasets += (CLASSE(DGRtr_f2, "./edges_f_QK_train"),)
-    if dev:
-        datasets += (CLASSE(DGRdv_f2, "./edges_f_QK_dev"),)
-    if test:
-        datasets += (CLASSE(DGRts_f2, "./edges_f_QK_test"),)
-    
-    return datasets
 
-def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    if train:
-        DGRtr_f2 = AligDataset("./dataset_QK_GPT_train", "./AMR_et_graphes_phrases_GPT_explct",
-                            transform=filtre, QscalK=True, split="train")
-    if dev:
-        DGRdv_f2 = AligDataset("./dataset_QK_GPT_dev", "./AMR_et_graphes_phrases_GPT_explct",
-                            transform=filtre, QscalK=True, split="dev")
-    if test:
-        DGRts_f2 = AligDataset("./dataset_QK_GPT_test", "./AMR_et_graphes_phrases_GPT_explct",
-                            transform=filtre, QscalK=True, split="test")
-        
-    datasets = ()
-    if train:
-        datasets += (CLASSE(DGRtr_f2, "./edges_f_QK_GPT_train"),)
-    if dev:
-        datasets += (CLASSE(DGRdv_f2, "./edges_f_QK_GPT_dev"),)
-    if test:
-        datasets += (CLASSE(DGRts_f2, "./edges_f_QK_GPT_test"),)
-    
-    return datasets
-
-
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta"):
-    assert CLASSE in [AligDataset, EdgeDataset]
-    assert transfo in ["roberta", "GPT2"]
+def transfo_to_filenames(transfo):
+    assert transfo in ["roberta", "GPT2", "deberta"]
     if transfo == "roberta":
         rep_ds_grph = "./dataset_QK_"
         rep_ds_edge = "./edges_f_QK_"
         rep_data =    "./AMR_et_graphes_phrases_explct"
-    else:
+    elif transfo == "GPT2":
         rep_ds_grph = "./dataset_QK_GPT_"
         rep_ds_edge = "./edges_f_QK_GPT_"
         rep_data =    "./AMR_et_graphes_phrases_GPT_explct"
+    elif transfo == "deberta":
+        rep_ds_grph = "./deberta_att_"
+        rep_ds_edge = "./edges_deberta_att_"
+        rep_data =    "./AMR_grph_DebertaV2_xxlarge"
+
+    return rep_data, rep_ds_grph, rep_ds_edge
+
+def faire_datasets_edges_generic(transfo, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
+    if train:
+        DGRtr_f2 = AligDataset(rep_ds_grph + "train", rep_data,
+                            transform=filtre, QscalK=True, split="train")
+    if dev:
+        DGRdv_f2 = AligDataset(rep_ds_grph + "dev", rep_data,
+                            transform=filtre, QscalK=True, split="dev")
+    if test:
+        DGRts_f2 = AligDataset(rep_ds_grph + "test", rep_data,
+                            transform=filtre, QscalK=True, split="test")
+        
+    datasets = ()
+    if train:
+        datasets += (CLASSE(DGRtr_f2, rep_ds_edge + "train"),)
+    if dev:
+        datasets += (CLASSE(DGRdv_f2, rep_ds_edge + "dev"),)
+    if test:
+        datasets += (CLASSE(DGRts_f2, rep_ds_edge + "test"),)
+    
+    return datasets
+
+def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    return faire_datasets_edges_generic("roberta", filtre, train, dev, test, CLASSE)
+
+def faire_datasets_edges_roberta(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    return faire_datasets_edges_generic("roberta", filtre, train, dev, test, CLASSE)
+
+def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    return faire_datasets_edges_generic("GPT2", filtre, train, dev, test, CLASSE)
+
+
+def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta"):
+    assert CLASSE in [AligDataset, EdgeDataset]
+    
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
     if filtre == "defaut":
         if transfo == "roberta":
             filtre = filtre_defaut()
-        else:
+        elif transfo == "GPT2":
             filtre = filtre_defaut_GPT()
+        elif transfo == "deberta":
+            filtre = filtre_defaut_deberta()
         noms_classes = [k for k in filtre.alias]
         def pour_fusion(C):
             nonlocal noms_classes
@@ -1269,6 +1275,99 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
+@autoinspect
+def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta"):
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
+    filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+
+    DARtr, DARdv, DARts = faire_datasets_edges_generic(transfo, filtre2, True, True, True, CLASSE = EdgeDataset)
+
+    dimension = 144
+    nb_classes = len(filtre2.alias)
+    freqs = filtre2.effectifs
+    cible = "roles"
+    lr = 1.e-4
+    if ckpoint_model:
+        modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
+    else:
+        modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+    if train:
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+    
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.reexecution()
+        R.titre("Informations de reproductibilité", 2)
+        chckpt = get_ckpt(modele)
+        if not chckpt and (not ckpoint_model is None):
+            chckpt = ckpoint_model
+        if not type(chckpt) == str:
+            chckpt = repr(chckpt)
+        R.table(colonnes=False,
+                classe_modele=repr(modele.__class__),
+                chkpt_model = chckpt)
+        R.titre("paramètres d’instanciation", 3)
+        hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        
+        R.titre("Dataset (classe et effectifs)", 2)
+        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
+        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
+        dld = utils.data.DataLoader(DARts, batch_size=32)
+        roles_pred = trainer.predict(
+            modele,
+            dataloaders=dld,
+            return_predictions=True
+        )
+        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
+        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        #accuracy = accuracy_score(truth, roles_pred)
+        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
+        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+
+        with R.new_img_with_format("svg") as IMG:
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
+            fig.savefig(IMG.fullname)
+        matrix = repr(matrix.tolist())
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
 
 @autoinspect
 def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
@@ -1346,11 +1445,13 @@ def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, tr
         R.ligne()
 
 @autoinspect
-def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset)
+def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, transfo="roberta"):
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
     filtre = DARtr.filtre
 
-    dimension = 144
+    dimension, _2 = DARts[0]["X"].shape
+    assert _2 == 2
+
     nb_classes = len(filtre.alias)
     freqs = filtre.effectifs
     cible = "roles"
@@ -1420,11 +1521,13 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 @autoinspect
 def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta"):
-    assert transfo in ["roberta", "GPT2"]
+    #assert transfo in ["roberta", "GPT2"]
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
     filtre = DARtr.filtre
 
-    dimension = 144
+    dimension, _2 = DARts[0]["X"].shape
+    assert _2 == 2
+    
     nb_classes = len(filtre.alias)
     freqs = filtre.effectifs
     cible = "roles"
@@ -1518,11 +1621,13 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 @autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, transfo="roberta"):
-    assert transfo in ["roberta", "GPT2"]
+    #assert transfo in ["roberta", "GPT2"]
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo)
     filtre = DARtr.filtre
 
-    dimension = 144
+    _, dimension, _2 = DARts[0].x.shape
+    assert _2 == 2
+
     nb_classes = len(filtre.alias)
     freqs = filtre.effectifs
     cible = "y1"
