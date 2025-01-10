@@ -1275,8 +1275,8 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
-autoinspect
-def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta"):
+@autoinspect
+def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", lr = 1.e-4):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
     filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
     noms_classes = [k for k in filtre.alias]
@@ -1309,7 +1309,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
     cible = "roles"
-    lr = 1.e-4
+    #lr = 1.e-4
     if ckpoint_model:
         modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
     else:
