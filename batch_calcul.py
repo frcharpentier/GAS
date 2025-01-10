@@ -1275,7 +1275,7 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
-@autoinspect
+autoinspect
 def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta"):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
     filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
@@ -1303,7 +1303,9 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
 
     DARtr, DARdv, DARts = faire_datasets_edges_generic(transfo, filtre2, True, True, True, CLASSE = EdgeDataset)
 
-    dimension = 144
+    dimension, _2 = DARts[0]["X"].shape
+    assert _2 == 2
+
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
     cible = "roles"
@@ -1748,10 +1750,12 @@ D  D  EEE   BBB   U   U  G  GG
 D  D  E     B  B  U   U  G   G
 DDD   EEEE  BBB    UUU    GGG
 """)
-        essais_LM_GPT(nom_rapport="a_tej.html",
-                      nom_dataset="EdgeDatasetMonoEnvers",
-                      ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_45/checkpoints/epoch=99-step=360200.ckpt"
-                    )
+        #essais_LM_GPT(nom_rapport="a_tej.html",
+        #              nom_dataset="EdgeDatasetMonoEnvers",
+        #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_45/checkpoints/epoch=99-step=360200.ckpt"
+        #            )
+        batch_Bilin_generic(nom_rapport='a_tej.html', rang=8, transfo="deberta")
+
         #batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
         #batch_GAT_sym("a_tej.html", 144, 1, 2, max_epochs=1)
