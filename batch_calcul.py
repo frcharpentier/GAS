@@ -1276,7 +1276,7 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         R.ligne()
 
 @autoinspect
-def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", lr = 1.e-4):
+def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", lr = 1.e-4, patience=5):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
     filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
     noms_classes = [k for k in filtre.alias]
@@ -1315,7 +1315,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
     else:
         modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
     if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
+        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
         trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
