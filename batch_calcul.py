@@ -1382,6 +1382,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         #accuracy = accuracy_score(truth, roles_pred)
         #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
+        R.titre("Meilleur modèle :", 2)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
         R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
         R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
