@@ -1316,7 +1316,11 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
-        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
+        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        trainer = LTN.Trainer(max_epochs=150, devices=1,
+                              accelerator="gpu",
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
         #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
         #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
     
@@ -1326,20 +1330,37 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
+        svg_meilleur = None
+        svg_dernier = None
         trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
         R.reexecution()
         R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
+        if svg_meilleur:
+            chckpt_last = svg_dernier.best_model_path
+            chckpt_best = svg_meilleur.best_model_path
+            if type(chckpt_last) is str:
+                if len(chckpt_last) == 0:
+                    chckpt_last = False
+            if type(chckpt_best) is str:
+                if len(chckpt_best) == 0:
+                    chckpt_best = False
+        else:
+            chckpt_last = ckpoint_model
+            if not type(chckpt_last) == str:
+                chckpt_last = repr(chckpt_last)
+            chckpt_best = False
+        checkpoints = {"chkpt_dernier": chckpt_last}
+        if chckpt_best:
+            if chckpt_best == chckpt_last:
+                checkpoints["chckpt_meilleur"]= "(voir dernier)"
+            else:
+                checkpoints["chckpt_meilleur"]= chckpt_best
         R.table(colonnes=False,
                 classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
+                **checkpoints)
         R.titre("paramètres d’instanciation", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
         R.table(**hparams, colonnes=False)
@@ -1348,6 +1369,8 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
         R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
         dld = utils.data.DataLoader(DARts, batch_size=32)
+        if svg_meilleur:
+            modele.load_from_checkpoint(svg_meilleur.best_model_path)
         roles_pred = trainer.predict(
             modele,
             dataloaders=dld,
