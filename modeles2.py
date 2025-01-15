@@ -12,6 +12,7 @@ from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetR
 
 class torchmodule_Classif_Bil_Sym(torch.nn.Module):
     def __init__(self, dim, nb_classes, rang=2):
+        super(torchmodule_Classif_Bil_Sym, self).__init__()
         self.dim = dim
         self.nb_classes = nb_classes
         self.rang = rang
@@ -63,6 +64,7 @@ class torchmodule_Classif_Bil_Sym(torch.nn.Module):
 
 class torchmodule_Classif_Bil_Sym_2(torch.nn.Module):
     def __init__(self, dim, nb_classes, rang=2):
+        super(torchmodule_Classif_Bil_Sym_2, self).__init__()
         self.dim = dim
         self.nb_classes = nb_classes
         self.rang = rang
