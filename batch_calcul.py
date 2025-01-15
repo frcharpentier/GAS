@@ -1389,7 +1389,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
             return_predictions=True
         )
         roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
+        truth = torch.concatenate([batch["roles"] for batch in dld], axis=0)
 
         exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         #accuracy = accuracy_score(truth, roles_pred)
