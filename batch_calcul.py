@@ -32,6 +32,11 @@ import lightning as LTN
 from modeles import (Classif_Logist, Classif_Bil_Sym,
                      Classif_Bil_Sym_2, Classif_Bil_Antisym,
                      Classif_Bil_Antisym_2)
+from modeles2 import (torchmodule_Classif_Bil_Sym   as tm_bil_sym,
+                      torchmodule_Classif_Bil_Sym_2 as tm_bil_sym_2,
+                      torchmodule_GAT_role_classif as tm_GAT,
+                      INFERENCE
+                      )
 from GNN_modeles import GAT_role_classif, GAT_sans_GAT
 from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoader
 
@@ -1308,12 +1313,17 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
 
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    cible = "roles"
+    #cible = "roles"
     #lr = 1.e-4
     if ckpoint_model:
-        modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
+        infer = INFERENCE.load_from_checkpoint(ckpoint_model)
+        modele = infer.modele
+        #modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
     else:
-        modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
+        modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
+        infer = INFERENCE(modele, f_features="lambda b: b['X']",
+                          f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
+        #modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
@@ -1327,7 +1337,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        trainer.fit(model=infer, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
         svg_meilleur = None
@@ -1361,8 +1371,11 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         R.table(colonnes=False,
                 classe_modele=repr(modele.__class__),
                 **checkpoints)
-        R.titre("paramètres d’instanciation", 3)
+        R.titre("paramètres d’instanciation du modele", 3)
         hparams = {k: str(v) for k, v in modele.hparams.items()}
+        R.table(**hparams, colonnes=False)
+        R.titre("paramètres d’instanciation du système d’inférence", 3)
+        hparams = {k: str(v) for k, v in infer.hparams.items()}
         R.table(**hparams, colonnes=False)
         
         R.titre("Dataset (classe et effectifs)", 2)
