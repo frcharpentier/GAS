@@ -1315,12 +1315,11 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
     freqs = filtre2.effectifs
     #cible = "roles"
     #lr = 1.e-4
+    modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
     if ckpoint_model:
-        infer = INFERENCE.load_from_checkpoint(ckpoint_model)
-        modele = infer.modele
+        infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
         #modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
     else:
-        modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
                           f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
         #modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
@@ -1383,7 +1382,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
         dld = utils.data.DataLoader(DARts, batch_size=32)
         if svg_meilleur:
-            infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path)
+            infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path, modele=modele)
         roles_pred = trainer.predict(
             infer,
             dataloaders=dld,
