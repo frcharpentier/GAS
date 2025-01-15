@@ -309,12 +309,12 @@ class INFERENCE(LTN.LightningModule):
             self.f_msk = eval(f_msk)
         self.lr = lr
         self.freqs = freqs
-        self.pondus = freqs.max() / freqs
         self.save_hyperparameters(ignore="modele")
         assert perte in nn.__dict__
         if freqs is None:
             self.loss = (nn.__dict__[perte])(reduction="mean")
         else:
+            self.pondus = freqs.max() / freqs
             self.loss = (nn.__dict__[perte])(weight = self.pondus, reduction="mean")
         self.acc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes)
         self.balacc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes, average="macro")
