@@ -297,7 +297,10 @@ class INFERENCE(LTN.LightningModule):
                 assert len(freqs) == nb_classes
                 freqs = torch.Tensor(freqs)
             assert freqs.shape == (nb_classes,)
-        self.add_module("modele", modele),
+        self.add_module("modele", modele)
+        # Il est nécessaire d’appeler la fonction add_module plutôt que la 
+        # simple assignation self.modele = modele, parce que le constructeur
+        # n’est pas appelé à la volée.
         assert f_features.startswith("lambda b:")
         assert f_target.startswith("lambda b:")
         assert f_msk == "" or f_msk.startswith("lambda b:")
