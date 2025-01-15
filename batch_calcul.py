@@ -1383,9 +1383,9 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
         dld = utils.data.DataLoader(DARts, batch_size=32)
         if svg_meilleur:
-            modele = Classif_Bil_Sym_2.load_from_checkpoint(svg_meilleur.best_model_path)
+            infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path)
         roles_pred = trainer.predict(
-            modele,
+            infer,
             dataloaders=dld,
             return_predictions=True
         )
