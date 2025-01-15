@@ -1658,7 +1658,7 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 
 @autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, transfo="roberta"):
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, lr = 1.e-4, transfo="roberta"):
     #assert transfo in ["roberta", "GPT2"]
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo)
     filtre = DARtr.filtre
@@ -1668,17 +1668,27 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
 
     nb_classes = len(filtre.alias)
     freqs = filtre.effectifs
-    cible = "y1"
-    lr = 1.e-4
+    #cible = "y1"
+    #lr = 1.e-4
+    modele = tm_GAT(dimension, h, h,
+                    nbheads, nbcouches, 
+                    rang_sim=rang,
+                    dropout_p=dropout_p,
+                    nb_classes=nb_classes
+                    )
     if ckpoint_model:
-        modele = GAT_role_classif.load_from_checkpoint(ckpoint_model)
+        infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
     else:
-        modele = GAT_role_classif(dimension, h, h,
-                                  nbheads, nbcouches, 
-                                  rang_sim=rang,
-                                  dropout_p=dropout_p,
-                                  nb_classes=nb_classes,
-                                  lr=lr, freqs=freqs)
+        #modele = GAT_role_classif(dimension, h, h,
+        #                          nbheads, nbcouches, 
+        #                          rang_sim=rang,
+        #                          dropout_p=dropout_p,
+        #                          nb_classes=nb_classes,
+        #                          lr=lr, freqs=freqs)
+        infer = INFERENCE(modele, f_features="lambda b: (b.x, b.edge_index)",
+                          f_target="lambda b: b.y1",
+                          f_msk = "lambda b: b.msk1",
+                          lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
@@ -1696,7 +1706,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         
         train_loader = GeoDataLoader(DARtr, batch_sampler=sampler, num_workers=1)
         valid_loader = GeoDataLoader(DARdv, batch_sampler=samp_dev, num_workers=1)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        trainer.fit(model=infer, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
         svg_meilleur = None
@@ -1741,7 +1751,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
                                       shuffle=False)
         dld = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
         roles_pred = trainer.predict(
-            modele,
+            model=infer,
             dataloaders=dld,
             return_predictions=True
         )
