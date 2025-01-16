@@ -1323,7 +1323,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
-        trainer = LTN.Trainer(max_epochs=10, #150,
+        trainer = LTN.Trainer(max_epochs=150,
                               devices=1,
                               accelerator="gpu",
                               callbacks=[arret_premat, svg_meilleur, svg_dernier])
