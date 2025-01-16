@@ -1320,8 +1320,8 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
                           f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
     if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
-        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
+        arret_premat = EarlyStopping(monitor="val_bal_acc", mode="max", patience=patience)
+        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_bal_acc", save_top_k=1, mode="max") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
         trainer = LTN.Trainer(max_epochs=150,
                               devices=1,
