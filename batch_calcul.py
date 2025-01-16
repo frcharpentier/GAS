@@ -1313,26 +1313,21 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
 
     nb_classes = len(filtre2.alias)
     freqs = filtre2.effectifs
-    #cible = "roles"
-    #lr = 1.e-4
     modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
-        #modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
     else:
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
                           f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
-        #modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
-        trainer = LTN.Trainer(max_epochs=150, devices=1,
+        trainer = LTN.Trainer(max_epochs=10, #150,
+                              devices=1,
                               accelerator="gpu",
                               callbacks=[arret_premat, svg_meilleur, svg_dernier])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
+            
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
@@ -1800,7 +1795,9 @@ DDD   EEEE  BBB    UUU    GGG
         #              nom_dataset="EdgeDatasetMonoEnvers",
         #              ckpoint_model="/home/frederic/projets/detection_aretes/lightning_logs/version_45/checkpoints/epoch=99-step=360200.ckpt"
         #            )
-        batch_Bilin_generic(nom_rapport='a_tej.html', rang=8, transfo="deberta")
+        batch_Bilin_generic(nom_rapport='a_tej.html', rang=64,
+                            shuffle=True, transfo="deberta",
+                            lr=3.e-4)
 
         #batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
