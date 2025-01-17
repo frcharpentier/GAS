@@ -1793,7 +1793,7 @@ DDD   EEEE  BBB    UUU    GGG
         #                    shuffle=True, transfo="deberta",
         #                    lr=3.e-4)
 
-        batch_GAT_sym(nom_rapport='./a_tej.html', h=144, nbheads=1, nbcouches=2,
+        batch_GAT_sym(nom_rapport='./a_tej.html', h=64, nbheads=1, nbcouches=2,
                       rang=16,  max_epochs=5, patience=5, lr=3.e-4,
                       transfo="deberta", DEBUG=True)
 
