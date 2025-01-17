@@ -1,4 +1,4 @@
-DEBUG = True #False
+DEBUG = False
 import os
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 #os.environ['CUDA_VISIBLE_DEVICES']='3'
