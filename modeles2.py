@@ -328,7 +328,7 @@ class INFERENCE(LTN.LightningModule):
     def predict_step(self, batch, batch_idx):
         logits = self.forward(self.f_features(batch))
         if self.f_msk:
-            msk = self.f_ms(batch)
+            msk = self.f_msk(batch)
             logits = logits[msk]
         if self.binary:
             return ((logits > 0)*1).to(device="cpu")
