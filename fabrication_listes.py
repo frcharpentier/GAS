@@ -3,6 +3,7 @@ import sys
 import json
 from tqdm import tqdm
 import re
+import fire
 
 from amr_utils.amr_readers import AMR_Reader
 from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
@@ -13,6 +14,18 @@ from outils_alignement import (AMR_modif,
     compter_compos_connexes, transfo_aligs)
 
 from strategies_syntaxe import definir_strategie
+
+from dependencies import (
+        PREFIXE_ALIGNEMENTS,
+        AMR_REP_TRAINING,
+        AMR_REP_DEV,
+        AMR_REP_TEST,
+        SNT_REP_TRAINING,
+        SNT_REP_DEV,
+        SNT_REP_TEST,
+        AMR_REP,
+        SNT_REP,
+    )
 
 
 @MAILLON
@@ -316,26 +329,34 @@ def ecrire_listes_split(SOURCE, fichier_out, model_name):
 
 
 def construire_graphes(fichier_out="a_tej.txt", split=False, court=False, nom_modele="roberta-base"):
-
     explicit_arg = True
     kwargs = dict()
     nom_modele = nom_modele
-    prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
+    #prefixe_alignements = "../alignement_AMR/leamr/data-release/alignments/ldc+little_prince."
+    prefixe_alignements = PREFIXE_ALIGNEMENTS
     kwargs["fichier_sous_graphes"] = prefixe_alignements + "subgraph_alignments.json"
     kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
     kwargs["fichier_relations"] = prefixe_alignements + "relation_alignments.json"
     if split:
-        amr_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
-        amr_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/dev"
-        amr_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/test"
+        #amr_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
+        #amr_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/dev"
+        #amr_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/test"
         
-        snt_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/training"
-        snt_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/dev"
-        snt_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/test"
+        #snt_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/training"
+        #snt_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/dev"
+        #snt_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/test"
+        amr_rep_training = AMR_REP_TRAINING
+        amr_rep_dev      = AMR_REP_DEV
+        amr_rep_test     = AMR_REP_TEST
+        snt_rep_training = SNT_REP_TRAINING
+        snt_rep_dev      = SNT_REP_DEV
+        snt_rep_test     = SNT_REP_TEST
         
     else:
-        amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
-        snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
+        #amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
+        #snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
+        amr_rep  = AMR_REP
+        snt_rep  = SNT_REP
     kwargs["doublons"] = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
     # Cette liste est une liste d’identifiants AMR en double dans le répertoire amr_rep
     # Il n’y en a que quatre. On les éliminera, c’est plus simple, ça ne représente que huit AMR.
@@ -575,6 +596,7 @@ if __name__ == "__main__":
     #refaire_probleme()
     #construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt", split=True, court=False)
     #construire_graphes(fichier_out="./AMR_et_graphes_phrases_GPT_explct.txt", split=True, court=False, nom_modele="gpt2")
-    construire_graphes(fichier_out="./AMR_grph_DebertaV2_xxlarge.txt", split=True, court=False, nom_modele="microsoft/deberta-v2-xxlarge")
-
+    #construire_graphes(fichier_out="./AMR_grph_DebertaV2_xxlarge.txt", split=True, court=False, nom_modele="microsoft/deberta-v2-xxlarge")
+    #construire_graphes(fichier_out="./AMR_grph_LLAMA32.txt", split=True, court=False, nom_modele="meta-llama/Llama-3.2-3B")
+    fire.Fire()
 

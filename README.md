@@ -42,13 +42,15 @@ Example : `construire_graphes(fichier_out="./AMR_et_graphes_phrases_explct.txt",
 
 The function `construire_graphes` assumes you have the LDC_2020_T02 dataset under `../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training ... /dev, and .../test`.
 
-Change the location at the beginning of function `construire_graphes`.
+Change the location in the file `dependencies.py`.
 
 
 
 You will also need a copy of the `pb2va.tsv` file of VerbAtlas. under `../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv`. You can download it from https://verbatlas.org/downloads/VerbAtlas-1.1.0.zip
 
 The function also assumes you have the leamr alignments by Blodgett et al. under the directory `../alignement_AMR/leamr/data-release/alignments/`. Get it at https://github.com/ablodge/leamr/tree/master/data-release/alignments.
+
+Those locations can also be changed in the file `dependencies.txt`.
 
 
 

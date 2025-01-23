@@ -263,7 +263,11 @@ class TRANSFORMER_ATTENTION:
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
             else:
-                self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                try:
+                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                except OSError as E:
+                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace")
+                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
                 config = self.modele.config
@@ -271,7 +275,11 @@ class TRANSFORMER_ATTENTION:
                 self.num_layers = config.num_hidden_layers
                 self.num_heads = config.num_attention_heads
 
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            except OSError:
+                tokenHF = input("Saisissez votre token d’indentification à HuggingFace")
+                self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=tokenHF)
             self.ch_debut, self.ch_suite, self.tok1, self.sep_token = ALIGNEUR.detecter_params(self.tokenizer)
             #self.sep_token = self.tokenizer.sep_token
             #if self.sep_token == None:

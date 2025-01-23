@@ -138,19 +138,23 @@ class AMR_modif(AMR):
 class ALIGNEUR:
     @staticmethod
     def detecter_params(tknz):
-        tok_cls = tknz.cls_token
-        tok_sep = tknz.sep_token
+        if tknz.name_or_path == "meta-llama/Llama-3.2-3B":
+            tok_bos = tknz.bos_token
+            tok_eos = tknz.eos_token
+        else:
+            tok_bos = tknz.cls_token
+            tok_eos = tknz.sep_token
         mot = "pytrzmlkjhgfdsqnbvcxw"
         # On met un mot très long qui n’existe pas, pour être sûr qu’il sera découpé
         # en plusieurs symboles.
 
         toks = tknz.convert_ids_to_tokens(tknz(" "+mot).input_ids)
         
-        if tok_cls is None:
+        if tok_bos is None:
             tok1 = toks[0]
             tok2 = toks[1]
         else:
-            assert toks[0] == tok_cls
+            assert toks[0] == tok_bos
             tok1 = toks[1]
             tok2 = toks[2]
         
@@ -171,7 +175,11 @@ class ALIGNEUR:
         else:
             ch_suite = tok2[:pos]
 
-        return ch_debut, ch_suite, tok_cls, tok_sep
+        if tok_eos and toks[-1] != tok_eos:
+            assert toks[-1].endswith("w")
+            tok_eos = None
+
+        return ch_debut, ch_suite, tok_bos, tok_eos
         
 
 
@@ -182,7 +190,11 @@ class ALIGNEUR:
         # déjà commencé. Pour BERT, il s’agit de "##"
 
         self.nom_modele = nom_modele
-        self.tokenizer = AutoTokenizer.from_pretrained(nom_modele)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(nom_modele)
+        except OSError as E:
+            tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+            self.tokenizer = AutoTokenizer.from_pretrained(nom_modele, token=tokenHF)
         ch_debut, ch_suite, tok1, tokn = ALIGNEUR.detecter_params(self.tokenizer)
         self.ch_debut = ch_debut
         self.ch_suite = ch_suite
@@ -204,7 +216,7 @@ class ALIGNEUR:
             toks_transformer = ["¤"+x[lpf:] if x.startswith(self.ch_suite) else x for x in toks_transformer]
         elif len(self.ch_debut) > 0 and len(self.ch_suite) == 0:
             lpf = len(self.ch_debut)
-            toks_transformer = [x[lpf:] if x.startswith(self.ch_debut) else "¤"+x for x in toks_transformer]
+            toks_transformer = [x[lpf:] if x.startswith(self.ch_debut) else (x if x in (self.tok1, self.tokn) else "¤"+x) for x in toks_transformer]
 
         #toksV = [self.tokenizer.decode(x).strip().lower() for x in toks_nums]
         toksV = [self.tokenizer.decode(x).strip() for x in toks_nums]
@@ -1163,4 +1175,13 @@ if __name__ == "__main__":
     #essai_AMR_string()
     #construire_graphes(fichier_out = "./AMR_et_graphes_phrases_explct.txt", explicit_arg = True)
     #construire_graphes(fichier_out = "./a_tej_2.txt", explicit_arg = False)
-    pass
+    nom_modele = "meta-llama/Llama-3.2-3B"
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(nom_modele)
+    except OSError as E:
+        tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+        tokenizer = AutoTokenizer.from_pretrained(nom_modele, token=tokenHF)
+    machin = ALIGNEUR.detecter_params(tokenizer)
+    print(machin)
+
+    

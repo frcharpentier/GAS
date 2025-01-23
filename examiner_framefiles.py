@@ -6,6 +6,7 @@ import csv
 import json
 import random
 from traiter_AMR_adjectifs import generateur_candidats_txt
+from dependencies import PROPBANK_TO_VERBATLAS, UMR_91_ROLESETS, PROPBANK_DIRECTORY, AMR_UMR_91_ROLESETS_XML
 
 def faire_roles_en_91():
     with open("C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames/AMR-UMR-91-rolesets.xml",
@@ -180,7 +181,7 @@ class EXPLICITATION_AMR:
         return amr
     
     @staticmethod
-    def transfo_pb2va_tsv(fichiers = ["../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv", "./UMR_91_rolesets.tsv"], fichierAdj="./adjectifs_AMR.txt"):
+    def transfo_pb2va_tsv(fichiers = [PROPBANK_TO_VERBATLAS, UMR_91_ROLESETS], fichierAdj="./adjectifs_AMR.txt"):
         prems = True
         resu = {}
         dicoAdj = {}
@@ -234,7 +235,7 @@ class EXPLICITATION_AMR:
         return resu, dicoAdj
 
     @staticmethod
-    def make_json_from_propbank_github(repertoire=None, fichier_91="AMR-UMR-91-rolesets.xml", fichier_corr = None, fichier_out=None):
+    def make_json_from_propbank_github(repertoire=None, fichier_91=AMR_UMR_91_ROLESETS_XML, fichier_corr = None, fichier_out=None):
         dico = dict()
         if fichier_corr == None:
             dico_corr = dict()
@@ -242,7 +243,8 @@ class EXPLICITATION_AMR:
             with open(fichier_corr, "r", encoding="utf-8") as F:
                 dico_corr = json.load(F)
         if repertoire == None:
-            repertoire = "C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames"
+            #repertoire = "C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames"
+            repertoire = PROPBANK_DIRECTORY
         fichiers_xml = [os.path.abspath(os.path.join(repertoire, "frames", f)) for f in os.listdir(os.path.join(repertoire, "frames"))]
         fichiers_xml.append(os.path.abspath(os.path.join(repertoire, fichier_91)))
         fichiers_xml = [X for X in fichiers_xml if X.endswith(".xml")]
