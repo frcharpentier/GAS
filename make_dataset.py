@@ -799,7 +799,7 @@ class AligDataset(geoDataset):
                             model_name = "mingpt://" + model_name
                         else:
                             model_name = "huggingface://" + model_name
-                            assert self.QscalK == False, "Seule l’attention après softmax est disponible pour les modèles Huggingface"
+                            #assert self.QscalK == False, "Seule l’attention après softmax est disponible pour les modèles Huggingface"
                         #else:
                         #    model_name = "XXXX" # ERROR
                         attn.select_modele(model_name)
@@ -1318,9 +1318,14 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./dataset_QK_dev", "./AMR_et_graphes_phrases_explct", QscalK=True, split="dev") #, debug_idSNT=True)
     #ds_test  = AligDataset("./dataset_QK_test", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
 
-    ds_train = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="train", device="cuda")
-    ds_dev   = AligDataset("./deberta_att_dev", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="dev", device="cuda") #, debug_idSNT=True)
-    ds_test  = AligDataset("./deberta_att_test", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="test", device="cuda")
+    #ds_train = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="train", device="cuda")
+    #ds_dev   = AligDataset("./deberta_att_dev", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="dev", device="cuda") #, debug_idSNT=True)
+    #ds_test  = AligDataset("./deberta_att_test", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="test", device="cuda")
+
+    ds_train = AligDataset("./llama_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train", device="cuda")
+    ds_dev   = AligDataset("./llama_att_dev", "./AMR_grph_LLAMA32", QscalK=True, split="dev", device="cuda") #, debug_idSNT=True)
+    ds_test  = AligDataset("./llama_att_test", "./AMR_grph_LLAMA32", QscalK=True, split="test", device="cuda")
+
 
 
     #ds_test2  = AligDataset("./dataset_QK_test2", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")

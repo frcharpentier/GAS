@@ -1,4 +1,5 @@
 import os
+import math
 import re
 import logging
 import random
@@ -8,10 +9,15 @@ from outils_alignement import ALIGNEUR
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 from transformers import utils as transfo_utils
+from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
+from transformers.cache_utils import Cache
 
 
 from minbert.model import BERT, param_translation
 from mingpt.model import GPT
+
+
+from mod_huggingface import LlamaUnmaskedAttention
 
 def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, outputARGn=False):
     Nadj = ntokens*(ntokens-1)//2
@@ -243,13 +249,17 @@ class TRANSFORMER_ATTENTION:
             elif model_name.startswith("hf://") or model_name.startswith("HF://"):
                 self.model_type = "hf"
                 model_name = model_name[5:]
-                if model_name.startswith("gpt"):
+                if model_name.startswith("gpt") or "llama" in model_name.lower():
                     self.type_transformer = "DEC"
+                if "llama" in model_name.lower():
+                    self.model_type = "hf_llama"
             elif model_name.startswith("huggingface://"):
                 self.model_type = "hf"
                 model_name = model_name[14:]
-                if model_name.startswith("gpt"):
+                if model_name.startswith("gpt") or "llama" in model_name.lower():
                     self.type_transformer = "DEC"
+                if "llama" in model_name.lower():
+                    self.model_type = "hf_llama"
 
             if self.type_transformer == "DEC":
                 self.decoder_mask = decoder_mask
@@ -262,16 +272,30 @@ class TRANSFORMER_ATTENTION:
                 self.modele = GPT.from_pretrained(model_name)
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
-            else:
+            elif self.model_type == "hf_llama":
+                KLASS = LLAMA_ATTENTION_CLASSES["eager"]
+                LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
+                try:
+                    self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                except OSError as E:
+                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
+                LLAMA_ATTENTION_CLASSES["eager"] = KLASS
+                if not self.device == "cpu":
+                    self.modele.to(self.device)
+                config = self.modele.config
+                self.num_layers = config.num_hidden_layers
+                self.num_heads = config.num_attention_heads
+            else: # self.model_type == "hf"
                 try:
                     self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
                 except OSError as E:
-                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace")
+                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
                     self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
                 config = self.modele.config
-                self.model_type = config._name_or_path
+                #self.model_type = config._name_or_path
                 self.num_layers = config.num_hidden_layers
                 self.num_heads = config.num_attention_heads
 
@@ -320,24 +344,39 @@ class TRANSFORMER_ATTENTION:
         
         with torch.no_grad():
             #calcul du résultat par le transformer
+            attention = None
+            QscalK = None
+            softmaxQK = None
             if self.model_type == "minBERT":
                 if self.QK:
                     _, _, attention, QscalK = self.modele(input_ids, att_mask, output_att = True, output_QK = True)
-                    QscalK = [X.detach().numpy() for X in QscalK]
                 else:
                     _, _, attention = self.modele(input_ids, att_mask, output_att = True)
             elif self.model_type == "minGPT":
                 if self.QK:
                     _, _, attention, QscalK = self.modele(input_ids, output_att = True, output_QK = True)
-                    QscalK = [X.detach() for X in QscalK]
+                    # Pour GPT, attention est l’attention masquée, et softmaxée
+                    # QscalK est l’attention non masquée, non softmaxée, indépendamment de la variable
+                    # decoder_mask
                     if not self.decoder_mask:
-                        softmaxQK = [F.softmax(X, dim=-1).numpy() for X in QscalK]
+                        softmaxQK = [F.softmax(X.detach(), dim=-1) for X in QscalK]
                         #Recalculer le softmax à partir des produits scalaires
                         #non masqués
-                    QscalK = [X.numpy() for X in QscalK]
+                        #C’est-à-dire : calculer l’attention non masquée, softmaxée.
                 else:
                     _, _, attention = self.modele(input_ids, att_mask, output_att = True)
-            else:
+            elif self.model_type == "hf_llama":
+                result = self.modele(input_ids)
+                tempo = result.attentions
+                attention = tuple(X[0] for X in tempo)
+                QscalK    = tuple(X[1] for X in tempo)
+                if not self.decoder_mask:
+                    softmaxQK = [F.softmax(X.detach(), dim=-1) for X in QscalK]
+                    #Recalculer le softmax à partir des produits scalaires
+                    #non masqués
+                    #C’est-à-dire : calculer l’attention non masquée, softmaxée.
+
+            else: #if self.model_type == "hf":
                 result = self.modele(input_ids)
                 attention = result.attentions
 
@@ -345,10 +384,17 @@ class TRANSFORMER_ATTENTION:
         # Tous sont du même ordre, tous ont les mêmes dimensions.
         # en l’occurrence, (x, h, w, w), où x est le nombre de phrases dans le batch,
         # h est le nombre de têtes, w est le nombre de mots dans la phrase encodée.
-        attention = [X.detach().cpu().numpy() for X in attention]
+        if not attention is None:
+            attention = [X.detach().cpu().numpy() for X in attention]
+        if not QscalK is None:
+            QscalK = [X.detach().cpu().numpy() for X in QscalK]
+        if not softmaxQK is None:
+            softmaxQK = [X.detach().cpu().numpy() for X in softmaxQK]
 
         if self.type_transformer == "DEC":
             if self.decoder_mask:
+                # Calcul de attmodif en fonction de l’attention masquée et softmaxée,
+                # et c’est attmodif qu’on utilisera dans self.att, à la place de l’attention masquée
                 triangles = [np.tril(att) for att in attention]
                 trig1 = [np.tril(att, k=-1) for att in attention]
                 trig1t = [np.transpose(M, axes=(0,1,3,2)) for M in trig1]
@@ -364,7 +410,7 @@ class TRANSFORMER_ATTENTION:
                 self.data_att = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in softmaxQK), axis=3)
                 self.data_att = self.data_att.reshape(ntokens, ntokens, dim)
                 if self.QK:
-                    self.data_QK = np.concatenate(tuple(att for att in QscalK), axis=3)
+                    self.data_QK = np.concatenate(tuple(att.swapaxes(1,3).copy() for att in QscalK), axis=3)
                     self.data_QK = self.data_QK.reshape(ntokens, ntokens, dim)
         else: #if self.type_transfo == "ENC"
             dim = self.num_heads*self.num_layers

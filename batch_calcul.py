@@ -70,6 +70,10 @@ def filtre_defaut_deberta():
     ds = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=True, split="train")
     return ds.filtre
 
+def filtre_defaut_llama():
+    ds = AligDataset("./LLAMA32_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train")
+    return ds.filtre
+
 class PERMUT_DIR_AT_EPOCH_START(Callback):
     def __init__(self, train_ds):
         self.train_ds = train_ds
@@ -80,7 +84,7 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
 
 
 def transfo_to_filenames(transfo):
-    assert transfo in ["roberta", "GPT2", "deberta"]
+    assert transfo in ["roberta", "GPT2", "deberta", "LLAMA32"]
     if transfo == "roberta":
         rep_ds_grph = "./dataset_QK_"
         rep_ds_edge = "./edges_f_QK_"
@@ -93,6 +97,10 @@ def transfo_to_filenames(transfo):
         rep_ds_grph = "./deberta_att_"
         rep_ds_edge = "./edges_deberta_att_"
         rep_data =    "./AMR_grph_DebertaV2_xxlarge"
+    elif transfo == "LLAMA32":
+        rep_ds_grph = "LLAMA32_att_"
+        rep_ds_edge = "edges_LLAMA32_att_"
+        rep_data =    "./AMR_grph_LLAMA32"
 
     return rep_data, rep_ds_grph, rep_ds_edge
 
@@ -139,6 +147,8 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
             filtre = filtre_defaut_GPT()
         elif transfo == "deberta":
             filtre = filtre_defaut_deberta()
+        elif transfo == "LLAMA32":
+            filtre = filtre_defaut_llama()
         noms_classes = [k for k in filtre.alias]
         def pour_fusion(C):
             nonlocal noms_classes
@@ -1554,7 +1564,6 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 @autoinspect
 def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta"):
-    #assert transfo in ["roberta", "GPT2"]
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
     filtre = DARtr.filtre
 
@@ -1654,7 +1663,6 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 @autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, lr = 1.e-4, transfo="roberta"):
-    #assert transfo in ["roberta", "GPT2"]
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo)
     filtre = DARtr.filtre
 
