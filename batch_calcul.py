@@ -83,38 +83,39 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
         self.train_ds.redirection_aleatoire()
 
 
-def transfo_to_filenames(transfo):
+def transfo_to_filenames(transfo, QscalK):
     assert transfo in ["roberta", "GPT2", "deberta", "LLAMA32"]
+    label_QK = "QK" if QscalK else "att"
     if transfo == "roberta":
-        rep_ds_grph = "./dataset_QK_"
-        rep_ds_edge = "./edges_f_QK_"
+        rep_ds_grph = "./dataset_%s_"%label_QK
+        rep_ds_edge = "./edges_f_%s_"%label_QK
         rep_data =    "./AMR_et_graphes_phrases_explct"
     elif transfo == "GPT2":
-        rep_ds_grph = "./dataset_QK_GPT_"
-        rep_ds_edge = "./edges_f_QK_GPT_"
+        rep_ds_grph = "./dataset_%s_GPT_"%label_QK
+        rep_ds_edge = "./edges_f_%s_GPT_"%label_QK
         rep_data =    "./AMR_et_graphes_phrases_GPT_explct"
     elif transfo == "deberta":
-        rep_ds_grph = "./deberta_att_"
-        rep_ds_edge = "./edges_deberta_att_"
+        rep_ds_grph = "./deberta_%s_"%label_QK
+        rep_ds_edge = "./edges_deberta_%s_"%label_QK
         rep_data =    "./AMR_grph_DebertaV2_xxlarge"
     elif transfo == "LLAMA32":
-        rep_ds_grph = "LLAMA32_att_"
-        rep_ds_edge = "edges_LLAMA32_att_"
+        rep_ds_grph = "LLAMA32_%s_"%label_QK
+        rep_ds_edge = "edges_LLAMA32_%s_"%label_QK
         rep_data =    "./AMR_grph_LLAMA32"
 
     return rep_data, rep_ds_grph, rep_ds_edge
 
-def faire_datasets_edges_generic(transfo, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
+def faire_datasets_edges_generic(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
     if train:
         DGRtr_f2 = AligDataset(rep_ds_grph + "train", rep_data,
-                            transform=filtre, QscalK=True, split="train")
+                            transform=filtre, QscalK=QscalK, split="train")
     if dev:
         DGRdv_f2 = AligDataset(rep_ds_grph + "dev", rep_data,
-                            transform=filtre, QscalK=True, split="dev")
+                            transform=filtre, QscalK=QscalK, split="dev")
     if test:
         DGRts_f2 = AligDataset(rep_ds_grph + "test", rep_data,
-                            transform=filtre, QscalK=True, split="test")
+                            transform=filtre, QscalK=QscalK, split="test")
         
     datasets = ()
     if train:
@@ -127,19 +128,19 @@ def faire_datasets_edges_generic(transfo, filtre, train=True, dev=True, test=Tru
     return datasets
 
 def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("roberta", filtre, train, dev, test, CLASSE)
+    return faire_datasets_edges_generic("roberta", True, filtre, train, dev, test, CLASSE)
 
 def faire_datasets_edges_roberta(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("roberta", filtre, train, dev, test, CLASSE)
+    return faire_datasets_edges_generic("roberta", True, filtre, train, dev, test, CLASSE)
 
 def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("GPT2", filtre, train, dev, test, CLASSE)
+    return faire_datasets_edges_generic("GPT2", True, filtre, train, dev, test, CLASSE)
 
 
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta"):
+def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True):
     assert CLASSE in [AligDataset, EdgeDataset]
     
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
     if filtre == "defaut":
         if transfo == "roberta":
             filtre = filtre_defaut()
@@ -1291,8 +1292,8 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         R.ligne()
 
 @autoinspect
-def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", lr = 1.e-4, patience=5):
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo)
+def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, lr = 1.e-4, patience=5):
+    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
     filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
     noms_classes = [k for k in filtre.alias]
 
@@ -1316,7 +1317,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
                             ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
                             ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr, DARdv, DARts = faire_datasets_edges_generic(transfo, filtre2, True, True, True, CLASSE = EdgeDataset)
+    DARtr, DARdv, DARts = faire_datasets_edges_generic(transfo, QscalK, filtre2, True, True, True, CLASSE = EdgeDataset)
 
     dimension, _2 = DARts[0]["X"].shape
     assert _2 == 2
@@ -1488,8 +1489,8 @@ def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, tr
         R.ligne()
 
 @autoinspect
-def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, transfo="roberta"):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
+def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True):
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo, QscalK = QscalK)
     filtre = DARtr.filtre
 
     dimension, _2 = DARts[0]["X"].shape
@@ -1563,8 +1564,8 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
 
 
 @autoinspect
-def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta"):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo)
+def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta", QscalK = True):
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo, QscalK = QscalK)
     filtre = DARtr.filtre
 
     dimension, _2 = DARts[0]["X"].shape
@@ -1662,8 +1663,8 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 
 @autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, lr = 1.e-4, transfo="roberta"):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo)
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, lr = 1.e-4, transfo="roberta", QscalK = True):
+    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo, QscalK = QscalK)
     filtre = DARtr.filtre
 
     _, dimension, _2 = DARts[0].x.shape
