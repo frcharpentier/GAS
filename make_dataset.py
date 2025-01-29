@@ -1322,9 +1322,9 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./deberta_att_dev", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="dev", device="cuda") #, debug_idSNT=True)
     #ds_test  = AligDataset("./deberta_att_test", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="test", device="cuda")
 
-    ds_train = AligDataset("./llama_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train", device="cuda")
-    ds_dev   = AligDataset("./llama_att_dev", "./AMR_grph_LLAMA32", QscalK=True, split="dev", device="cuda") #, debug_idSNT=True)
-    ds_test  = AligDataset("./llama_att_test", "./AMR_grph_LLAMA32", QscalK=True, split="test", device="cuda")
+    #ds_train = AligDataset("./llama_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train", device="cuda")
+    #ds_dev   = AligDataset("./llama_att_dev", "./AMR_grph_LLAMA32", QscalK=True, split="dev", device="cuda") #, debug_idSNT=True)
+    #ds_test  = AligDataset("./llama_att_test", "./AMR_grph_LLAMA32", QscalK=True, split="test", device="cuda")
 
 
 
