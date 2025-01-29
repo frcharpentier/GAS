@@ -58,31 +58,6 @@ def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     return disp.figure_, matrix
 
 
-def filtre_defaut():
-    ds = AligDataset("./dataset_QK_train", "./AMR_et_graphes_phrases_explct", QscalK=True, split="train")
-    return ds.filtre
-
-def filtre_defaut_GPT():
-    ds = AligDataset("./dataset_QK_GPT_train", "./AMR_et_graphes_phrases_GPT_explct", QscalK=True, split="train")
-    return ds.filtre
-
-def filtre_defaut_deberta():
-    ds = AligDataset("./deberta_att_train", "./AMR_grph_DebertaV2_xxlarge", QscalK=True, split="train")
-    return ds.filtre
-
-def filtre_defaut_llama():
-    ds = AligDataset("./LLAMA32_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train")
-    return ds.filtre
-
-class PERMUT_DIR_AT_EPOCH_START(Callback):
-    def __init__(self, train_ds):
-        self.train_ds = train_ds
-
-    def on_train_epoch_start(self, trainer, pl_module):
-        print("Nouvelle époque")
-        self.train_ds.redirection_aleatoire()
-
-
 def transfo_to_filenames(transfo, QscalK):
     assert transfo in ["roberta", "GPT2", "deberta", "LLAMA32"]
     label_QK = "QK" if QscalK else "att"
@@ -104,6 +79,31 @@ def transfo_to_filenames(transfo, QscalK):
         rep_data =    "./AMR_grph_LLAMA32"
 
     return rep_data, rep_ds_grph, rep_ds_edge
+
+
+def filtre_defaut(transfo="roberta", QscalK=True):
+    rep_ds_grph, _, rep_data = transfo_to_filenames(transfo, QscalK)
+    rep_ds_grph = rep_ds_grph + "train"
+    ds = AligDataset(rep_ds_grph, rep_data, QscalK=QscalK, split="train")
+    return ds.filtre
+
+def filtre_defaut_GPT(QscalK=True):
+    return filtre_defaut("GPT2", QscalK)
+    
+
+def filtre_defaut_deberta(QscalK=True):
+    return filtre_defaut("deberta", QscalK)
+
+def filtre_defaut_llama():
+    return filtre_defaut("LLAMA32", QscalK)
+
+class PERMUT_DIR_AT_EPOCH_START(Callback):
+    def __init__(self, train_ds):
+        self.train_ds = train_ds
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        print("Nouvelle époque")
+        self.train_ds.redirection_aleatoire()
 
 def faire_datasets_edges_generic(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
@@ -142,14 +142,8 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
     
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
     if filtre == "defaut":
-        if transfo == "roberta":
-            filtre = filtre_defaut()
-        elif transfo == "GPT2":
-            filtre = filtre_defaut_GPT()
-        elif transfo == "deberta":
-            filtre = filtre_defaut_deberta()
-        elif transfo == "LLAMA32":
-            filtre = filtre_defaut_llama()
+        filtre = filtre_defaut(transfo, QscalK)
+        
         noms_classes = [k for k in filtre.alias]
         def pour_fusion(C):
             nonlocal noms_classes
