@@ -137,7 +137,7 @@ def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = 
     return faire_datasets_edges_generic("GPT2", True, filtre, train, dev, test, CLASSE)
 
 
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True):
+def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu"):
     assert CLASSE in [AligDataset, EdgeDataset]
     
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
@@ -178,7 +178,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         dsTRAIN = AligDataset(rep_ds_grph + "train",
                               rep_data,
                               transform=filtre,
-                              QscalK=True, split="train")
+                              QscalK=QscalK, split="train", device=device)
         
 
         if CLASSE != AligDataset:
@@ -188,7 +188,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         dsDEV = AligDataset(rep_ds_grph + "dev",
                             rep_data,
                             transform=filtre,
-                            QscalK=True, split="dev")
+                            QscalK=QscalK, split="dev", device=device)
         if CLASSE != AligDataset:
             dsDEV = CLASSE(dsDEV, rep_ds_edge + "dev", masques="1")
         datasets += (dsDEV,)
@@ -196,7 +196,7 @@ def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE
         dsTEST = AligDataset(rep_ds_grph + "test",
                              rep_data,
                              transform=filtre,
-                             QscalK=True, split="test")
+                             QscalK=QscalK, split="test", device=device)
         if CLASSE != AligDataset:
             dsTEST = CLASSE(dsTEST, rep_ds_edge + "test", masques="1")
         datasets += (dsTEST,)
