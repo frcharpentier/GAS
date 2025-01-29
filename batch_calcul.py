@@ -82,7 +82,7 @@ def transfo_to_filenames(transfo, QscalK):
 
 
 def filtre_defaut(transfo="roberta", QscalK=True):
-    rep_ds_grph, _, rep_data = transfo_to_filenames(transfo, QscalK)
+    rep_data, rep_ds_grph, _ = transfo_to_filenames(transfo, QscalK)
     rep_ds_grph = rep_ds_grph + "train"
     ds = AligDataset(rep_ds_grph, rep_data, QscalK=QscalK, split="train")
     return ds.filtre
