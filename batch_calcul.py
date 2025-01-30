@@ -1288,7 +1288,7 @@ def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
 @autoinspect
 def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, lr = 1.e-4, patience=5):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
-    filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=True, split="train").filtre
+    filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=QscalK, split="train").filtre
     noms_classes = [k for k in filtre.alias]
 
     def pour_fusion(C):
