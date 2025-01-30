@@ -20,7 +20,7 @@ from torch import nn
 from transformers.cache_utils import Cache
 from transformers.utils import logging as transfologging
 from transformers.models.llama.modeling_llama import LlamaAttention, repeat_kv, apply_rotary_pos_emb
-from transformers.models.deberta_v2.modeling_deberta_v2 import DisentangledSelfAttention, scaled_size_sqrt
+from transformers.models.deberta_v2.modeling_deberta_v2 import DisentangledSelfAttention
 
 
 
@@ -106,6 +106,11 @@ class LlamaUnmaskedAttention(LlamaAttention):
             resu = (attn_output, (attn_weights, unmasked_attn), past_key_value)
 
         return resu
+    
+
+@torch.jit.script
+def scaled_size_sqrt(query_layer: torch.Tensor, scale_factor: int):
+    return torch.sqrt(torch.tensor(query_layer.size(-1), dtype=torch.float) * scale_factor)
 
 
 class ModifiedDisentangledSelfAttention(DisentangledSelfAttention):
