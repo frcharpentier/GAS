@@ -94,7 +94,7 @@ def filtre_defaut_GPT(QscalK=True):
 def filtre_defaut_deberta(QscalK=True):
     return filtre_defaut("deberta", QscalK)
 
-def filtre_defaut_llama():
+def filtre_defaut_llama(QscalK=True):
     return filtre_defaut("LLAMA32", QscalK)
 
 class PERMUT_DIR_AT_EPOCH_START(Callback):

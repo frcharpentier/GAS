@@ -20,6 +20,7 @@ from torch import nn
 from transformers.cache_utils import Cache
 from transformers.utils import logging as transfologging
 from transformers.models.llama.modeling_llama import LlamaAttention, repeat_kv, apply_rotary_pos_emb
+from transformers.models.deberta_v2.modeling_deberta_v2 import DisentangledSelfAttention, scaled_size_sqrt
 
 
 
@@ -39,6 +40,11 @@ class LlamaUnmaskedAttention(LlamaAttention):
         position_embeddings: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,  # will become mandatory in v4.46
         **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+        
+        """
+        Modified method to export unscaled cross attention scores along with attention_weights
+        """
+
         bsz, q_len, _ = hidden_states.size()
 
         query_states = self.q_proj(hidden_states)
@@ -100,3 +106,66 @@ class LlamaUnmaskedAttention(LlamaAttention):
             resu = (attn_output, (attn_weights, unmasked_attn), past_key_value)
 
         return resu
+
+
+class ModifiedDisentangledSelfAttention(DisentangledSelfAttention):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        output_attentions=False,
+        query_states=None,
+        relative_pos=None,
+        rel_embeddings=None,
+    ):
+        """
+        Modified method to export unscaled cross attention scores along with attention_probs
+        """
+        if query_states is None:
+            query_states = hidden_states
+        query_layer = self.transpose_for_scores(self.query_proj(query_states), self.num_attention_heads)
+        key_layer = self.transpose_for_scores(self.key_proj(hidden_states), self.num_attention_heads)
+        value_layer = self.transpose_for_scores(self.value_proj(hidden_states), self.num_attention_heads)
+
+        rel_att = None
+        # Take the dot product between "query" and "key" to get the raw attention scores.
+        scale_factor = 1
+        if "c2p" in self.pos_att_type:
+            scale_factor += 1
+        if "p2c" in self.pos_att_type:
+            scale_factor += 1
+        scale = scaled_size_sqrt(query_layer, scale_factor)
+        unmasked_attention_scores = torch.bmm(query_layer, key_layer.transpose(-1, -2) / scale.to(dtype=query_layer.dtype))
+        if self.relative_attention:
+            rel_embeddings = self.pos_dropout(rel_embeddings)
+            rel_att = self.disentangled_attention_bias(
+                query_layer, key_layer, relative_pos, rel_embeddings, scale_factor
+            )
+
+        if rel_att is not None:
+            unmasked_attention_scores = unmasked_attention_scores + rel_att
+        unmasked_attention_scores = unmasked_attention_scores
+        unmasked_attention_scores = unmasked_attention_scores.view(
+            -1, self.num_attention_heads, unmasked_attention_scores.size(-2), unmasked_attention_scores.size(-1)
+        )
+
+        attention_mask = attention_mask.bool()
+        masked_attention_scores = unmasked_attention_scores.masked_fill(~(attention_mask), torch.finfo(query_layer.dtype).min)
+        # bsz x height x length x dimension
+        attention_probs = nn.functional.softmax(masked_attention_scores, dim=-1)
+        attention_probs.masked_fill(attention_mask, 0)
+
+        attention_probs = self.dropout(attention_probs)
+        context_layer = torch.bmm(
+            attention_probs.view(-1, attention_probs.size(-2), attention_probs.size(-1)), value_layer
+        )
+        context_layer = (
+            context_layer.view(-1, self.num_attention_heads, context_layer.size(-2), context_layer.size(-1))
+            .permute(0, 2, 1, 3)
+            .contiguous()
+        )
+        new_context_layer_shape = context_layer.size()[:-2] + (-1,)
+        context_layer = context_layer.view(new_context_layer_shape)
+        if not output_attentions:
+            return (context_layer, None)
+        return (context_layer, (attention_probs, unmasked_attention_scores))
