@@ -683,17 +683,17 @@ class EdgeDatasetRdmDir(EdgeDataset):
 
 
 class AligDataset(geoDataset):
-    def __init__(self, root, nom_fichier, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cpu"):
+    def __init__(self, root, alignment_file, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cpu"):
         if not split:
             self.split = False
         else:
             assert split in ["test", "dev", "train"]
             self.split = split
-            if not nom_fichier.endswith("_%s.txt"%split):
-                if nom_fichier.endswith(".txt"):
-                    nom_fichier = nom_fichier[:-4]
-                nom_fichier += "_%s.txt"%split
-        self.nom_fichier = nom_fichier
+            if not alignment_file.endswith("_%s.txt"%split):
+                if alignment_file.endswith(".txt"):
+                    alignment_file = alignment_file[:-4]
+                alignment_file += "_%s.txt"%split
+        self.alignment_file = alignment_file
         self.digests = dict()
         self.offsets = None
         self.FileHandle = None
@@ -706,6 +706,7 @@ class AligDataset(geoDataset):
         super().__init__(root, transform, pre_transform, pre_filter)
         if self.transform is None:
             self.filtre = FusionElimination(nom_json=self.processed_paths[2])
+        self.check_consistency()
         
 
 
@@ -717,12 +718,36 @@ class AligDataset(geoDataset):
     def processed_file_names(self):
         #return []
         return ['gros_fichier.bin', 'pointeurs.bin', 'liste_roles.json', 'digests.txt']
+    
+    def check_consistency(self):
+        self.ouvrir_digests()
+        try:
+            if not "attention_type" in self.digests:
+                assert self.QscalK == True
+            elif self.QscalK:
+                assert self.digests["attention_type"] == "QscalK"
+            else:
+                assert self.digests["attention_type"] == "softmax"
+            assert "fichier_source" in self.digests
+
+            with open(self.alignment_file, "rb") as F:
+                digest = hashlib.file_digest(F, "md5")
+            digest_source = digest.hexdigest()
+            assert digest_source == self.digests["fichier_source"]
+        
+        except:
+            message = "CAUTION ! The torch geometric dataset located in the folder %s "
+            message += "was not build from the %s alignment file, "
+            message += "or was not built with the QscalK=%s parameter"
+            message = message%(self.root, self.alignment_file, ("True" if self.QscalK else "False"))
+            raise Exception(message)
+
 
     def ecrire_liste_roles(self):
         if self.split:
             suffixe = "_%s.txt"%self.split
-            assert self.nom_fichier.endswith(suffixe)
-            fichier = self.nom_fichier[:-len(suffixe)]
+            assert self.alignment_file.endswith(suffixe)
+            fichier = self.alignment_file[:-len(suffixe)]
             fichier_train = fichier + "_train.txt"
             fichier_dev   = fichier + "_dev.txt" 
             fichier_test  = fichier + "_test.txt"
@@ -731,7 +756,7 @@ class AligDataset(geoDataset):
             dico = cataloguer_roles(sourcer_fichier_txt(fichier_test), dico)
             dico_roles, dico_ARGn = liste_roles(dico=dico)
         else:
-            dico_roles, dico_ARGn = liste_roles(nom_fichier=self.nom_fichier)
+            dico_roles, dico_ARGn = liste_roles(nom_fichier=self.alignment_file)
         self.dico_roles = dico_roles
         self.dico_ARGn = dico_ARGn
         self.liste_roles = [k for k in self.dico_roles]
@@ -750,7 +775,7 @@ class AligDataset(geoDataset):
             self.liste_idSNT = []
         total_graphes = 0
         lbl_id = "# ::id "
-        with open(self.nom_fichier, "r", encoding="utf-8") as F:
+        with open(self.alignment_file, "r", encoding="utf-8") as F:
             for ligne in F:
                 ligne = ligne.strip()
                 if ligne.startswith(lbl_id):
@@ -770,7 +795,7 @@ class AligDataset(geoDataset):
         self.ecrire_liste_roles()
         total_graphes = self.compter_graphes()
 
-        with open(self.nom_fichier, "rb") as F:
+        with open(self.alignment_file, "rb") as F:
             digest = hashlib.file_digest(F, "md5")
         self.digests["fichier_source"] = digest.hexdigest()
 
@@ -787,7 +812,7 @@ class AligDataset(geoDataset):
 
         HH = hashlib.new("md5")
         with open(self.processed_paths[0], "wb") as FF: # fichier "gros_fichier.bin"
-            with open(self.nom_fichier, "r", encoding="utf-8") as F:
+            with open(self.alignment_file, "r", encoding="utf-8") as F:
                 depart = True
                 for ligne in F:
                     ligne = ligne.strip()
@@ -926,6 +951,10 @@ class AligDataset(geoDataset):
             HH = hashlib.file_digest(FF, "md5")
         self.digests["pointeurs"] = HH.hexdigest()
         self.offsets = offsets
+        if self.QscalK:
+            self.digests["attention_type"] = "QscalK"
+        else:
+            self.digests["attention_type"] = "softmax"
         with open(self.processed_paths[3], "w", encoding="UTF-8") as F: #fichier "digests.txt"
             json.dump(self.digests, F)
         pbar.close()
@@ -934,12 +963,7 @@ class AligDataset(geoDataset):
         if len(self.digests) == 0:
             with open(self.processed_paths[3], "r", encoding="UTF-8") as F: #fichier "digests.txt"
                 self.digests = json.load(F)
-            with open(self.nom_fichier, "rb") as F:
-                digest = hashlib.file_digest(F, "md5")
-            digest_source = digest.hexdigest()
-            if digest_source != self.digests["fichier_source"]:
-                self.digests = {"fichier_source": digest_source}
-                self.process()
+            
 
     def ouvrir_offsets(self):
         if self.offsets is None:
@@ -1322,10 +1346,9 @@ if __name__ == "__main__":
     #ds_dev   = AligDataset("./deberta_att_dev", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="dev", device="cuda") #, debug_idSNT=True)
     #ds_test  = AligDataset("./deberta_att_test", "./AMR_grph_DebertaV2_xxlarge", QscalK=False, split="test", device="cuda")
 
-    #ds_train = AligDataset("./llama_att_train", "./AMR_grph_LLAMA32", QscalK=True, split="train", device="cuda")
-    #ds_dev   = AligDataset("./llama_att_dev", "./AMR_grph_LLAMA32", QscalK=True, split="dev", device="cuda") #, debug_idSNT=True)
-    #ds_test  = AligDataset("./llama_att_test", "./AMR_grph_LLAMA32", QscalK=True, split="test", device="cuda")
-
+    #ds_train = AligDataset("./llama_QK_train", "./AMR_grph_LLAMA32", QscalK=True, split="train", device="cuda")
+    #ds_dev   = AligDataset("./llama_QK_dev", "./AMR_grph_LLAMA32", QscalK=True, split="dev", device="cuda") #, debug_idSNT=True)
+    #ds_test  = AligDataset("./llama_QK_test", "./AMR_grph_LLAMA32", QscalK=True, split="test", device="cuda")
 
 
     #ds_test2  = AligDataset("./dataset_QK_test2", "./AMR_et_graphes_phrases_explct", QscalK=True, split="test")
