@@ -231,11 +231,7 @@ class GAT_role_classif(LTN.LightningModule):
 class GAT_sans_GAT(GAT_role_classif):
     def __init__(self, dim_in: int,
                  dim_h1:int,
-                 #dim_h2: int,
-                 #heads: int,
-                 #nb_couches: int,
                  rang_sim: int,
-                 #dropout_p: float,
                  nb_classes: int,
                  cible,
                  lr: float,
