@@ -1413,70 +1413,7 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
 
     dld = utils.data.DataLoader(DARts, batch_size=32)
     write_report(nom_rapport, infer, filtre2, dld, ckpoint_model, svg_meilleur, svg_dernier)
-    if False:
-        with HTML_REPORT(nom_rapport) as R:
-            R.ligne()
-            R.reexecution()
-            R.titre("Informations de reproductibilité", 2)
-            if svg_meilleur:
-                chckpt_last = svg_dernier.best_model_path
-                chckpt_best = svg_meilleur.best_model_path
-                if type(chckpt_last) is str:
-                    if len(chckpt_last) == 0:
-                        chckpt_last = False
-                if type(chckpt_best) is str:
-                    if len(chckpt_best) == 0:
-                        chckpt_best = False
-            else:
-                chckpt_last = ckpoint_model
-                if not type(chckpt_last) == str:
-                    chckpt_last = repr(chckpt_last)
-                chckpt_best = False
-            checkpoints = {"chkpt_dernier": chckpt_last}
-            if chckpt_best:
-                if chckpt_best == chckpt_last:
-                    checkpoints["chckpt_meilleur"]= "(voir dernier)"
-                else:
-                    checkpoints["chckpt_meilleur"]= chckpt_best
-            R.table(colonnes=False,
-                    classe_modele=repr(modele.__class__),
-                    **checkpoints)
-            R.titre("paramètres d’instanciation du modele", 3)
-            hparams = {k: str(v) for k, v in modele.hparams.items()}
-            R.table(**hparams, colonnes=False)
-            R.titre("paramètres d’instanciation du système d’inférence", 3)
-            hparams = {k: str(v) for k, v in infer.hparams.items()}
-            R.table(**hparams, colonnes=False)
-            
-            R.titre("Dataset (classe et effectifs)", 2)
-            groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-            R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-            dld = utils.data.DataLoader(DARts, batch_size=32)
-            if svg_meilleur:
-                infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path, modele=modele)
-            roles_pred = trainer.predict(
-                infer,
-                dataloaders=dld,
-                return_predictions=True
-            )
-            roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-            truth = torch.concatenate([infer.f_target(batch) for batch in dld], axis=0)
-
-            exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-            #accuracy = accuracy_score(truth, roles_pred)
-            #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-            R.titre("Meilleur modèle :", 2)
-            R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-            R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-            with R.new_img_with_format("svg") as IMG:
-                fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-                fig.savefig(IMG.fullname)
-            matrix = repr(matrix.tolist())
-            R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-            R.ligne()
+    
 
 @autoinspect
 def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
@@ -1593,49 +1530,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
     dld = utils.data.DataLoader(DARts, batch_size=32)
     write_report(nom_rapport, infer, filtre, dld, ckpoint_model, svg_meilleur, svg_dernier)
 
-    if False:
-        with HTML_REPORT(nom_rapport) as R:
-            R.ligne()
-            R.reexecution()
-            R.titre("Informations de reproductibilité", 2)
-            chckpt = get_ckpt(modele)
-            if not chckpt and (not ckpoint_model is None):
-                chckpt = ckpoint_model
-            if not type(chckpt) == str:
-                chckpt = repr(chckpt)
-            R.table(colonnes=False,
-                    classe_modele=repr(modele.__class__),
-                    chkpt_model = chckpt)
-            R.titre("paramètres d’instanciation", 3)
-            hparams = {k: str(v) for k, v in modele.hparams.items()}
-            R.table(**hparams, colonnes=False)
-            
-            R.titre("Dataset (classe et effectifs)", 2)
-            groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-            R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-            dld = utils.data.DataLoader(DARts, batch_size=32)
-            roles_pred = trainer.predict(
-                modele,
-                dataloaders=dld,
-                return_predictions=True
-            )
-            roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-            truth = torch.concatenate([infer.f_target(batch) for batch in dld], axis=0)
-
-            exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-            #accuracy = accuracy_score(truth, roles_pred)
-            #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-            R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-            R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-            with R.new_img_with_format("svg") as IMG:
-                fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-                fig.savefig(IMG.fullname)
-            matrix = repr(matrix.tolist())
-            R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-            R.ligne()
+    
 
 
 @autoinspect
