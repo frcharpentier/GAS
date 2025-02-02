@@ -1520,7 +1520,7 @@ def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True,
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
         valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        trainer.fit(model=infer, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
         svg_meilleur = None
