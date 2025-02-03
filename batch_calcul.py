@@ -1635,7 +1635,7 @@ def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, trai
 
 
 @autoinspect
-def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckpoint_model=None, train=True, max_epochs=150, patience=5, lr = 1.e-4, transfo="roberta", QscalK = True):
+def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None, train=True, transfo="roberta", QscalK = True, **kwargs):
     DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo, QscalK = QscalK)
     filtre = DARtr.filtre
 
@@ -1644,34 +1644,54 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
 
     nb_classes = len(filtre.alias)
     freqs = filtre.effectifs
-    #cible = "y1"
-    #lr = 1.e-4
+    
+    if "dropout_p" in kwargs:
+        dropout_p = kwargs["dropout_p"]
+    else:
+        dropout_p = 0.3
     modele = tm_GAT(dimension, h, h,
                     nbheads, nbcouches, 
                     rang_sim=rang,
                     dropout_p=dropout_p,
                     nb_classes=nb_classes
                     )
+    
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
     else:
+        if "lr" in kwargs:
+            lr = kwargs["lr"]
+        else:
+            lr = 1.e-4
         infer = INFERENCE(modele, f_features="lambda b: (b.x, b.edge_index)",
                           f_target="lambda b: b.y1",
                           f_msk = "lambda b: b.msk1",
                           lr=lr, freqs=freqs)
     if train:
+        if "patience" in kwargs:
+            patience = kwargs["patience"]
+        else:
+            patience = 5
         arret_premat = EarlyStopping(monitor="val_bal_acc", mode="max", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_bal_acc", save_top_k=1, mode="max") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        if "max_epochs" in kwargs:
+            max_epochs = kwargs["max_epochs"]
+        else:
+            max_epochs = 150
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1, accelerator="gpu",
                               callbacks=[arret_premat, svg_meilleur, svg_dernier])
             
         print("Début de l’entrainement")
-        sampler = BalancedGraphSampler(DARtr, avg_num=1500,
+        if "vertices_per_batch" in kwargs:
+            vertices_per_batch = kwargs["vertices_per_batch"]
+        else:
+            vertices_per_batch = 1500
+        sampler = BalancedGraphSampler(DARtr, avg_num=vertices_per_batch,
                                       shuffle=True)
         
-        samp_dev = BalancedGraphSampler(DARdv, avg_num=1500,
+        samp_dev = BalancedGraphSampler(DARdv, avg_num=vertices_per_batch,
                                       shuffle=False)
         
         train_loader = GeoDataLoader(DARtr, batch_sampler=sampler, num_workers=1)
@@ -1683,8 +1703,8 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, dropout_p=0.3, ckp
         svg_dernier = None
         #trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
-    samp_tst = BalancedGraphSampler(DARts, avg_num=1500,
-                                      shuffle=False)
+
+    samp_tst = BalancedGraphSampler(DARts, avg_num=1500, shuffle=False)
     test_dataloader = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
     write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg_meilleur, svg_dernier)
     if False:
