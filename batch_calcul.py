@@ -1704,69 +1704,10 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
         #trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
 
-    samp_tst = BalancedGraphSampler(DARts, avg_num=1500, shuffle=False)
+    samp_tst = BalancedGraphSampler(DARts, avg_num=vertices_per_batch, shuffle=True)
     test_dataloader = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
     write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg_meilleur, svg_dernier)
-    if False:
-        with HTML_REPORT(nom_rapport) as R:
-            R.ligne()
-            R.reexecution()
-            R.titre("Informations de reproductibilité", 2)
-            if svg_meilleur:
-                chckpt_last = svg_dernier.best_model_path
-                chckpt_best = svg_meilleur.best_model_path
-                if type(chckpt_last) is str:
-                    if len(chckpt_last) == 0:
-                        chckpt_last = False
-                if type(chckpt_best) is str:
-                    if len(chckpt_best) == 0:
-                        chckpt_best = False
-            else:
-                chckpt_last = ckpoint_model
-                if not type(chckpt_last) == str:
-                    chckpt_last = repr(chckpt_last)
-                chckpt_best = False
-            checkpoints = {"chkpt_dernier": chckpt_last}
-            if chckpt_best:
-                if chckpt_best == chckpt_last:
-                    checkpoints["chckpt_meilleur"]= "(voir dernier)"
-                else:
-                    checkpoints["chckpt_meilleur"]= chckpt_best
-            R.table(colonnes=False,
-                    classe_modele=repr(modele.__class__),
-                    **checkpoints)
-            R.titre("paramètres d’instanciation", 3)
-            hparams = {k: str(v) for k, v in modele.hparams.items()}
-            R.table(**hparams, colonnes=False)
-            
-            R.titre("Dataset (classe et effectifs)", 2)
-            groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-            R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-            samp_tst = BalancedGraphSampler(DARts, avg_num=1500,
-                                        shuffle=False)
-            dld = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
-            roles_pred = trainer.predict(
-                model=infer,
-                dataloaders=dld,
-                return_predictions=True
-            )
-            roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-            truth = torch.concatenate([batch.y1[batch.msk1] for batch in dld], axis=0)
-
-            exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-            #accuracy = accuracy_score(truth, roles_pred)
-            #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-            R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-            R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-            R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-            with R.new_img_with_format("svg") as IMG:
-                fig, matrix = plot_confusion_matrix(truth, roles_pred, filtre.alias)
-                fig.savefig(IMG.fullname)
-            matrix = repr(matrix.tolist())
-            R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-            R.ligne()
+    
 
 # Pour refaire une expérience, le plus simple désormais est de faire ainsi :
 # Sélectionner avec git checkout le bon instantané git, ouvrir une console, lancer python
