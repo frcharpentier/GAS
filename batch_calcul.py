@@ -35,6 +35,8 @@ from modeles import (Classif_Logist, Classif_Bil_Sym,
 from modeles2 import (torchmodule_Classif_Bil_Sym   as tm_bil_sym,
                       torchmodule_Classif_Bil_Sym_2 as tm_bil_sym_2,
                       torchmodule_GAT_role_classif as tm_GAT,
+                      torchmodule_GAT_sans_GAT as tm_GAT_sans_GAT,
+                      torchmodule_Classif_Bil_Antisym as tm_Classif_Bil_Antisym,
                       INFERENCE
                       )
 from GNN_modeles import GAT_role_classif, GAT_sans_GAT
@@ -151,21 +153,65 @@ def transfo_to_filenames(transfo, QscalK):
     return rep_data, rep_ds_grph, rep_ds_edge
 
 
-def filtre_defaut(transfo="roberta", QscalK=True):
+def default_filter(transfo="roberta", QscalK=True):
     rep_data, rep_ds_grph, _ = transfo_to_filenames(transfo, QscalK)
     rep_ds_grph = rep_ds_grph + "train"
     ds = AligDataset(rep_ds_grph, rep_data, QscalK=QscalK, split="train")
     return ds.filtre
 
-def filtre_defaut_GPT(QscalK=True):
-    return filtre_defaut("GPT2", QscalK)
+def filter_15_classes(transfo, QscalK):
+    filtre = default_filter(transfo, QscalK)
+    noms_classes = [k for k in filtre.alias]
+
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
     
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
 
-def filtre_defaut_deberta(QscalK=True):
-    return filtre_defaut("deberta", QscalK)
+    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+    return filtre2
 
-def filtre_defaut_llama(QscalK=True):
-    return filtre_defaut("LLAMA32", QscalK)
+def filter_21_classes(transfo, QscalK):
+    filtre = default_filter(transfo, QscalK)
+        
+    noms_classes = [k for k in filtre.alias]
+    def pour_fusion(C):
+        nonlocal noms_classes
+        if C.startswith(":") and C[1] != ">":
+            CC = ":>" + C[1:].upper()
+            if CC in noms_classes:
+                return CC
+        return C
+    
+    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
+    filtre = filtre.eliminer(":>POLARITY")
+    filtre = filtre.eliminer("{syntax}")
+    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
+    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
+    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
+    
+    a_garder = (":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
+                            ":>CONDITION", ":degree", ":>EXPERIENCER",
+                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
+                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+    a_garder = a_garder + tuple(x for x in filtre.alias if x.startswith("{"))
+
+    filtre = filtre.garder(*a_garder)
+    return filtre
+
 
 class PERMUT_DIR_AT_EPOCH_START(Callback):
     def __init__(self, train_ds):
@@ -175,7 +221,7 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
         print("Nouvelle époque")
         self.train_ds.redirection_aleatoire()
 
-def faire_datasets_edges_generic(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
+def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
     if train:
         DGRtr_f2 = AligDataset(rep_ds_grph + "train", rep_data,
@@ -197,46 +243,15 @@ def faire_datasets_edges_generic(transfo, QscalK, filtre, train=True, dev=True, 
     
     return datasets
 
-def faire_datasets_edges(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("roberta", True, filtre, train, dev, test, CLASSE)
-
-def faire_datasets_edges_roberta(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("roberta", True, filtre, train, dev, test, CLASSE)
-
-def faire_datasets_edges_GPT2(filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    return faire_datasets_edges_generic("GPT2", True, filtre, train, dev, test, CLASSE)
 
 
-def faire_datasets_grph(filtre="defaut", train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu"):
+
+
+def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu"):
     assert CLASSE in [AligDataset, EdgeDataset]
     
     rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
-    if filtre == "defaut":
-        filtre = filtre_defaut(transfo, QscalK)
-        
-        noms_classes = [k for k in filtre.alias]
-        def pour_fusion(C):
-            nonlocal noms_classes
-            if C.startswith(":") and C[1] != ">":
-                CC = ":>" + C[1:].upper()
-                if CC in noms_classes:
-                    return CC
-            return C
-        
-        filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-        filtre = filtre.eliminer(":>POLARITY")
-        filtre = filtre.eliminer("{syntax}")
-        filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-        filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-        filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-        
-        a_garder = (":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                                ":>CONDITION", ":degree", ":>EXPERIENCER",
-                                ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                                ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-        a_garder = a_garder + tuple(x for x in filtre.alias if x.startswith("{"))
-
-        filtre = filtre.garder(*a_garder)
+    
     datasets = ()
     if train:
         dsTRAIN = AligDataset(rep_ds_grph + "train",
@@ -334,32 +349,19 @@ def calculer_exactitudes(truth, pred, freqs = None):
 #    return fonction + "(" + ", ".join("%s=%s"%(k,repr(v)) for k,v in arguments.items()) + ")"
 
 @autoinspect
-def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
+def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK=True, **kwargs):
 
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo, QscalK)
+    else:
+        filtre2 = filter_15_classes(transfo, QscalK)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    if "classe" in  kwargs:
+        CLASSE = eval(kwargs["classe"])
+    else:
+        CLASSE = EdgeDatasetMono
+    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetMono)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
@@ -429,45 +431,23 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
     #modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
     #trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
 
-def rattraper():
-    DARtr, DARdv, DARts, filtre2 = faire_datasets_edges(True, True, True)
-    modele = Classif_Logist.load_from_checkpoint("./lightning_logs/version_0/checkpoints/epoch=99-step=360200.ckpt")
-    trainer = LTN.Trainer(devices=1, accelerator="gpu")
-    modele.noms_classes = filtre2.alias # Pour étiqueter la matrice de confusion
-    trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
 
 @autoinspect
-def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None):
+def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
     dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
                     "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
                     "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
     
     assert nom_dataset in dico_classes
 
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=dico_classes[nom_dataset])
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = dico_classes[nom_dataset])
     cible = "roles"
     freqs = filtre2.effectifs
     modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
@@ -514,37 +494,20 @@ def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None):
     print("TERMINÉ.")
 
 @autoinspect
-def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None):
+def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
     dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
                     "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
                     "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
     
     assert nom_dataset in dico_classes
 
-    filtre = filtre_defaut_GPT()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=dico_classes[nom_dataset])
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = dico_classes[nom_dataset])
     cible = "roles"
     freqs = filtre2.effectifs
     modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
@@ -592,31 +555,15 @@ def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None):
 
 
 @autoinspect
-def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut_GPT()
-    noms_classes = [k for k in filtre.alias]
-
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
+def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
     
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
+    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetMono)
 
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDatasetMono)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
@@ -686,32 +633,15 @@ def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
 
 
 @autoinspect
-def batch_LM_dir_augmentee(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
+def batch_LM_dir_augmentee(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
 
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetRdmDir)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE=EdgeDatasetRdmDir)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
@@ -781,32 +711,15 @@ def batch_LM_dir_augmentee(nom_rapport, ckpoint_model=None, train=True, shuffle=
 
 
 @autoinspect
-def batch_LM_dir_augmentee_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
+def batch_LM_dir_augmentee_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
 
-    filtre = filtre_defaut_GPT()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetRdmDir)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE=EdgeDatasetRdmDir)
 
     dimension = 288
     nb_classes = len(filtre2.alias)
@@ -875,32 +788,16 @@ def batch_LM_dir_augmentee_GPT(nom_rapport, ckpoint_model=None, train=True, shuf
         R.ligne()
 
 @autoinspect
-def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html"):
+def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html", **kwargs):
     ckpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_3/checkpoints/epoch=49-step=180100.ckpt"
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
 
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
     cible = "roles"
     modele = Classif_Logist.load_from_checkpoint(ckpt)
     trainer = LTN.Trainer(devices=1, accelerator="gpu")
@@ -981,31 +878,14 @@ soient entièrement nulles. Pour le calcul de l’exactitude équilibrée (balan
 
 
 @autoinspect
-def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
+def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
+    else:
+        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
 
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
+    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True)
 
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True)
 
     ordre_classes = [ ':ARG0', ':ARG1', ':ARG2', ':ARG3', ':ARG4', ':ARG5', ':ARG6',
                       ':>BENEFICIARY', ':>CONDITION', ':>LOCATION', ':>MANNER', 
@@ -1094,12 +974,11 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False):
         R.ligne()
 
 @autoinspect
-def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut()
+def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK=True, **kwargs):
+    filtre = default_filter(transfo="roberta", QscalK=True)
 
-    filtre2 = filtre
+    DARtr, DARdv, DARts = make_edge_datasets(transfo=transfo, QscalK=QscalK, filtre=filtre, train=True, dev=True, test=True, CLASSE=EdgeDataset)
 
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
     
     #Permutation aléatoire pour équilibrer les datasets
     DARtr.permuter_X1_X2(torch.randint(0,2,(DARtr.Nadj,), dtype=torch.long))
@@ -1107,281 +986,81 @@ def batch_Antisym(nom_rapport, max_epochs=30, ckpoint_model=None, train=True, sh
     DARts.permuter_X1_X2(torch.randint(0,2,(DARts.Nadj,), dtype=torch.long))
 
 
-    dimension = 144
-    lr = 1.e-4
-    rang = 18 # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
+    dimension, _2 = DARts[0]["X"].shape
+    assert _2 == 2
+
+    
+    # Éviter les valeurs du rang impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
+    modele = tm_Classif_Bil_Antisym(dimension, rang)
+    if ckpoint_model:
+        infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
+    else:
+        if "lr" in kwargs:
+            lr = kwargs["lr"]
+        else:
+            lr = 1.e-4
+        infer = INFERENCE(modele, f_features="lambda b: b['X']",
+                          f_target="lambda b: b['roles']", lr=lr, perte="BCEWithLogitsLoss", no_bal_acc=True)
+    if "accelerator" in kwargs:
+        accelerator = kwargs["accelerator"]
+    else:
+        accelerator = "gpu"
+    if train:
+        if "patience" in kwargs:
+            patience = kwargs["patience"]
+        else:
+            patience = 5
+        arret_premat = EarlyStopping(monitor="val_acc", mode="max", patience=patience)
+        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_acc", save_top_k=1, mode="max") 
+        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        if "max_epochs" in kwargs:
+            max_epochs = kwargs["max_epochs"]
+        else:
+            max_epochs = 50
+        trainer = LTN.Trainer(max_epochs=max_epochs,
+                              devices=1,
+                              accelerator=accelerator,
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+            
+        print("Début de l’entrainement")
+        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
+        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
+        trainer.fit(model=infer, train_dataloaders=train_loader, val_dataloaders=valid_loader)
+        print("TERMINÉ.")
+    else:
+        svg_meilleur = None
+        svg_dernier = None
+        #trainer = LTN.Trainer(devices=1, accelerator=accelerator)
+
+    dld = utils.data.DataLoader(DARts, batch_size=32)
+    write_report(nom_rapport, infer, filtre, dld, ckpoint_model, svg_meilleur, svg_dernier)
+
 
     if ckpoint_model:
         modele = Classif_Bil_Antisym.load_from_checkpoint(ckpoint_model)
     else:
         modele = Classif_Bil_Antisym(dimension, rang=rang, lr=lr)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
+
     
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
 
-        exactitudes = calculer_exactitudes(truth, roles_pred)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
+#def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+#    batch_Bilin_generic(nom_rapport, rang, ckpoint_model, train, shuffle, transfo="roberta", QscalK=True, lr=1.e-4, patience=5, filter="filter_15_classes")
 
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
+
+
+#def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+#   batch_Bilin_generic(nom_rapport, rang, ckpoint_model, train, shuffle, transfo="GPT2", QscalK=True, lr=1.e-4, patience=5, filter="filter_15_classes")
+    
 
 @autoinspect
-def batch_Bilin(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut()
-    noms_classes = [k for k in filtre.alias]
-
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
-
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges(filtre2, True, True, True, CLASSE = EdgeDataset)
-
-    dimension = 144
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
-    lr = 1.e-4
-    if ckpoint_model:
-        modele = Classif_Bil_Sym.load_from_checkpoint(ckpoint_model)
+def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, **kwargs):
+    if "filter" in kwargs:
+        filtre2 = eval(kwargs["filter"])(transfo, QscalK)
     else:
-        modele = Classif_Bil_Sym(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+        filtre2 = filter_15_classes(transfo, QscalK)
 
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-
-@autoinspect
-def batch_Bilin_GPT(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut_GPT()
-    noms_classes = [k for k in filtre.alias]
-
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
-
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDataset)
-
-    dimension = 144
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
-    lr = 1.e-4
-    if ckpoint_model:
-        modele = Classif_Bil_Sym_2.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = Classif_Bil_Sym_2(dimension, nb_classes, rang=rang, cible=cible, lr=lr, freqs=freqs)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=150, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-@autoinspect
-def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, lr = 1.e-4, patience=5):
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
-    filtre = AligDataset(rep_ds_grph+"train", rep_data, QscalK=QscalK, split="train").filtre
-    noms_classes = [k for k in filtre.alias]
-
-    def pour_fusion(C):
-        nonlocal noms_classes
-        if C.startswith(":") and C[1] != ">":
-            CC = ":>" + C[1:].upper()
-            if CC in noms_classes:
-                return CC
-        return C
-    
-    filtre = filtre.eliminer(":li", ":conj-as-if", ":op1", ":weekday", ":year", ":polarity", ":mode")
-    filtre = filtre.eliminer(":>POLARITY")
-    filtre = filtre.fusionner(lambda x: pour_fusion(x.al))
-    filtre = filtre.eliminer(lambda x: x.al.startswith(":prep"))
-    filtre = filtre.eliminer(lambda x: (x.ef < 1000) and (not x.al.startswith(":>")))
-    filtre2 = filtre.eliminer(lambda x: x.al.startswith("{"))
-
-    filtre2 = filtre.garder(":>AGENT", ":>BENEFICIARY", ":>CAUSE", ":>THEME",
-                            ":>CONDITION", ":degree", ":>EXPERIENCER",
-                            ":>LOCATION", ":>MANNER", ":>MOD", ":>PATIENT",
-                            ":poss", ":>PURPOSE", ":>TIME", ":>TOPIC")
-
-    DARtr, DARdv, DARts = faire_datasets_edges_generic(transfo, QscalK, filtre2, True, True, True, CLASSE = EdgeDataset)
+    DARtr, DARdv, DARts = make_edge_datasets(transfo, QscalK, filtre2, True, True, True, CLASSE = EdgeDataset)
 
     dimension, _2 = DARts[0]["X"].shape
     assert _2 == 2
@@ -1392,15 +1071,31 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
     else:
+        if "lr" in kwargs:
+            lr = kwargs["lr"]
+        else:
+            lr = 1.e-4
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
                           f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
+    if "accelerator" in kwargs:
+        accelerator = kwargs["accelerator"]
+    else:
+        accelerator = "gpu"
     if train:
+        if "patience" in kwargs:
+            patience = kwargs["patience"]
+        else:
+            patience = 5
         arret_premat = EarlyStopping(monitor="val_bal_acc", mode="max", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_bal_acc", save_top_k=1, mode="max") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
-        trainer = LTN.Trainer(max_epochs=150,
+        if "max_epochs" in kwargs:
+            max_epochs = kwargs["max_epochs"]
+        else:
+            max_epochs = 150
+        trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1,
-                              accelerator="gpu",
+                              accelerator=accelerator,
                               callbacks=[arret_premat, svg_meilleur, svg_dernier])
             
         print("Début de l’entrainement")
@@ -1411,233 +1106,34 @@ def batch_Bilin_generic(nom_rapport, rang=8, ckpoint_model=None, train=True, shu
     else:
         svg_meilleur = None
         svg_dernier = None
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+        #trainer = LTN.Trainer(devices=1, accelerator=accelerator)
 
     dld = utils.data.DataLoader(DARts, batch_size=32)
     write_report(nom_rapport, infer, filtre2, dld, ckpoint_model, svg_meilleur, svg_dernier)
     
 
-@autoinspect
-def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
-    filtre = filtre_defaut_GPT()
-
-    filtre2 = filtre
-
-    DARtr, DARdv, DARts = faire_datasets_edges_GPT2(filtre2, True, True, True, CLASSE = EdgeDataset)
+#def batch_Antisym_GPT(nom_rapport, rang=8, max_epochs=30, ckpoint_model=None, train=True, shuffle=False):
+#   batch_Antisym(nom_rapport, rang, ckpoint_model=ckpoint_model, train=True, shuffle=False, transfo="GPT2", QscalK=True, max_epochs=30, **kwargs):
     
-    #Permutation aléatoire pour équilibrer les datasets
-    DARtr.permuter_X1_X2(torch.randint(0,2,(DARtr.Nadj,), dtype=torch.long))
-    DARdv.permuter_X1_X2(torch.randint(0,2,(DARdv.Nadj,), dtype=torch.long))
-    DARts.permuter_X1_X2(torch.randint(0,2,(DARts.Nadj,), dtype=torch.long))
 
-
-    dimension = 144
-    lr = 1.e-4
-    rang = rang # Éviter les valeurs impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
-
-    if ckpoint_model:
-        modele = Classif_Bil_Antisym_2.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = Classif_Bil_Antisym_2(dimension, rang=rang, lr=lr)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=max_epochs, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch["sens"] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-@autoinspect
-def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, lr=1.e-4, patience=5):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo, QscalK = QscalK)
-    filtre = DARtr.filtre
-
-    dimension, _2 = DARts[0]["X"].shape
-    assert _2 == 2
-
-    nb_classes = len(filtre.alias)
-    freqs = filtre.effectifs
-    lr = lr
-    
-    modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
-    if ckpoint_model:
-        infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
-    else:
-        infer = INFERENCE(modele, f_features="lambda b: b['X']",
-                          f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_bal_acc", mode="max", patience=patience)
-        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_bal_acc", save_top_k=1, mode="max") 
-        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
-        trainer = LTN.Trainer(max_epochs=150,
-                              devices=1,
-                              accelerator="gpu",
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=infer, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        svg_meilleur = None
-        svg_dernier = None
-        #trainer = LTN.Trainer(devices=1, accelerator="gpu")
-    
-    dld = utils.data.DataLoader(DARts, batch_size=32)
-    write_report(nom_rapport, infer, filtre, dld, ckpoint_model, svg_meilleur, svg_dernier)
-
+#def batch_Bilin_tous_tokens(nom_rapport, rang=2, ckpoint_model=None, train=True, shuffle=False, transfo="roberta", QscalK = True, lr=1.e-4, patience=5, **kwargs):
+#    batch_Bilin_generic(nom_rapport, rang, ckpoint_model, train, shuffle, transfo="roberta", QscalK=True, lr=1.e-4, patience=5, filter="filter_21_classes", **kwargs)
     
 
 
-@autoinspect
-def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta", QscalK = True):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = EdgeDataset, transfo=transfo, QscalK = QscalK)
-    filtre = DARtr.filtre
-
-    dimension, _2 = DARts[0]["X"].shape
-    assert _2 == 2
+#def batch_Bilin_tous_tokens2(nom_rapport, h=64, rang=8, ckpoint_model=None, train=True, shuffle=False, max_epochs=150, patience=5, transfo="roberta", QscalK = True, **kwargs):
+#    batch_GAT_sym(nom_rapport, h, nbheads=1, nbcouches=0, rang=rang, ckpoint_model=ckpoint_model, train=train, shuffle=shuffle, transfo=transfo, QscalK=QscalK, model="tm_GAT_sans_GAT", **kwargs)
     
-    nb_classes = len(filtre.alias)
-    freqs = filtre.effectifs
-    cible = "roles"
-    lr = 1.e-4
-    #nbheads = 1
-    #nbcouches = 0
-    #dropout_p = 0.
-    if ckpoint_model:
-        modele = GAT_sans_GAT.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = GAT_sans_GAT(dimension, h, 
-                                  rang_sim=rang,
-                                  nb_classes=nb_classes,
-                                  cible = cible,
-                                  lr=lr, freqs=freqs)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=patience)
-        svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_loss", save_top_k=1, mode="min") 
-        svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
-        trainer = LTN.Trainer(max_epochs=max_epochs,
-                              devices=1, accelerator="gpu",
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
-            
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        if svg_meilleur:
-            chckpt_last = svg_dernier.best_model_path
-            chckpt_best = svg_meilleur.best_model_path
-            if type(chckpt_last) is str:
-                if len(chckpt_last) == 0:
-                    chckpt_last = False
-            if type(chckpt_best) is str:
-                if len(chckpt_best) == 0:
-                    chckpt_best = False
-        else:
-            chckpt_last = ckpoint_model
-            if not type(chckpt_last) == str:
-                chckpt_last = repr(chckpt_last)
-            chckpt_best = False
-        checkpoints = {"chkpt_dernier": chckpt_last}
-        if chckpt_best:
-            if chckpt_best == chckpt_last:
-                checkpoints["chckpt_meilleur"]= "(voir dernier)"
-            else:
-                checkpoints["chckpt_meilleur"]= chckpt_best
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                **checkpoints)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-        R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
 
 
 @autoinspect
 def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None, train=True, transfo="roberta", QscalK = True, **kwargs):
-    DARtr, DARdv, DARts = faire_datasets_grph(train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo, QscalK = QscalK)
-    filtre = DARtr.filtre
+    if "filter" in kwargs:
+        filtre = eval(kwargs["filter"])(transfo, QscalK)
+    else:
+        filtre = filter_21_classes(transfo, QscalK)
+    DARtr, DARdv, DARts = make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE = AligDataset, transfo=transfo, QscalK = QscalK)
+    #filtre = DARtr.filtre
 
     _, dimension, _2 = DARts[0].x.shape
     assert _2 == 2
@@ -1649,7 +1145,20 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
         dropout_p = kwargs["dropout_p"]
     else:
         dropout_p = 0.3
-    modele = tm_GAT(dimension, h, h,
+
+    if "model" in kwargs:
+        assert kwargs["model"] in ["tm_GAT", "tm_GAT_sans_GAT"]
+        if kwargs["model"] == "tm_GAT_sans_GAT":
+            modele = tm_GAT_sans_GAT(dimension, h, rang_sim=rang, nb_classes=nb_classes)
+        else:
+            modele = tm_GAT(dimension, h, h,
+                    nbheads, nbcouches, 
+                    rang_sim=rang,
+                    dropout_p=dropout_p,
+                    nb_classes=nb_classes
+                    )
+    else:
+        modele = tm_GAT(dimension, h, h,
                     nbheads, nbcouches, 
                     rang_sim=rang,
                     dropout_p=dropout_p,
@@ -1667,6 +1176,10 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
                           f_target="lambda b: b.y1",
                           f_msk = "lambda b: b.msk1",
                           lr=lr, freqs=freqs)
+    if "accelerator" in kwargs:
+        accelerator = kwargs["accelerator"]
+    else:
+        accelerator = "gpu"
     if train:
         if "patience" in kwargs:
             patience = kwargs["patience"]
@@ -1680,7 +1193,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
         else:
             max_epochs = 150
         trainer = LTN.Trainer(max_epochs=max_epochs,
-                              devices=1, accelerator="gpu",
+                              devices=1, accelerator=accelerator,
                               callbacks=[arret_premat, svg_meilleur, svg_dernier])
             
         print("Début de l’entrainement")
