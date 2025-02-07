@@ -124,26 +124,25 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         R.reexecution()
         R.titre("Informations de reproductibilité", 2)
         modele = infer.modele
-        if svg_meilleur:
-            chckpt_last = svg_dernier.best_model_path
-            chckpt_best = svg_meilleur.best_model_path
-            if type(chckpt_last) is str:
-                if len(chckpt_last) == 0:
-                    chckpt_last = False
-            if type(chckpt_best) is str:
-                if len(chckpt_best) == 0:
-                    chckpt_best = False
+
+        ckpt_best = svg_meilleur.best_model_path if svg_meilleur else False
+        ckpt_best = ckpt_best if (type(ckpt_best) == str and len(ckpt_best) > 0) else False
+        
+        ckpt_last = svg_dernier.best_model_path if svg_dernier else False
+        ckpt_last = ckpt_last if (type(ckpt_last) == str and len(ckpt_last) > 0) else False
+
+        assert ckpoint_model or ckpt_best or ckpt_last
+        if ckpoint_model:
+            checkpoints = {"ckpoint_model": ckpoint_model}
         else:
-            chckpt_last = ckpoint_model
-            if not type(chckpt_last) == str:
-                chckpt_last = repr(chckpt_last)
-            chckpt_best = False
-        checkpoints = {"chkpt_dernier": chckpt_last}
-        if chckpt_best:
-            if chckpt_best == chckpt_last:
-                checkpoints["chckpt_meilleur"]= "(voir dernier)"
-            else:
-                checkpoints["chckpt_meilleur"]= chckpt_best
+            checkpoints = {}
+            if ckpt_last:
+                checkpoints["ckpoint_last"] = ckpt_last
+                ckpoint_model = ckpt_last
+            if ckpt_best:
+                checkpoints["ckpoint_best"] = ckpt_best
+                ckpoint_model = ckpt_best
+
         R.table(colonnes=False,
                 classe_modele=repr(modele.__class__),
                 **checkpoints)
@@ -154,18 +153,11 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         hparams = {k: str(v) for k, v in infer.hparams.items()}
         R.table(**hparams, colonnes=False)
         
-        if filtre is None:
-            freqs = None,
-            noms_classes = None
-        else:
-            R.titre("Dataset (classe et effectifs)", 2)
-            groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-            R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
-            freqs = filtre.effectifs
-            noms_classes = filtre.alias
+        R.titre("Dataset (classe et effectifs)", 2)
+        groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
+        R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
         
-        if svg_meilleur:
-            infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path, modele=modele)
+        infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
 
         trainer = LTN.Trainer(devices=1, accelerator="gpu")
         roles_pred = trainer.predict(
@@ -179,7 +171,7 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         else:
             truth = torch.concatenate([infer.f_target(b) for b in test_dataloader], axis=0)
 
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        exactitudes = calculer_exactitudes(truth, roles_pred, filtre.effectifs)
         
         R.titre("Meilleur modèle :", 2)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
@@ -188,7 +180,7 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
 
         with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, noms_classes)
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, filtre.alias)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
@@ -876,7 +868,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
         #trainer = LTN.Trainer(devices=1, accelerator="gpu")
 
 
-    samp_tst = BalancedGraphSampler(DARts, avg_num=vertices_per_batch, shuffle=True)
+    samp_tst = BalancedGraphSampler(DARts, avg_num=vertices_per_batch, shuffle=False) # Shuffle = False: Très important !
     test_dataloader = GeoDataLoader(DARts, batch_sampler=samp_tst, num_workers=1)
     write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg_meilleur, svg_dernier)
     
