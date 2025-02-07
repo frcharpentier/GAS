@@ -189,6 +189,8 @@ class ALIGNEUR:
         # ch_suite est la chaine qui préfixe les tokens qui consituent la suite d’un mot
         # déjà commencé. Pour BERT, il s’agit de "##"
 
+        if "://" in nom_modele:
+            nom_modele = nom_modele.split("://", maxsplit=1)[1]
         self.nom_modele = nom_modele
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(nom_modele)

@@ -24,6 +24,9 @@ from sklearn.metrics import (confusion_matrix,
     ConfusionMatrixDisplay)
 
 import numpy as np
+from dependencies import transfo_to_filenames
+from fabrication_listes import construire_graphes as make_aligs
+
 from make_dataset import ( AligDataset, EdgeDataset,
                           EdgeDatasetMono, EdgeDatasetRdmDir,
                           EdgeDatasetMonoEnvers)
@@ -49,6 +52,60 @@ from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 
 
 #On stocke dans une variable globale, au tout début du programme.
+
+def get_ckpt(modele):
+    logger = modele.logger
+    if logger is None:
+        return False
+    version = logger.version
+    if type(version) == int:
+        version = "version_%d"%version
+    repert = os.path.join(logger.save_dir, logger.name, version)
+    if not os.path.exists(repert):
+        return False
+    repert = os.path.join(repert, "checkpoints")
+    if not os.path.exists(repert):
+        return False
+    fichiers = [os.path.join(repert, f) for f in os.listdir(repert)]
+    if len(fichiers) == 0:
+        return False
+    if len(fichiers) == 1:
+        return fichiers[0]
+    return fichiers
+
+def calculer_exactitudes(truth, pred, freqs = None):
+    M = confusion_matrix(truth, pred)
+    effectifs = M.sum(axis=1)
+    diago = np.diag(M)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rappels = diago / effectifs
+    if np.any(np.isnan(rappels)):
+        rappels = rappels[~np.isnan(rappels)]
+        # élimination des valeurs nan
+    bal_acc = np.mean(rappels)
+    # bal_acc : exactitude équilibrée
+    n_classes = len(rappels)
+    hasard = 1 / n_classes
+    bal_acc_adj = (bal_acc - hasard)/(1-hasard)
+    # bal_acc_adj : exactitude équilibrée, et rééchelonnée entre hasard et perfection
+    sum_diag = diago.sum()
+    total = effectifs.sum()
+    acc = sum_diag / total
+    # acc : exactitude
+    acc_adj = (acc - hasard) / (1-hasard)
+    # acc_adj : exactitude rééchelonnée entre hasard (uniforme) et perfection
+    if not freqs is None:
+        if type(freqs) == list:
+            freqs = np.array(freqs)
+        freqs = freqs / freqs.sum()
+        hasard2 = (freqs**2).sum()
+        # hasard2 : exactitude d’un classificateur au hasard qui suit la distribution freq
+        acc_adj2 = (acc - hasard2) / (1-hasard2)
+        # acc_adj2 : exactitude rééchelonnée entre hasard2 et perfection
+    else:
+        acc_adj2 = None
+    return {"acc":acc, "acc_adj":acc_adj, "acc_adj2":acc_adj2,
+            "bal_acc": bal_acc, "bal_acc_adj": bal_acc_adj}
 
 def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     disp = ConfusionMatrixDisplay.from_predictions(y_true, y_pred, display_labels = noms_classes, normalize="true")
@@ -97,9 +154,15 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         hparams = {k: str(v) for k, v in infer.hparams.items()}
         R.table(**hparams, colonnes=False)
         
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-        R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
+        if filtre is None:
+            freqs = None,
+            noms_classes = None
+        else:
+            R.titre("Dataset (classe et effectifs)", 2)
+            groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
+            R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
+            freqs = filtre.effectifs
+            noms_classes = filtre.alias
         
         if svg_meilleur:
             infer = INFERENCE.load_from_checkpoint(svg_meilleur.best_model_path, modele=modele)
@@ -116,7 +179,7 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         else:
             truth = torch.concatenate([infer.f_target(b) for b in test_dataloader], axis=0)
 
-        exactitudes = calculer_exactitudes(truth, roles_pred, filtre.effectifs)
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
         
         R.titre("Meilleur modèle :", 2)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
@@ -125,40 +188,17 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
 
         with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, filtre.alias)
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, noms_classes)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
         R.ligne()
 
 
-def transfo_to_filenames(transfo, QscalK):
-    assert transfo in ["roberta", "GPT2", "deberta", "LLAMA32"]
-    label_QK = "QK" if QscalK else "att"
-    if transfo == "roberta":
-        rep_ds_grph = "./dataset_%s_"%label_QK
-        rep_ds_edge = "./edges_f_%s_"%label_QK
-        rep_data =    "./AMR_et_graphes_phrases_explct"
-    elif transfo == "GPT2":
-        rep_ds_grph = "./dataset_%s_GPT_"%label_QK
-        rep_ds_edge = "./edges_f_%s_GPT_"%label_QK
-        rep_data =    "./AMR_et_graphes_phrases_GPT_explct"
-    elif transfo == "deberta":
-        rep_ds_grph = "./deberta_%s_"%label_QK
-        rep_ds_edge = "./edges_deberta_%s_"%label_QK
-        rep_data =    "./AMR_grph_DebertaV2_xxlarge"
-    elif transfo == "LLAMA32":
-        rep_ds_grph = "LLAMA32_%s_"%label_QK
-        rep_ds_edge = "edges_LLAMA32_%s_"%label_QK
-        rep_data =    "./AMR_grph_LLAMA32"
-
-    return rep_data, rep_ds_grph, rep_ds_edge
-
-
 def default_filter(transfo="roberta", QscalK=True):
-    rep_data, rep_ds_grph, _ = transfo_to_filenames(transfo, QscalK)
+    alig_file, rep_ds_grph, _, _ = transfo_to_filenames(transfo, QscalK)
     rep_ds_grph = rep_ds_grph + "train"
-    ds = AligDataset(rep_ds_grph, rep_data, QscalK=QscalK, split="train")
+    ds = AligDataset(rep_ds_grph, alig_file, QscalK=QscalK, split="train")
     return ds.filtre
 
 def filter_15_classes(transfo, QscalK):
@@ -224,15 +264,15 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
         self.train_ds.redirection_aleatoire()
 
 def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
+    alig_file, rep_ds_grph, rep_ds_edge, _ = transfo_to_filenames(transfo, QscalK)
     if train:
-        DGRtr_f2 = AligDataset(rep_ds_grph + "train", rep_data,
+        DGRtr_f2 = AligDataset(rep_ds_grph + "train", alig_file,
                             transform=filtre, QscalK=QscalK, split="train")
     if dev:
-        DGRdv_f2 = AligDataset(rep_ds_grph + "dev", rep_data,
+        DGRdv_f2 = AligDataset(rep_ds_grph + "dev", alig_file,
                             transform=filtre, QscalK=QscalK, split="dev")
     if test:
-        DGRts_f2 = AligDataset(rep_ds_grph + "test", rep_data,
+        DGRts_f2 = AligDataset(rep_ds_grph + "test", alig_file,
                             transform=filtre, QscalK=QscalK, split="test")
         
     datasets = ()
@@ -246,18 +286,22 @@ def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True,
     return datasets
 
 
+def make_alig_file(transfo):
+    alig_file, _, _, model_id = transfo_to_filenames(transfo, True)
+    make_aligs(fichier_out="a_tej.txt", split=True, court=False, nom_modele=model_id)
+
 
 
 
 def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu"):
     assert CLASSE in [AligDataset, EdgeDataset]
     
-    rep_data, rep_ds_grph, rep_ds_edge = transfo_to_filenames(transfo, QscalK)
+    alig_file, rep_ds_grph, rep_ds_edge, _ = transfo_to_filenames(transfo, QscalK)
     
     datasets = ()
     if train:
         dsTRAIN = AligDataset(rep_ds_grph + "train",
-                              rep_data,
+                              alig_file,
                               transform=filtre,
                               QscalK=QscalK, split="train", device=device)
         
@@ -267,7 +311,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         datasets += (dsTRAIN,)
     if dev:
         dsDEV = AligDataset(rep_ds_grph + "dev",
-                            rep_data,
+                            alig_file,
                             transform=filtre,
                             QscalK=QscalK, split="dev", device=device)
         if CLASSE != AligDataset:
@@ -275,7 +319,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         datasets += (dsDEV,)
     if test:
         dsTEST = AligDataset(rep_ds_grph + "test",
-                             rep_data,
+                             alig_file,
                              transform=filtre,
                              QscalK=QscalK, split="test", device=device)
         if CLASSE != AligDataset:
@@ -285,59 +329,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
     return datasets
 
 
-def get_ckpt(modele):
-    logger = modele.logger
-    if logger is None:
-        return False
-    version = logger.version
-    if type(version) == int:
-        version = "version_%d"%version
-    repert = os.path.join(logger.save_dir, logger.name, version)
-    if not os.path.exists(repert):
-        return False
-    repert = os.path.join(repert, "checkpoints")
-    if not os.path.exists(repert):
-        return False
-    fichiers = [os.path.join(repert, f) for f in os.listdir(repert)]
-    if len(fichiers) == 0:
-        return False
-    if len(fichiers) == 1:
-        return fichiers[0]
-    return fichiers
 
-def calculer_exactitudes(truth, pred, freqs = None):
-    M = confusion_matrix(truth, pred)
-    effectifs = M.sum(axis=1)
-    diago = np.diag(M)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        rappels = diago / effectifs
-    if np.any(np.isnan(rappels)):
-        rappels = rappels[~np.isnan(rappels)]
-        # élimination des valeurs nan
-    bal_acc = np.mean(rappels)
-    # bal_acc : exactitude équilibrée
-    n_classes = len(rappels)
-    hasard = 1 / n_classes
-    bal_acc_adj = (bal_acc - hasard)/(1-hasard)
-    # bal_acc_adj : exactitude équilibrée, et rééchelonnée entre hasard et perfection
-    sum_diag = diago.sum()
-    total = effectifs.sum()
-    acc = sum_diag / total
-    # acc : exactitude
-    acc_adj = (acc - hasard) / (1-hasard)
-    # acc_adj : exactitude rééchelonnée entre hasard (uniforme) et perfection
-    if not freqs is None:
-        if type(freqs) == list:
-            freqs = np.array(freqs)
-        freqs = freqs / freqs.sum()
-        hasard2 = (freqs**2).sum()
-        # hasard2 : exactitude d’un classificateur au hasard qui suit la distribution freq
-        acc_adj2 = (acc - hasard2) / (1-hasard2)
-        # acc_adj2 : exactitude rééchelonnée entre hasard2 et perfection
-    else:
-        acc_adj2 = None
-    return {"acc":acc, "acc_adj":acc_adj, "acc_adj2":acc_adj2,
-            "bal_acc": bal_acc, "bal_acc_adj": bal_acc_adj}
 
 
 #def get_appel_fonction():
@@ -377,8 +369,12 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo
             lr = kwargs["lr"]
         else:
             lr = 1.e-5
+        if "cible" in kwargs:
+            f_target = "lambda b; b[%s]"%(repr(kwargs["cible"]))
+        else:
+            f_target = "lambda b: b['roles']"
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
-                          f_target="lambda b: b['roles']", lr=lr, freqs=freqs)
+                          f_target=f_target, lr=lr, freqs=freqs)
     if "accelerator" in kwargs:
         accelerator = kwargs["accelerator"]
     else:
@@ -391,6 +387,11 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo
         arret_premat = EarlyStopping(monitor="val_bal_acc", mode="max", patience=patience)
         svg_meilleur = ModelCheckpoint(filename="best_{epoch}_{step}", monitor="val_bal_acc", save_top_k=1, mode="max") 
         svg_dernier = ModelCheckpoint(filename="last_{epoch}_{step}")
+        callbacks = [arret_premat, svg_meilleur, svg_dernier]
+
+        if "PERMUT_DIR_AT_EPOCH_START" in kwargs and kwargs["PERMUT_DIR_AT_EPOCH_START"]:
+            callbacks.append(PERMUT_DIR_AT_EPOCH_START(DARtr))
+
         if "max_epochs" in kwargs:
             max_epochs = kwargs["max_epochs"]
         else:
@@ -398,7 +399,7 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1,
                               accelerator=accelerator,
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+                              callbacks=callbacks)
             
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
@@ -417,360 +418,34 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo
     #trainer.test(modele, dataloaders=utils.data.DataLoader(DARts, batch_size=32))
 
 
-@autoinspect
-def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
-    dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
-                    "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
-                    "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
+
+#def essais_LM(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
+#   batch_LM(nom_rapport, ckpoint_model=ckpoint_model, train=False, transfo="roberta", QscalK = True, classe=nom_dataset)
     
-    assert nom_dataset in dico_classes
-
-    if "filter" in kwargs:
-        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
-    else:
-        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
-
-    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=dico_classes[nom_dataset])
 
 
-    cible = "roles"
-    freqs = filtre2.effectifs
-    modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
-    trainer = LTN.Trainer(devices=1, accelerator="gpu")
+#def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
+#   batch_LM(nom_rapport, ckpoint_model=ckpoint_model, train=False, transfo="GPT2", QscalK = True, classe=nom_dataset)
 
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
 
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
 
-    print("TERMINÉ.")
 
-@autoinspect
-def essais_LM_GPT(nom_rapport, nom_dataset, ckpoint_model=None, **kwargs):
-    dico_classes = {"EdgeDatasetMono":EdgeDatasetMono,
-                    "EdgeDatasetRdmDir":EdgeDatasetRdmDir,
-                    "EdgeDatasetMonoEnvers": EdgeDatasetMonoEnvers}
+#def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+#   batch_LM(nom_rapport, ckpoint_model=ckpoint_model, train=train, shuffle=shuffle, transfo="GPT2", QscalK=True, **kwargs)    
+
+
+
+
+#def batch_LM_dir_augmentee(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+#   batch_LM(nom_rapport, ckpoint_model, train, shuffle, transfo="roberta", QscalK=True, classe="EdgeDatasetRdmDir", PERMUT_DIR_AT_EPOCH_START=True, **kwargs)
     
-    assert nom_dataset in dico_classes
-
-    if "filter" in kwargs:
-        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
-    else:
-        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
-
-    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=dico_classes[nom_dataset])
-
-    cible = "roles"
-    freqs = filtre2.effectifs
-    modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
-    trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-    print("TERMINÉ.")
 
 
-@autoinspect
-def batch_LM_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+
+#def batch_LM_dir_augmentee_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
+#   batch_LM(nom_rapport, ckpoint_model, train, shuffle, transfo="GPT2", QscalK=True, classe="EdgeDatasetRdmDir", PERMUT_DIR_AT_EPOCH_START=True, **kwargs)
+ 
     
-    if "filter" in kwargs:
-        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
-    else:
-        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
-
-    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetMono)
-
-
-    dimension = 288
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
-    lr = 1.e-5
-    if ckpoint_model:
-        modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
-    if train:
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        #accuracy = accuracy_score(truth, roles_pred)
-        #bal_accuracy = balanced_accuracy_score(truth, roles_pred)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-
-@autoinspect
-def batch_LM_dir_augmentee(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
-
-    if "filter" in kwargs:
-        filtre2 = eval(kwargs["filter"])(transfo="roberta", QscalK=True)
-    else:
-        filtre2 = filter_15_classes(transfo="roberta", QscalK=True)
-
-    DARtr, DARdv, DARts = make_edge_datasets("roberta", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetRdmDir)
-
-
-    dimension = 288
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
-    lr = 1.e-5
-    if ckpoint_model:
-        modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
-    if train:
-        callbk = PERMUT_DIR_AT_EPOCH_START(DARtr)
-
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[callbk, arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
-
-
-@autoinspect
-def batch_LM_dir_augmentee_GPT(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **kwargs):
-
-    if "filter" in kwargs:
-        filtre2 = eval(kwargs["filter"])(transfo="GPT2", QscalK=True)
-    else:
-        filtre2 = filter_15_classes(transfo="GPT2", QscalK=True)
-
-    DARtr, DARdv, DARts = make_edge_datasets("GPT2", QscalK=True, filtre=filtre2, train=True, dev=True, test=True, CLASSE=EdgeDatasetRdmDir)
-
-
-    dimension = 288
-    nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
-    cible = "roles"
-    lr = 1.e-5
-    if ckpoint_model:
-        modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
-    if train:
-        callbk = PERMUT_DIR_AT_EPOCH_START(DARtr)
-
-        arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[callbk, arret_premat])
-        #trainer = LTN.Trainer(max_epochs=5, devices=1, accelerator="gpu", callbacks=[arret_premat])
-        #trainer = LTN.Trainer(max_epochs=2, accelerator="cpu")
-    
-        print("Début de l’entrainement")
-        train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
-        valid_loader = utils.data.DataLoader(DARdv, batch_size=32, num_workers=8)
-        trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
-        print("TERMINÉ.")
-    else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
-
-    with HTML_REPORT(nom_rapport) as R:
-        R.ligne()
-        R.reexecution()
-        R.titre("Informations de reproductibilité", 2)
-        chckpt = get_ckpt(modele)
-        if not chckpt and (not ckpoint_model is None):
-            chckpt = ckpoint_model
-        if not type(chckpt) == str:
-            chckpt = repr(chckpt)
-        
-        R.table(colonnes=False,
-                classe_modele=repr(modele.__class__),
-                chkpt_model = chckpt)
-        R.titre("paramètres d’instanciation", 3)
-        hparams = {k: str(v) for k, v in modele.hparams.items()}
-        R.table(**hparams, colonnes=False)
-        
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre2.noms_classes]
-        R.table(relations=filtre2.alias, groupes=groupes, effectifs=filtre2.effectifs)
-        dld = utils.data.DataLoader(DARts, batch_size=32)
-        roles_pred = trainer.predict(
-            modele,
-            dataloaders=dld,
-            return_predictions=True
-        )
-        roles_pred = torch.concatenate(roles_pred, axis=0) #On a obtenu une liste de tenseurs (un par batch)
-        truth = torch.concatenate([batch[cible] for batch in dld], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
-        R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
-        R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
-        with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, DARts.liste_roles)
-            fig.savefig(IMG.fullname)
-        matrix = repr(matrix.tolist())
-        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
-        R.ligne()
 
 @autoinspect
 def batch_LM_VerbAtlas_ARGn(nom_rapport = "Rapport_Logistique.html", **kwargs):
@@ -893,7 +568,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **
     cible = "ARGn"
     lr = 1.e-5
 
-    modele = Classif_Logist(dimension, nb_classes, cible=cible, lr=lr, freqs=freqs)
+    
     if ckpoint_model:
         modele = Classif_Logist.load_from_checkpoint(ckpoint_model)
     else:
@@ -985,7 +660,7 @@ def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=
         else:
             lr = 1.e-4
         infer = INFERENCE(modele, f_features="lambda b: b['X']",
-                          f_target="lambda b: b['roles']", lr=lr, perte="BCEWithLogitsLoss", no_bal_acc=True)
+                          f_target="lambda b: b['sens']", lr=lr, perte="BCEWithLogitsLoss", no_bal_acc=True)
     if "accelerator" in kwargs:
         accelerator = kwargs["accelerator"]
     else:
@@ -1018,7 +693,10 @@ def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=
         #trainer = LTN.Trainer(devices=1, accelerator=accelerator)
 
     dld = utils.data.DataLoader(DARts, batch_size=32)
-    write_report(nom_rapport, infer, filtre, dld, ckpoint_model, svg_meilleur, svg_dernier)
+    write_report(nom_rapport, infer=infer, filtre=None, test_dataloader=dld,
+                 ckpoint_model = ckpoint_model,
+                 svg_meilleur = svg_meilleur,
+                 svg_dernier = svg_dernier)
 
 
     if ckpoint_model:

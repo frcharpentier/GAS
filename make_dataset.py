@@ -818,7 +818,12 @@ class AligDataset(geoDataset):
                     ligne = ligne.strip()
                     if depart and ligne.startswith(lbl_modname):
                         model_name = ligne[len(lbl_modname):]
-                        if model_name.startswith("bert") or model_name.startswith("roberta"):
+                        if "://" in model_name:
+                            assert (model_name.startswith("minbert://")
+                                    or model_name.startswith("mingpt://")
+                                    or model_name.startswith("huggingface://")
+                                    or model_name.startswith("hf://"))
+                        elif model_name.startswith("bert") or model_name.startswith("roberta"):
                             model_name = "minbert://"+ model_name
                         elif model_name.startswith("gpt"):
                             model_name = "mingpt://" + model_name
