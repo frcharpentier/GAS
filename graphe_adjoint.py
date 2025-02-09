@@ -9,7 +9,13 @@ from outils_alignement import ALIGNEUR
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 from transformers import utils as transfo_utils
-from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
+from transformers import __version__ as transformers_version
+if transformers_version == "4.47.1":
+    from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
+    from mod_huggingface import LlamaUnmaskedAttention
+elif transformers_version == "4.48.2":
+    from mod_huggingface import llama_custom_attn_function, modernBert_custom_attn
+    from transformers.models.modernbert.modeling_modernbert import MODERNBERT_ATTENTION_FUNCTION
 from transformers.cache_utils import Cache
 
 
@@ -17,7 +23,7 @@ from minbert.model import BERT, param_translation
 from mingpt.model import GPT
 
 
-from mod_huggingface import LlamaUnmaskedAttention
+
 
 def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, outputARGn=False):
     Nadj = ntokens*(ntokens-1)//2
@@ -276,14 +282,24 @@ class TRANSFORMER_ATTENTION:
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
             elif self.model_type == "llama":
-                KLASS = LLAMA_ATTENTION_CLASSES["eager"]
-                LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
-                try:
-                    self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
-                except OSError as E:
-                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
-                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
-                LLAMA_ATTENTION_CLASSES["eager"] = KLASS
+                if transformers_version == "4.47.1":
+                    KLASS = LLAMA_ATTENTION_CLASSES["eager"]
+                    LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
+                    try:
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                    except OSError as E:
+                        tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
+                    LLAMA_ATTENTION_CLASSES["eager"] = KLASS
+                else:
+                    import transformers.models.llama.modeling_llama
+                    # Monkeypatching !!
+                    transformers.models.llama.modeling_llama.eager_attention_forward = llama_custom_attn_function
+                    try:
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                    except OSError as E:
+                        tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
                 config = self.modele.config
@@ -302,6 +318,7 @@ class TRANSFORMER_ATTENTION:
                 self.num_layers = config.num_hidden_layers
                 self.num_heads = config.num_attention_heads
             elif self.model_type == "modernBert":
+                MODERNBERT_ATTENTION_FUNCTION["eager"] = modernBert_custom_attn
                 self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
@@ -387,6 +404,12 @@ class TRANSFORMER_ATTENTION:
                     #Recalculer le softmax à partir des produits scalaires
                     #non masqués
                     #C’est-à-dire : calculer l’attention non masquée, softmaxée.
+
+            elif self.model_type == "modernBert":
+                result = self.modele(input_ids)
+                tempo = result.attentions
+                attention = tuple(X[0] for X in tempo)
+                QscalK    = tuple(X[1] for X in tempo)
 
             elif self.model_type == "deberta":
                 result = self.modele(input_ids)

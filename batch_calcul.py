@@ -280,7 +280,7 @@ def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True,
 
 def make_alig_file(transfo):
     alig_file, _, _, model_id = transfo_to_filenames(transfo, True)
-    make_aligs(fichier_out="a_tej.txt", split=True, court=False, nom_modele=model_id)
+    make_aligs(fichier_out=alig_file, split=True, court=False, nom_modele=model_id)
 
 
 

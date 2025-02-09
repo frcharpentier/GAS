@@ -683,7 +683,7 @@ class EdgeDatasetRdmDir(EdgeDataset):
 
 
 class AligDataset(geoDataset):
-    def __init__(self, root, alignment_file, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cpu"):
+    def __init__(self, root, alignment_file, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cuda"):
         if not split:
             self.split = False
         else:

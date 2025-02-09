@@ -1,3 +1,6 @@
+from transformers import __version__ as transformers_version
+assert transformers_version in ["4.47.1", "4.48.2"]
+
 #AMR_REP_TRAINING = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
 AMR_REP_TRAINING  = "./LDC_2020_T02_data/alignments/split/training"
 #AMR_REP_DEV      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/dev"
