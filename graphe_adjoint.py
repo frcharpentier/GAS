@@ -9,7 +9,13 @@ from outils_alignement import ALIGNEUR
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 from transformers import utils as transfo_utils
-from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
+from transformers import __version__ as transformers_version
+if transformers_version == "4.47.1":
+    from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
+    from mod_huggingface import LlamaUnmaskedAttention
+elif transformers_version == "4.48.2":
+    from mod_huggingface import llama_custom_attn_function, modernBert_custom_attn
+    from transformers.models.modernbert.modeling_modernbert import MODERNBERT_ATTENTION_FUNCTION
 from transformers.cache_utils import Cache
 
 
@@ -17,7 +23,7 @@ from minbert.model import BERT, param_translation
 from mingpt.model import GPT
 
 
-from mod_huggingface import LlamaUnmaskedAttention
+
 
 def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True, outputARGn=False):
     Nadj = ntokens*(ntokens-1)//2
@@ -220,17 +226,23 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
 
 class TRANSFORMER_ATTENTION:
+    implemented = ["minbert://roberta-base",
+                   "mingpt://gpt2",
+                   "huggingface://microsoft/deberta-v2-xxlarge",
+                   "huggingface://meta-llama/Llama-3.2-3B",
+                   "huggingface://answerdotai/ModernBERT-base",
+                   "huggingface://answerdotai/ModernBERT-large",]
+    
+    
     def __init__(self, QscalK = False, dtype=np.float32, device="cpu"):
         self.dtype = dtype
         self.modele = None
         self.tokenizer = None
-        #self.colonnes = ["source_transfo", "source_AMR", "target_transfo", "target_AMR", "relation"]
         self.num_layers = 1
         self.num_heads = 1
         self.data_att = None #[]
         self.QK = QscalK
         self.device=device
-        #self.suffixes = ["SC", "CS", "Ssep", "Csep"]
         if self.QK:
             self.data_QK = None #[]
         self.type_transformer = "ENC"
@@ -238,28 +250,25 @@ class TRANSFORMER_ATTENTION:
         
     def select_modele(self, model_name, decoder_mask = True):
         try:
+            assert model_name in self.implemented
             self.model_type = "hf"
-            if model_name.startswith("minBERT://") or model_name.startswith("minbert://"):
+            assert "://" in model_name
+            model_type, model_name = model_name.split("://", maxsplit=1)
+            model_type = model_type.lower()
+            self.type_transformer == "ENC"
+            if model_type == "minbert":
                 self.model_type = "minBERT"
-                model_name = model_name[10:]
-            elif model_name.startswith("minGPT://") or model_name.startswith("mingpt://"):
+            elif model_type == "mingpt":
                 self.model_type = "minGPT"
-                model_name = model_name[9:]
                 self.type_transformer = "DEC"
-            elif model_name.startswith("hf://") or model_name.startswith("HF://"):
-                self.model_type = "hf"
-                model_name = model_name[5:]
-                if model_name.startswith("gpt") or "llama" in model_name.lower():
+            elif model_type in ["hf", "huggingface"]:
+                if model_name.startswith("meta-llama"):
                     self.type_transformer = "DEC"
-                if "llama" in model_name.lower():
-                    self.model_type = "hf_llama"
-            elif model_name.startswith("huggingface://"):
-                self.model_type = "hf"
-                model_name = model_name[14:]
-                if model_name.startswith("gpt") or "llama" in model_name.lower():
-                    self.type_transformer = "DEC"
-                if "llama" in model_name.lower():
-                    self.model_type = "hf_llama"
+                    self.model_type = "llama"
+                elif model_name.startswith("microsoft/deberta"):
+                    self.model_type = "deberta"
+                elif model_name.startswith("answerdotai/ModernBERT"):
+                    self.model_type = "modernBert"
 
             if self.type_transformer == "DEC":
                 self.decoder_mask = decoder_mask
@@ -272,21 +281,31 @@ class TRANSFORMER_ATTENTION:
                 self.modele = GPT.from_pretrained(model_name)
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
-            elif self.model_type == "hf_llama":
-                KLASS = LLAMA_ATTENTION_CLASSES["eager"]
-                LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
-                try:
-                    self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
-                except OSError as E:
-                    tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
-                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
-                LLAMA_ATTENTION_CLASSES["eager"] = KLASS
+            elif self.model_type == "llama":
+                if transformers_version == "4.47.1":
+                    KLASS = LLAMA_ATTENTION_CLASSES["eager"]
+                    LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
+                    try:
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                    except OSError as E:
+                        tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
+                    LLAMA_ATTENTION_CLASSES["eager"] = KLASS
+                else:
+                    import transformers.models.llama.modeling_llama
+                    # Monkeypatching !!
+                    transformers.models.llama.modeling_llama.eager_attention_forward = llama_custom_attn_function
+                    try:
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                    except OSError as E:
+                        tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
                 config = self.modele.config
                 self.num_layers = config.num_hidden_layers
                 self.num_heads = config.num_attention_heads
-            else: # self.model_type == "hf"
+            elif self.model_type == "deberta":
                 try:
                     self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
                 except OSError as E:
@@ -298,6 +317,16 @@ class TRANSFORMER_ATTENTION:
                 #self.model_type = config._name_or_path
                 self.num_layers = config.num_hidden_layers
                 self.num_heads = config.num_attention_heads
+            elif self.model_type == "modernBert":
+                MODERNBERT_ATTENTION_FUNCTION["eager"] = modernBert_custom_attn
+                self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                if not self.device == "cpu":
+                    self.modele.to(self.device)
+                config = self.modele.config
+                #self.model_type = config._name_or_path
+                self.num_layers = config.num_hidden_layers
+                self.num_heads = config.num_attention_heads
+
 
             try:
                 self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -365,7 +394,7 @@ class TRANSFORMER_ATTENTION:
                         #C’est-à-dire : calculer l’attention non masquée, softmaxée.
                 else:
                     _, _, attention = self.modele(input_ids, att_mask, output_att = True)
-            elif self.model_type == "hf_llama":
+            elif self.model_type == "llama":
                 result = self.modele(input_ids)
                 tempo = result.attentions
                 attention = tuple(X[0] for X in tempo)
@@ -376,7 +405,13 @@ class TRANSFORMER_ATTENTION:
                     #non masqués
                     #C’est-à-dire : calculer l’attention non masquée, softmaxée.
 
-            else: #if self.model_type == "hf":
+            elif self.model_type == "modernBert":
+                result = self.modele(input_ids)
+                tempo = result.attentions
+                attention = tuple(X[0] for X in tempo)
+                QscalK    = tuple(X[1] for X in tempo)
+
+            elif self.model_type == "deberta":
                 result = self.modele(input_ids)
                 attention = result.attentions
 

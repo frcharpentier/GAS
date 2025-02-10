@@ -10,6 +10,20 @@ from torch_geometric.nn import GATv2Conv
 
 from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
+class torchmodule_Classif_Lin(torch.nn.Module):
+    def __init__(self, dim, nb_classes):
+        super(torchmodule_Classif_Lin, self).__init__()
+        self.dim = dim
+        self.nb_classes = nb_classes
+        self.hparams = {"dim": dim, "nb_classes": nb_classes}
+        self.lin = nn.Linear(dim, nb_classes, bias=True)
+
+    def forward(self, X):
+        # Ni softmax ni log softmax.
+        # utiliser la perte "Cross entropy à partir des logits"
+        # (nn.CrossEntropyLoss ou NNF.cross_entropy)
+        return self.lin(X)
+
 class torchmodule_Classif_Bil_Sym(torch.nn.Module):
     def __init__(self, dim, nb_classes, rang=2):
         super(torchmodule_Classif_Bil_Sym, self).__init__()
@@ -61,7 +75,6 @@ class torchmodule_Classif_Bil_Sym(torch.nn.Module):
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         return Y
     
-
 class torchmodule_Classif_Bil_Sym_2(torch.nn.Module):
     def __init__(self, dim, nb_classes, rang=2):
         super(torchmodule_Classif_Bil_Sym_2, self).__init__()
@@ -120,6 +133,47 @@ class torchmodule_Classif_Bil_Sym_2(torch.nn.Module):
         # Ni softmax ni log softmax.
         # Utiliser la perte "Entropie croisée à partir des logits"
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
+        return Y
+
+class torchmodule_Classif_Bil_Antisym(torch.nn.Module):
+    def __init__(self, dim, rang=2):
+        # On n’a que deux classes, a priori.
+        super(torchmodule_Classif_Bil_Antisym, self).__init__()
+        self.dim = dim
+        self.rang = rang
+        self.hparams = {"dim": dim, "rang": rang}
+        self.nb_classes = "binary"
+        self.weight = nn.Parameter(torch.empty(rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.antisym = nn.Parameter(torch.empty(rang,rang))
+        nn.init.xavier_normal_(self.antisym)
+        self.bias_vecto = nn.Parameter(torch.empty(dim,))
+        nn.init.normal_(self.bias_vecto)
+        
+        #self.save_hyperparameters()
+        
+
+    def forward(self, X):
+        # X : (b, dim, 2)
+        W = self.weight.unsqueeze(0)
+        # w : (1, r, dim)
+        B = self.bias_vecto.unsqueeze(0).unsqueeze(-1)
+        # B : (1, dim, 1) et X-B : (b, dim, 2)
+        Y = torch.matmul(W, (X-B))
+        # Y : (b, r, 2)
+        B1 = torch.matmul(W, B) # shape: (1, r, 1)
+        A = self.antisym.triu(1)
+        A = A - (A.T)
+        A = A.unsqueeze(0) # shape: (1, r, r)
+        Y1 = Y[...,1].unsqueeze(-1) # shape: (b, r, 1)
+        Y1 = torch.matmul(A, Y1)    # shape: (b, r, 1)
+        B2 = torch.matmul(A, B1) # shape: (1, r, 1)
+        tBMB = (B1.squeeze() * B2.squeeze()).sum() # shape: ()
+
+        Y0 = Y[...,0].unsqueeze(-2)  # shape: (b, 1, r)
+        Y = torch.matmul(Y0, Y1)     # shape: (b, 1, 1)
+        Y = Y.reshape(-1)            # shape: (b,)
+        Y = Y + tBMB.unsqueeze(0)    # shape: (b,)
         return Y
 
 class torchmodule_GAT_role_classif(torch.nn.Module):
@@ -275,7 +329,36 @@ class torchmodule_GAT_sans_GAT(torchmodule_GAT_role_classif):
                 nb_classes = nb_classes,
         )
     
-    
+def make_GAT_model(nom_modele, **kwargs):
+    assert nom_modele in ["tm_GAT", "tm_GAT_sans_GAT",
+                          "torchmodule_Classif_Bil_Antisym",
+                          "torchmodule_GAT_sans_GAT"]
+    if nom_modele in ["tm_GAT", "torchmodule_Classif_Bil_Antisym"]:
+        dim_in = kwargs["dim_in"]
+        dim_h1 = kwargs["dim_h1"]
+        dim_h2 = kwargs["dim_h2"]
+        heads = kwargs["heads"]
+        nb_couches = kwargs["nb_couches"]
+        rang_sim   = kwargs["rang_sim"]
+        dropout_p = kwargs["dropout_p"]
+        nb_classes = kwargs["nb_classes"]
+        return torchmodule_Classif_Bil_Antisym(dim_in=dim_in,
+            dim_h1 = dim_h1,
+            dim_h2 = dim_h2,
+            heads = heads,
+            nb_couches = nb_couches,
+            rang_sim = rang_sim,
+            dropout_p = dropout_p,
+            nb_classes = nb_classes)
+    else:
+        dim_in = kwargs["dim_in"]
+        dim_h1 = kwargs["dim_h1"]
+        rang_sim   = kwargs["rang_sim"]
+        nb_classes = kwargs["nb_classes"]
+        return torchmodule_GAT_sans_GAT(dim_in = dim_in,
+            dim_h1 = dim_h1,
+            rang_sim = rang_sim,
+            nb_classes = nb_classes)
 
 class INFERENCE(LTN.LightningModule):
     def __init__(self, modele,
@@ -284,7 +367,8 @@ class INFERENCE(LTN.LightningModule):
                  f_msk = "",
                  lr=1.e-5,
                  perte = "CrossEntropyLoss",
-                 freqs=None):
+                 freqs=None,
+                 no_bal_acc=False):
         super(INFERENCE, self).__init__()
         nb_classes = modele.nb_classes
         if nb_classes in (None, "binaire", "binary"):
@@ -320,7 +404,10 @@ class INFERENCE(LTN.LightningModule):
             self.pondus = freqs.max() / freqs
             self.loss = (nn.__dict__[perte])(weight = self.pondus, reduction="mean")
         self.acc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes)
-        self.balacc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes, average="macro")
+        if no_bal_acc:
+            self.balacc_metric = False
+        else:
+            self.balacc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes, average="macro")
 
     def forward(self, *args, **kwargs):
         return self.modele.forward(*args, **kwargs)
@@ -369,8 +456,9 @@ class INFERENCE(LTN.LightningModule):
             preds = logits.argmax(axis=1)
         self.acc_metric(preds, truth)
         self.log("val_acc", self.acc_metric, on_step=False, on_epoch=True)
-        self.balacc_metric(preds, truth)
-        self.log("val_bal_acc", self.balacc_metric, on_step=False, on_epoch=True)
+        if not self.balacc_metric == False:
+            self.balacc_metric(preds, truth)
+            self.log("val_bal_acc", self.balacc_metric, on_step=False, on_epoch=True)
         
         
 
