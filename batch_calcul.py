@@ -907,9 +907,9 @@ DDD   EEEE  BBB    UUU    GGG
         #                    shuffle=True, transfo="deberta",
         #                    lr=3.e-4)
 
-        batch_GAT_sym(nom_rapport='./a_tej.html', h=64, nbheads=1, nbcouches=2,
-                      rang=16,  max_epochs=5, patience=5, lr=3.e-4,
-                      transfo="deberta", DEBUG=True)
+        #batch_GAT_sym(nom_rapport='./a_tej.html', h=64, nbheads=1, nbcouches=2,
+        #              rang=16,  max_epochs=5, patience=5, lr=3.e-4,
+        #              transfo="deberta", DEBUG=True)
 
         #batch_Antisym(nom_rapport = "Rejeu_Antisym.html", max_epochs=3, DEBUG=True)
         #batch_Bilin_tous_tokens(nom_rapport = "a_tej.html")
@@ -920,7 +920,7 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
-        #batch_LM_GPT(nom_rapport = "./Rapport_LM_GPT.html")
+        batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=5)
 
     else:
         fire.Fire()

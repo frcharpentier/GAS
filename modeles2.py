@@ -404,11 +404,10 @@ class INFERENCE(LTN.LightningModule):
             self.pondus = freqs.max() / freqs
             self.loss = (nn.__dict__[perte])(weight = self.pondus, reduction="mean")
         self.acc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes)
-        if no_bal_acc:
-            self.balacc_metric = False
-        else:
+        self.compute_bal_acc = not(no_bal_acc)
+        if self.compute_bal_acc:
             self.balacc_metric = TMAccuracy(task="multiclass", num_classes=nb_classes, average="macro")
-
+        
     def forward(self, *args, **kwargs):
         return self.modele.forward(*args, **kwargs)
     
@@ -456,9 +455,10 @@ class INFERENCE(LTN.LightningModule):
             preds = logits.argmax(axis=1)
         self.acc_metric(preds, truth)
         self.log("val_acc", self.acc_metric, on_step=False, on_epoch=True)
-        if not self.balacc_metric == False:
+        if self.compute_bal_acc:
             self.balacc_metric(preds, truth)
             self.log("val_bal_acc", self.balacc_metric, on_step=False, on_epoch=True)
+        
         
         
 
