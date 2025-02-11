@@ -12,8 +12,8 @@ def detruire_fichier(P):
         print("destruction du fichier %s"%str(P.absolute()))
         P.unlink()
 
-def nettoyer_logs_lightning():
-    P = Path("./lightning_logs")
+def nettoyer_logs_lightning(rep="./lightning_logs"):
+    P = Path(rep)
     if P.exists() and P.is_dir():
         liste = [p for p in P.iterdir() if p.name.startswith("version_")]
         for li in liste:
