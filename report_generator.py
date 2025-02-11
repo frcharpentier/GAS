@@ -45,7 +45,7 @@ let COPIER = function(event){
    </script>
 </head>
   <body>
-  <h1>REPORT</h1>
+  <h1>%s</h1>
   </body>
 </html>
 """
@@ -277,6 +277,8 @@ class HTML_REPORT:
         self.dirname = os.path.dirname(fichier)
         basename = os.path.basename(fichier)
         gauche, _ = os.path.splitext(basename)
+        self.XP = gauche
+        self.fichier_vide = fichier_vide%(self.XP)
         self.basename = gauche + ".html"
         self.fullname = os.path.join(self.dirname, self.basename)
         self.figdirname = gauche + "_PJ"
@@ -287,7 +289,7 @@ class HTML_REPORT:
             os.makedirs(self.fullfigdirname)
         if not os.path.isfile(self.fullname):
             with open(self.fullname, "w", encoding="utf-8") as F:
-                F.write(fichier_vide)
+                F.write(self.fichier_vide)
         self.S = None
           
     def open(self):
@@ -297,7 +299,7 @@ class HTML_REPORT:
         self.S = BeautifulSoup(html_code, "html.parser")
         # Mise à jour de l’en-tête avec l’en-tête de "fichier_vide", au cas
         # où il y aurait des évolutions.
-        S0 = BeautifulSoup(fichier_vide, "html.parser")
+        S0 = BeautifulSoup(self.fichier_vide, "html.parser")
         H0 = S0.head.extract()
         self.S.head.extract()
         self.S.insert(0, H0)

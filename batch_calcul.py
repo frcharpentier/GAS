@@ -49,6 +49,7 @@ from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoa
 
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
 
 
 #On stocke dans une variable globale, au tout début du programme.
@@ -121,29 +122,36 @@ def plot_confusion_matrix(y_true, y_pred, noms_classes=None):
     return disp.figure_, matrix
 
 def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg_meilleur, svg_dernier):
+    
+    modele = infer.modele
+
+    ckpt_best = svg_meilleur.best_model_path if svg_meilleur else False
+    ckpt_best = ckpt_best if (type(ckpt_best) == str and len(ckpt_best) > 0) else False
+    
+    ckpt_last = svg_dernier.best_model_path if svg_dernier else False
+    ckpt_last = ckpt_last if (type(ckpt_last) == str and len(ckpt_last) > 0) else False
+
+    assert ckpoint_model or ckpt_best or ckpt_last
+    if ckpoint_model:
+        checkpoints = {"ckpoint_model": ckpoint_model}
+    else:
+        checkpoints = {}
+        if ckpt_last:
+            checkpoints["ckpoint_last"] = ckpt_last
+            ckpoint_model = ckpt_last
+        if ckpt_best:
+            checkpoints["ckpoint_best"] = ckpt_best
+            ckpoint_model = ckpt_best
+    chemin, _ = os.path.split(ckpoint_model)
+    assert chemin.endswith("checkpoints")
+    chemin, _ = os.path.split(chemin)
+    _, version = os.path.split(chemin)
+    assert version.startswith("version")
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
+        R.titre(version, 2)
         R.reexecution()
         R.titre("Informations de reproductibilité", 2)
-        modele = infer.modele
-
-        ckpt_best = svg_meilleur.best_model_path if svg_meilleur else False
-        ckpt_best = ckpt_best if (type(ckpt_best) == str and len(ckpt_best) > 0) else False
-        
-        ckpt_last = svg_dernier.best_model_path if svg_dernier else False
-        ckpt_last = ckpt_last if (type(ckpt_last) == str and len(ckpt_last) > 0) else False
-
-        assert ckpoint_model or ckpt_best or ckpt_last
-        if ckpoint_model:
-            checkpoints = {"ckpoint_model": ckpoint_model}
-        else:
-            checkpoints = {}
-            if ckpt_last:
-                checkpoints["ckpoint_last"] = ckpt_last
-                ckpoint_model = ckpt_last
-            if ckpt_best:
-                checkpoints["ckpoint_best"] = ckpt_best
-                ckpoint_model = ckpt_best
 
         R.table(colonnes=False,
                 classe_modele=repr(modele.__class__),
@@ -161,7 +169,7 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
 
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+        trainer = LTN.Trainer(devices=1, accelerator="gpu", logger=make_TBlogger(nom_rapport))
         roles_pred = trainer.predict(
             infer,
             dataloaders=test_dataloader,
@@ -323,7 +331,14 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
     return datasets
 
 
-
+def make_TBlogger(nom_rapport):
+    name = os.path.basename(nom_rapport)
+    name, _ = os.path.splitext(name)
+    name = name + "_LOGS"
+    save_dir = os.path.join(os.getcwd(), "logs_training")
+    nettoyer_logs_lightning(save_dir)
+    lgr = TensorBoardLogger(save_dir, name=name)
+    return lgr
 
 
 #def get_appel_fonction():
@@ -390,10 +405,12 @@ def batch_LM(nom_rapport, ckpoint_model=None, train=True, shuffle=False, transfo
             max_epochs = kwargs["max_epochs"]
         else:
             max_epochs = 100
+
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1,
                               accelerator=accelerator,
-                              callbacks=callbacks)
+                              callbacks=callbacks,
+                              logger=make_TBlogger(nom_rapport))
             
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
@@ -570,7 +587,12 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **
 
     if train:
         arret_premat = EarlyStopping(monitor="val_loss", mode="min", patience=5)
-        trainer = LTN.Trainer(max_epochs=100, devices=1, accelerator="gpu", callbacks=[arret_premat])
+        trainer = LTN.Trainer(
+            max_epochs=100,
+            devices=1,
+            accelerator="gpu",
+            callbacks=[arret_premat],
+            logger=make_TBlogger(nom_rapport))
     
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
@@ -578,7 +600,7 @@ def batch_LM_ARGn(nom_rapport, ckpoint_model=None, train=True, shuffle=False, **
         trainer.fit(model=modele, train_dataloaders=train_loader, val_dataloaders=valid_loader)
         print("TERMINÉ.")
     else:
-        trainer = LTN.Trainer(devices=1, accelerator="gpu")
+        trainer = LTN.Trainer(devices=1, accelerator="gpu", logger=make_TBlogger(nom_rapport))
 
     with HTML_REPORT(nom_rapport) as R:
         R.ligne()
@@ -674,7 +696,8 @@ def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1,
                               accelerator=accelerator,
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier],
+                              logger=make_TBlogger(nom_rapport))
             
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
@@ -753,7 +776,8 @@ def batch_Bilin_sym(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1,
                               accelerator=accelerator,
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier],
+                              logger=make_TBlogger(nom_rapport))
             
         print("Début de l’entrainement")
         train_loader = utils.data.DataLoader(DARtr, batch_size=64, num_workers=8, shuffle=shuffle)
@@ -847,7 +871,8 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
             max_epochs = 150
         trainer = LTN.Trainer(max_epochs=max_epochs,
                               devices=1, accelerator=accelerator,
-                              callbacks=[arret_premat, svg_meilleur, svg_dernier])
+                              callbacks=[arret_premat, svg_meilleur, svg_dernier],
+                              logger=make_TBlogger(nom_rapport))
             
         print("Début de l’entrainement")
         if "vertices_per_batch" in kwargs:
@@ -920,7 +945,7 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
-        batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=5)
+        batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=50, DEBUG=True)
 
     else:
         fire.Fire()
