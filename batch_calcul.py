@@ -336,7 +336,7 @@ def make_TBlogger(nom_rapport):
     name, _ = os.path.splitext(name)
     name = name + "_LOGS"
     save_dir = os.path.join(os.getcwd(), "logs_training")
-    nettoyer_logs_lightning(save_dir)
+    nettoyer_logs_lightning(os.path.join(save_dir, name))
     lgr = TensorBoardLogger(save_dir, name=name)
     return lgr
 
