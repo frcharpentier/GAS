@@ -331,9 +331,9 @@ class torchmodule_GAT_sans_GAT(torchmodule_GAT_role_classif):
     
 def make_GAT_model(nom_modele, **kwargs):
     assert nom_modele in ["tm_GAT", "tm_GAT_sans_GAT",
-                          "torchmodule_Classif_Bil_Antisym",
+                          "torchmodule_GAT_role_classif",
                           "torchmodule_GAT_sans_GAT"]
-    if nom_modele in ["tm_GAT", "torchmodule_Classif_Bil_Antisym"]:
+    if nom_modele in ["tm_GAT", "torchmodule_GAT_role_classif"]:
         dim_in = kwargs["dim_in"]
         dim_h1 = kwargs["dim_h1"]
         dim_h2 = kwargs["dim_h2"]
@@ -342,7 +342,7 @@ def make_GAT_model(nom_modele, **kwargs):
         rang_sim   = kwargs["rang_sim"]
         dropout_p = kwargs["dropout_p"]
         nb_classes = kwargs["nb_classes"]
-        return torchmodule_Classif_Bil_Antisym(dim_in=dim_in,
+        return torchmodule_GAT_role_classif(dim_in=dim_in,
             dim_h1 = dim_h1,
             dim_h2 = dim_h2,
             heads = heads,
