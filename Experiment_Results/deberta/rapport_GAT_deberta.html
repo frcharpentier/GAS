@@ -1,0 +1,98 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">ea1494a23dcefe77dec37b6f1e3e99320e582f81<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_GAT_sym(nom_rapport='./rapport_GAT_deberta.html', h=64, nbheads=1, nbcouches=2, rang=16, max_epochs=140, patience=15, transfo='deberta')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_GAT_sym --nom_rapport ./rapport_GAT_deberta.html --h 64 --nbheads 1 --nbcouches 2 --rang 16 --max_epochs 140 --patience 15 --transfo deberta<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_GAT_role_classif'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_dernier</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_48/checkpoints/last_epoch=69_step=646940.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chckpt_meilleur</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_48/checkpoints/best_epoch=54_step=508310.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim_in</th><td>1152</td></tr>
+<tr><th>dim_h1</th><td>64</td></tr>
+<tr><th>dim_h2</th><td>64</td></tr>
+<tr><th>heads</th><td>1</td></tr>
+<tr><th>nb_couches</th><td>2</td></tr>
+<tr><th>rang_sim</th><td>16</td></tr>
+<tr><th>dropout_p</th><td>0.3</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>1738</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>116691</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>903614</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>38412</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>1025</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>9440</td></tr>
+</table>
+<h2>Exactitude : 0.664142, exactitude équilibrée : 0.703889</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.689084</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.647349</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.479479</h2>
+<img src="rapport_GAT_deberta_PJ/PJ_647120.svg"/>
+(Image stockée dans rapport_GAT_deberta_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[2311, 64, 51, 16, 4, 662, 76, 38, 95, 61, 98, 86, 98, 59, 46, 2, 27, 3, 26, 0, 2], [8, 195, 2, 0, 0, 21, 18, 2, 11, 20, 22, 23, 17, 2, 15, 0, 11, 1, 5, 0, 0], [5, 0, 7, 0, 0, 3, 0, 0, 1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0], [1, 1, 2, 64, 2, 2, 0, 2, 0, 0, 0, 0, 4, 3, 0, 0, 0, 0, 0, 0, 2], [0, 0, 0, 2, 96, 1, 5, 1, 9, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0], [14, 2, 0, 1, 1, 319, 8, 6, 2, 12, 4, 2, 5, 1, 6, 0, 2, 0, 3, 0, 0], [36, 20, 2, 1, 3, 19, 1027, 13, 33, 14, 29, 11, 14, 20, 5, 0, 34, 24, 6, 2, 1], [0, 2, 0, 3, 12, 8, 12, 114, 7, 1, 1, 4, 3, 11, 3, 0, 10, 2, 2, 8, 1], [27, 34, 5, 6, 109, 66, 186, 126, 1608, 40, 219, 90, 56, 127, 50, 4, 54, 40, 17, 2, 7], [45, 47, 5, 1, 7, 71, 27, 14, 29, 485, 7, 20, 60, 11, 18, 0, 7, 2, 1, 0, 1], [9, 4, 1, 0, 2, 19, 25, 0, 12, 3, 403, 1, 3, 2, 2, 0, 4, 2, 1, 1, 1], [5, 2, 0, 2, 0, 2, 2, 7, 9, 1, 1, 151, 3, 10, 4, 0, 6, 0, 1, 0, 0], [352, 202, 30, 43, 94, 315, 167, 119, 338, 399, 105, 133, 1251, 134, 353, 2, 30, 15, 36, 0, 19], [12, 0, 1, 7, 1, 3, 17, 10, 8, 0, 0, 11, 3, 1164, 3, 0, 4, 0, 0, 2, 0], [22, 7, 10, 2, 2, 15, 11, 16, 30, 10, 8, 33, 30, 8, 427, 2, 5, 2, 1, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0], [17, 9, 3, 19, 0, 33, 67, 15, 21, 7, 29, 33, 17, 66, 8, 2, 1660, 10, 10, 29, 20], [4, 50, 7, 2, 26, 16, 218, 17, 419, 12, 157, 21, 20, 400, 44, 5, 59, 6456, 3, 94, 9], [12, 1, 0, 2, 0, 8, 2, 0, 4, 0, 21, 0, 0, 7, 3, 0, 1, 0, 484, 0, 0], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 16, 1], [0, 0, 0, 0, 0, 1, 3, 0, 0, 3, 0, 0, 0, 1, 0, 1, 20, 0, 2, 15, 79]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+
+</body>
+</html>
