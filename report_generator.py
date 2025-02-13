@@ -283,10 +283,11 @@ class HTML_REPORT:
         self.fullname = os.path.join(self.dirname, self.basename)
         self.figdirname = gauche + "_PJ"
         self.fullfigdirname = os.path.join(self.dirname, self.figdirname)
-        if os.path.exists(self.dirname):
-            assert os.path.isdir(self.dirname)
-        else:
-            os.makedirs(self.dirname, exist_ok=True)
+        if len(self.dirname > 0):
+            if os.path.exists(self.dirname):
+                assert os.path.isdir(self.dirname)
+            else:
+                os.makedirs(self.dirname, exist_ok=True)
         if os.path.exists(self.fullfigdirname):
             assert os.path.isdir(self.fullfigdirname)
         else:
