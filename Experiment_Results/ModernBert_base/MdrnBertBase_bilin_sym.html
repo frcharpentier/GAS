@@ -35,7 +35,6 @@ let COPIER = function(event){
 </head><!DOCTYPE html>
 
 <html>
-
 <body>
 <h1>MdrnBertBase_bilin_sym</h1>
 <hr/>
@@ -93,6 +92,174 @@ let COPIER = function(event){
 <img src="MdrnBertBase_bilin_sym_PJ/PJ_647120.svg"/>
 (Image stockée dans MdrnBertBase_bilin_sym_PJ/PJ_647120.svg)
 <p><span class="ttyp"><span hidden="True">[[1177, 50, 29, 6, 5, 70, 19, 29, 42, 37, 36, 66, 50, 12, 63], [11, 92, 0, 1, 0, 2, 4, 3, 7, 5, 1, 10, 6, 2, 7], [2, 0, 2, 0, 0, 1, 0, 0, 1, 0, 0, 3, 1, 0, 0], [2, 1, 1, 33, 0, 1, 0, 2, 0, 0, 0, 4, 4, 2, 2], [0, 1, 0, 0, 68, 0, 0, 4, 4, 0, 0, 0, 2, 1, 2], [31, 3, 2, 0, 1, 164, 6, 0, 3, 7, 7, 3, 5, 0, 6], [14, 16, 1, 0, 0, 1, 192, 10, 21, 7, 18, 9, 12, 8, 12], [1, 2, 2, 1, 5, 1, 1, 61, 2, 0, 0, 12, 1, 4, 5], [15, 47, 6, 3, 51, 12, 47, 122, 970, 11, 83, 43, 76, 36, 76], [31, 43, 5, 0, 4, 12, 11, 9, 11, 215, 6, 11, 46, 1, 17], [4, 7, 0, 0, 1, 2, 2, 0, 4, 0, 223, 2, 5, 1, 2], [0, 3, 0, 1, 0, 0, 0, 6, 8, 0, 0, 74, 3, 0, 3], [147, 155, 11, 16, 47, 37, 36, 114, 133, 117, 68, 64, 901, 36, 223], [3, 3, 1, 3, 0, 1, 5, 6, 8, 1, 2, 19, 5, 267, 6], [7, 9, 2, 5, 2, 5, 4, 9, 11, 2, 1, 22, 19, 3, 266]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_3</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">a1fd7a3c1b3e2dc4a898f7e46fc583ac4ff80224<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='MdrnBertBase_bilin_sym.html', rang=12, shuffle=True, transfo='mdrnBertBase', patience=20, lr=0.0002)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport MdrnBertBase_bilin_sym.html --rang 12 --shuffle True --transfo mdrnBertBase --patience 20 --lr 0.0002<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_3/checkpoints/last_epoch=37_step=130758.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_3/checkpoints/best_epoch=17_step=61938.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>264</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>12</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0002</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([132986.,  10040.,   1690.,   5388.,   5868.,  16368.,  29062.,   8834.,
+        100184.,  31435.,  17223.,   6187., 153294.,  32686.,  20511.])</span>tensor([132986.,  10040.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>132986</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>10040</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1690</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5388</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5868</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>16368</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>29062</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8834</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>100184</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>31435</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>17223</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>6187</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>153294</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>32686</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>20511</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.594550, exactitude équilibrée : 0.647745</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.622584</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.565589</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.511835</h2>
+<img src="MdrnBertBase_bilin_sym_PJ/PJ_894652.svg"/>
+(Image stockée dans MdrnBertBase_bilin_sym_PJ/PJ_894652.svg)
+<p><span class="ttyp"><span hidden="True">[[1132, 26, 38, 25, 6, 118, 39, 16, 41, 58, 31, 58, 47, 6, 50], [14, 85, 0, 2, 0, 2, 12, 1, 7, 8, 2, 10, 5, 0, 3], [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 1], [1, 2, 0, 36, 0, 0, 1, 2, 0, 2, 0, 4, 1, 1, 2], [0, 0, 0, 0, 65, 0, 0, 4, 9, 0, 0, 1, 3, 0, 0], [25, 2, 1, 0, 1, 184, 4, 2, 2, 6, 4, 2, 2, 0, 3], [8, 12, 2, 3, 1, 0, 221, 13, 15, 12, 8, 10, 3, 6, 7], [2, 0, 1, 2, 4, 1, 3, 56, 6, 2, 0, 11, 5, 2, 3], [12, 39, 6, 5, 40, 24, 79, 76, 953, 30, 54, 118, 62, 32, 68], [23, 27, 6, 2, 4, 21, 11, 7, 10, 260, 2, 10, 26, 1, 12], [6, 3, 2, 1, 2, 2, 4, 0, 9, 2, 219, 1, 2, 0, 0], [1, 0, 1, 2, 0, 0, 0, 1, 6, 1, 0, 82, 1, 0, 3], [113, 113, 18, 38, 44, 65, 63, 93, 152, 198, 55, 78, 848, 22, 205], [3, 3, 4, 17, 0, 3, 11, 10, 6, 2, 1, 13, 7, 245, 5], [4, 11, 6, 9, 1, 8, 6, 6, 12, 6, 0, 27, 10, 2, 259]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_4</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">a1fd7a3c1b3e2dc4a898f7e46fc583ac4ff80224<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='MdrnBertBase_bilin_sym.html', rang=16, shuffle=True, transfo='mdrnBertBase', patience=20, lr=0.0002)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport MdrnBertBase_bilin_sym.html --rang 16 --shuffle True --transfo mdrnBertBase --patience 20 --lr 0.0002<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_4/checkpoints/last_epoch=41_step=144522.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_4/checkpoints/best_epoch=21_step=75702.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>264</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0002</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([132986.,  10040.,   1690.,   5388.,   5868.,  16368.,  29062.,   8834.,
+        100184.,  31435.,  17223.,   6187., 153294.,  32686.,  20511.])</span>tensor([132986.,  10040.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>132986</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>10040</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1690</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5388</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5868</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>16368</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>29062</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8834</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>100184</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>31435</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>17223</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>6187</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>153294</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>32686</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>20511</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.614893, exactitude équilibrée : 0.647770</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.622611</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.587385</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.536328</h2>
+<img src="MdrnBertBase_bilin_sym_PJ/PJ_933378.svg"/>
+(Image stockée dans MdrnBertBase_bilin_sym_PJ/PJ_933378.svg)
+<p><span class="ttyp"><span hidden="True">[[1145, 19, 49, 13, 8, 44, 40, 22, 50, 56, 34, 61, 102, 12, 36], [8, 67, 1, 4, 0, 2, 10, 2, 8, 14, 4, 13, 13, 1, 4], [3, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 0, 0], [2, 1, 1, 37, 0, 0, 1, 0, 1, 1, 0, 1, 3, 2, 2], [0, 1, 0, 0, 73, 0, 0, 1, 4, 0, 0, 1, 1, 1, 0], [29, 2, 4, 0, 2, 167, 4, 1, 6, 7, 4, 3, 6, 1, 2], [9, 5, 2, 1, 3, 0, 224, 9, 16, 10, 14, 8, 8, 5, 7], [1, 0, 0, 3, 7, 0, 2, 61, 5, 3, 0, 5, 4, 5, 2], [20, 15, 9, 3, 80, 11, 50, 48, 988, 23, 82, 124, 84, 33, 28], [26, 11, 8, 1, 9, 11, 11, 2, 11, 258, 3, 13, 45, 2, 11], [5, 3, 3, 0, 3, 4, 4, 0, 7, 1, 216, 1, 6, 0, 0], [0, 3, 0, 1, 0, 0, 1, 1, 8, 3, 0, 76, 3, 1, 1], [103, 74, 31, 22, 75, 25, 59, 71, 139, 207, 53, 92, 992, 29, 133], [4, 1, 1, 11, 2, 1, 11, 13, 8, 2, 1, 8, 5, 260, 2], [5, 5, 6, 2, 2, 3, 8, 10, 18, 6, 2, 38, 20, 2, 240]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_5</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">a1fd7a3c1b3e2dc4a898f7e46fc583ac4ff80224<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='MdrnBertBase_bilin_sym.html', shuffle=True, transfo='mdrnBertBase', patience=20, lr=0.0002)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport MdrnBertBase_bilin_sym.html --shuffle True --transfo mdrnBertBase --patience 20 --lr 0.0002<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_5/checkpoints/last_epoch=49_step=172050.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/MdrnBertBase_bilin_sym_LOGS/version_5/checkpoints/best_epoch=29_step=103230.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>264</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0002</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([132986.,  10040.,   1690.,   5388.,   5868.,  16368.,  29062.,   8834.,
+        100184.,  31435.,  17223.,   6187., 153294.,  32686.,  20511.])</span>tensor([132986.,  10040.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>132986</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>10040</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1690</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5388</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5868</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>16368</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>29062</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8834</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>100184</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>31435</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>17223</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>6187</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>153294</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>32686</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>20511</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.587001, exactitude équilibrée : 0.661366</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.637178</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.557501</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.502746</h2>
+<img src="MdrnBertBase_bilin_sym_PJ/PJ_226549.svg"/>
+(Image stockée dans MdrnBertBase_bilin_sym_PJ/PJ_226549.svg)
+<p><span class="ttyp"><span hidden="True">[[1022, 36, 45, 35, 6, 118, 47, 27, 43, 67, 60, 47, 50, 16, 72], [7, 83, 2, 1, 0, 1, 11, 2, 5, 13, 5, 8, 3, 2, 8], [0, 0, 3, 0, 0, 0, 0, 0, 0, 2, 0, 4, 1, 0, 0], [1, 2, 0, 40, 0, 0, 1, 0, 0, 1, 0, 1, 3, 1, 2], [0, 1, 0, 0, 67, 0, 0, 4, 6, 0, 0, 1, 2, 0, 1], [12, 3, 2, 0, 2, 187, 4, 1, 3, 9, 5, 2, 4, 1, 3], [7, 7, 3, 3, 0, 1, 214, 9, 16, 5, 17, 10, 11, 6, 12], [2, 0, 2, 5, 5, 0, 1, 61, 4, 3, 0, 6, 0, 6, 3], [14, 15, 11, 4, 39, 13, 70, 102, 967, 29, 96, 88, 45, 26, 79], [12, 16, 6, 3, 3, 15, 8, 7, 7, 255, 9, 12, 47, 3, 19], [2, 1, 2, 1, 2, 2, 3, 0, 6, 1, 227, 1, 1, 0, 4], [0, 0, 1, 2, 0, 0, 0, 3, 7, 1, 1, 76, 2, 2, 3], [104, 83, 20, 38, 50, 44, 70, 78, 180, 179, 74, 64, 859, 28, 234], [1, 2, 3, 13, 0, 2, 6, 10, 17, 1, 2, 7, 4, 259, 3], [4, 4, 5, 6, 1, 4, 7, 8, 14, 2, 1, 22, 16, 5, 268]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
 <hr/>
 </body>
 </html>
