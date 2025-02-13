@@ -1,0 +1,67 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">35390c3356c62b915d687759054deabff66941ff<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Antisym_GPT(nom_rapport='Rapport_Antisym_GPT_r16.html', rang=16)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Antisym_GPT --nom_rapport Rapport_Antisym_GPT_r16.html --rang 16<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Antisym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_A…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_40/checkpoints/epoch=29-step=139230.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+<tr><th>lr</th><td>0.0001</td></tr>
+<tr><th>freqs</th><td>None</td></tr>
+</table>
+<h2>Exactitude : 0.877451, exactitude équilibrée : 0.877469</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.754937</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.754901</h2>
+<img src="Rapport_Antisym_GPT_r16_PJ/PJ_647120.svg"/>
+(Image stockée dans Rapport_Antisym_GPT_r16_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[4595, 650], [619, 4491]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

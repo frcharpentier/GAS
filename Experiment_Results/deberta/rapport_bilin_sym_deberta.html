@@ -1,0 +1,453 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+<body>
+<h1>REPORT</h1>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Infos indisponibles</p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_48/checkpoints/epoch=149-step=573750.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0001</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.531321, exactitude équilibrée : 0.565959</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.534956</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.497844</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.432918</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_647120.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[1063, 40, 6, 12, 3, 52, 29, 33, 62, 28, 332, 40, 61, 21, 154], [8, 79, 0, 0, 0, 3, 7, 2, 7, 8, 21, 10, 12, 0, 16], [1, 1, 1, 0, 0, 0, 0, 0, 2, 0, 3, 4, 0, 0, 1], [2, 2, 0, 22, 0, 0, 1, 0, 0, 0, 2, 3, 5, 8, 8], [0, 0, 0, 0, 68, 0, 0, 6, 11, 1, 0, 0, 1, 0, 0], [37, 13, 0, 0, 0, 102, 3, 4, 4, 12, 70, 1, 13, 1, 17], [10, 20, 0, 1, 0, 2, 235, 11, 22, 4, 39, 4, 17, 6, 18], [1, 2, 0, 0, 3, 1, 3, 80, 5, 1, 2, 6, 1, 4, 13], [25, 21, 3, 0, 49, 5, 40, 96, 1122, 29, 173, 30, 69, 35, 92], [21, 49, 0, 0, 2, 12, 11, 13, 30, 226, 31, 6, 45, 3, 48], [6, 4, 0, 0, 1, 0, 3, 0, 9, 2, 236, 0, 2, 1, 9], [0, 2, 0, 0, 0, 0, 0, 4, 10, 2, 1, 78, 3, 0, 6], [121, 180, 2, 13, 37, 25, 39, 103, 208, 198, 164, 44, 763, 32, 384], [2, 2, 0, 4, 1, 1, 5, 13, 5, 0, 5, 10, 6, 274, 19], [4, 16, 0, 0, 0, 2, 4, 8, 15, 5, 3, 14, 16, 2, 316]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">4c5f1a6daeb0334bf8e135212e15fb1383f7b502<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', transfo='deberta', lr=0.001)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --transfo deberta --lr 0.001<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_49/checkpoints/epoch=14-step=57375.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.001</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.544533, exactitude équilibrée : 0.585735</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.556144</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.512000</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.448904</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_894652.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_894652.svg)
+<p><span class="ttyp"><span hidden="True">[[984, 117, 4, 12, 4, 161, 75, 23, 56, 21, 208, 39, 78, 24, 130], [3, 76, 1, 0, 0, 7, 12, 3, 8, 3, 16, 11, 20, 0, 13], [3, 0, 1, 0, 0, 0, 1, 0, 1, 0, 3, 3, 0, 1, 0], [0, 3, 0, 31, 0, 1, 3, 1, 0, 0, 3, 1, 3, 3, 4], [0, 0, 0, 0, 64, 0, 0, 6, 11, 0, 0, 0, 4, 1, 1], [27, 28, 0, 0, 0, 151, 6, 4, 2, 9, 28, 1, 10, 0, 11], [4, 14, 2, 0, 0, 1, 281, 7, 17, 2, 20, 5, 15, 8, 13], [3, 4, 0, 2, 3, 1, 6, 65, 7, 3, 0, 9, 7, 4, 8], [20, 44, 1, 3, 41, 7, 77, 61, 1110, 19, 128, 22, 91, 47, 118], [14, 51, 0, 0, 0, 14, 20, 11, 17, 226, 21, 5, 71, 3, 44], [3, 8, 0, 0, 1, 2, 7, 0, 9, 2, 227, 0, 4, 1, 9], [0, 2, 0, 0, 0, 0, 0, 3, 7, 1, 1, 81, 2, 0, 9], [116, 166, 1, 8, 29, 42, 77, 74, 196, 120, 105, 38, 889, 37, 415], [3, 10, 0, 4, 0, 0, 9, 4, 5, 1, 5, 6, 5, 282, 13], [4, 18, 4, 0, 0, 1, 4, 6, 13, 2, 1, 15, 23, 1, 313]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">4c5f1a6daeb0334bf8e135212e15fb1383f7b502<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=16, transfo='deberta', lr=0.001)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 16 --transfo deberta --lr 0.001<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_50/checkpoints/epoch=13-step=53550.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.001</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.573121, exactitude équilibrée : 0.584498</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.554819</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.542629</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.483494</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_933378.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_933378.svg)
+<p><span class="ttyp"><span hidden="True">[[1114, 152, 5, 47, 4, 121, 33, 14, 51, 36, 172, 27, 71, 23, 66], [5, 90, 0, 1, 0, 4, 7, 3, 9, 7, 14, 10, 13, 0, 10], [3, 0, 1, 0, 0, 0, 1, 0, 1, 0, 3, 3, 0, 0, 1], [1, 6, 0, 33, 0, 1, 0, 2, 0, 0, 2, 1, 4, 1, 2], [0, 0, 0, 2, 60, 0, 0, 4, 12, 0, 0, 0, 8, 1, 0], [41, 29, 0, 5, 0, 139, 3, 4, 3, 14, 22, 1, 9, 0, 7], [6, 35, 1, 8, 0, 0, 269, 4, 18, 2, 14, 4, 15, 6, 7], [3, 6, 1, 12, 4, 1, 4, 47, 10, 2, 0, 5, 14, 5, 8], [27, 43, 2, 22, 30, 9, 53, 43, 1169, 30, 120, 24, 104, 39, 74], [21, 56, 0, 9, 1, 6, 12, 3, 16, 256, 19, 6, 67, 2, 23], [6, 11, 0, 5, 1, 1, 5, 0, 10, 4, 218, 0, 4, 1, 7], [0, 4, 0, 2, 0, 0, 0, 3, 7, 1, 1, 80, 3, 0, 5], [127, 181, 1, 46, 23, 30, 55, 34, 169, 211, 93, 35, 970, 38, 300], [4, 9, 0, 20, 0, 0, 7, 5, 4, 1, 4, 4, 2, 281, 6], [5, 17, 2, 2, 0, 2, 4, 5, 17, 7, 0, 14, 24, 1, 305]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">4c5f1a6daeb0334bf8e135212e15fb1383f7b502<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=16, transfo='deberta', lr=0.0003)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 16 --transfo deberta --lr 0.0003<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_51/checkpoints/epoch=29-step=114750.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.566629, exactitude équilibrée : 0.571975</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.541402</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.535674</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.475639</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_226549.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_226549.svg)
+<p><span class="ttyp"><span hidden="True">[[1125, 55, 4, 6, 2, 59, 29, 24, 70, 28, 269, 55, 73, 35, 102], [5, 90, 0, 0, 0, 4, 5, 3, 10, 9, 15, 10, 11, 0, 11], [2, 0, 1, 0, 0, 0, 1, 0, 1, 0, 3, 3, 1, 1, 0], [1, 4, 0, 20, 0, 1, 0, 0, 0, 0, 2, 5, 6, 9, 5], [0, 0, 0, 0, 62, 0, 0, 7, 13, 0, 0, 0, 4, 1, 0], [36, 12, 1, 0, 0, 124, 2, 5, 4, 15, 50, 1, 14, 1, 12], [8, 25, 0, 0, 0, 0, 229, 7, 20, 6, 42, 5, 17, 11, 19], [4, 2, 0, 1, 2, 1, 9, 62, 8, 2, 2, 9, 6, 6, 8], [22, 25, 5, 0, 34, 5, 36, 71, 1162, 27, 141, 38, 89, 48, 86], [24, 45, 0, 0, 1, 9, 9, 11, 26, 234, 31, 9, 62, 4, 32], [10, 1, 0, 0, 1, 3, 3, 0, 11, 3, 228, 1, 4, 1, 7], [0, 2, 0, 0, 0, 0, 1, 3, 8, 1, 0, 83, 3, 0, 5], [127, 163, 2, 7, 26, 16, 39, 63, 176, 206, 132, 42, 948, 42, 324], [3, 3, 0, 1, 0, 0, 5, 6, 5, 1, 7, 9, 2, 290, 15], [5, 15, 3, 0, 0, 1, 1, 11, 16, 6, 3, 16, 10, 1, 317]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">2e6a516d642539d9627c4ca054adeeafcbd0217b<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=16, shuffle=True, transfo='deberta', lr=0.0003, patience=50)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 16 --shuffle True --transfo deberta --lr 0.0003 --patience 50<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_52/checkpoints/epoch=81-step=313650.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.567654, exactitude équilibrée : 0.595598</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.566712</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.536772</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.476879</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_478662.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_478662.svg)
+<p><span class="ttyp"><span hidden="True">[[1170, 33, 39, 21, 2, 58, 95, 9, 52, 91, 70, 90, 53, 21, 132], [9, 79, 0, 0, 0, 3, 15, 2, 9, 14, 7, 15, 10, 0, 10], [4, 0, 1, 0, 0, 0, 0, 0, 1, 1, 2, 3, 0, 1, 0], [2, 1, 0, 32, 1, 0, 0, 2, 1, 0, 0, 5, 1, 3, 5], [0, 0, 0, 0, 57, 0, 0, 8, 17, 1, 0, 0, 3, 1, 0], [44, 6, 3, 1, 0, 145, 10, 2, 4, 22, 9, 12, 6, 1, 12], [4, 6, 2, 2, 0, 1, 300, 3, 16, 7, 8, 11, 11, 6, 12], [6, 1, 0, 2, 2, 2, 5, 61, 7, 3, 1, 10, 9, 7, 6], [29, 19, 10, 8, 18, 17, 97, 51, 1108, 78, 83, 63, 84, 34, 90], [23, 23, 4, 0, 1, 6, 19, 5, 14, 323, 11, 15, 26, 5, 22], [10, 2, 1, 0, 0, 2, 22, 1, 10, 4, 198, 8, 2, 1, 12], [0, 0, 0, 0, 0, 2, 0, 2, 3, 2, 0, 87, 4, 0, 6], [116, 90, 7, 37, 13, 23, 101, 36, 167, 337, 60, 98, 835, 40, 353], [2, 0, 1, 13, 1, 0, 14, 5, 7, 1, 0, 17, 1, 277, 8], [3, 8, 6, 1, 0, 5, 7, 5, 17, 11, 0, 18, 11, 2, 311]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">2e6a516d642539d9627c4ca054adeeafcbd0217b<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=64, transfo='deberta', lr=0.0003)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 64 --transfo deberta --lr 0.0003<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_53/checkpoints/epoch=17-step=68850.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>64</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.565718, exactitude équilibrée : 0.588616</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.559231</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.534697</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.474536</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_526452.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_526452.svg)
+<p><span class="ttyp"><span hidden="True">[[1035, 56, 3, 11, 4, 75, 22, 40, 58, 37, 300, 46, 90, 26, 133], [3, 93, 0, 0, 0, 5, 4, 4, 8, 8, 18, 7, 14, 0, 9], [3, 0, 1, 0, 0, 0, 0, 0, 1, 1, 3, 3, 0, 1, 0], [0, 2, 0, 27, 0, 1, 1, 1, 0, 0, 2, 2, 3, 8, 6], [0, 0, 0, 0, 60, 0, 0, 11, 11, 0, 0, 0, 3, 1, 1], [22, 11, 0, 0, 0, 136, 1, 7, 3, 15, 53, 1, 14, 1, 13], [6, 27, 0, 0, 0, 1, 224, 16, 21, 6, 34, 5, 17, 11, 21], [2, 0, 0, 0, 1, 1, 2, 77, 10, 2, 2, 5, 5, 6, 9], [21, 28, 1, 2, 27, 5, 32, 95, 1150, 26, 147, 27, 91, 40, 97], [16, 39, 0, 0, 0, 6, 7, 20, 20, 255, 32, 7, 63, 3, 29], [7, 1, 0, 0, 1, 2, 1, 0, 9, 4, 235, 1, 2, 1, 9], [0, 2, 0, 0, 0, 0, 1, 2, 9, 1, 1, 78, 5, 0, 7], [101, 148, 0, 5, 23, 21, 31, 101, 170, 183, 132, 37, 996, 34, 331], [3, 2, 0, 3, 0, 0, 4, 10, 6, 0, 7, 7, 2, 287, 16], [3, 14, 3, 0, 0, 2, 2, 12, 14, 5, 3, 13, 20, 1, 313]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">2e6a516d642539d9627c4ca054adeeafcbd0217b<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=64, shuffle=True, transfo='deberta', lr=0.0003, patience=50)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 64 --shuffle True --transfo deberta --lr 0.0003 --patience 50<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_model</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_53/checkpoints/epoch=72-step=279225.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>64</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Exactitude : 0.626424, exactitude équilibrée : 0.612666</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.584999</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.599740</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.547988</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_745962.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_745962.svg)
+<p><span class="ttyp"><span hidden="True">[[1300, 9, 12, 41, 3, 234, 70, 5, 72, 41, 17, 23, 72, 12, 25], [14, 69, 0, 0, 0, 13, 14, 4, 5, 10, 5, 7, 26, 1, 5], [4, 0, 1, 0, 1, 3, 0, 0, 1, 0, 1, 1, 1, 0, 0], [1, 0, 0, 37, 1, 2, 2, 2, 3, 0, 0, 0, 2, 2, 1], [0, 0, 0, 0, 67, 0, 0, 2, 9, 0, 0, 0, 7, 1, 1], [26, 0, 1, 2, 1, 206, 6, 0, 5, 12, 2, 0, 9, 0, 7], [14, 4, 4, 3, 0, 3, 287, 5, 20, 5, 11, 5, 18, 6, 4], [4, 1, 0, 3, 4, 4, 6, 57, 17, 1, 1, 7, 12, 2, 3], [47, 21, 5, 9, 65, 23, 60, 38, 1187, 39, 76, 22, 123, 25, 49], [30, 12, 2, 3, 2, 33, 20, 4, 27, 279, 4, 3, 69, 4, 5], [25, 2, 0, 2, 2, 15, 13, 0, 22, 3, 181, 1, 3, 2, 2], [3, 1, 0, 5, 0, 0, 0, 3, 7, 1, 0, 77, 7, 1, 1], [158, 55, 5, 64, 42, 75, 77, 33, 205, 164, 42, 31, 1191, 24, 147], [11, 0, 0, 20, 1, 1, 18, 5, 11, 2, 0, 2, 3, 270, 3], [11, 4, 2, 8, 0, 6, 8, 6, 19, 13, 1, 10, 21, 5, 291]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">82bf5b76b9bbbca67ed8d964fcec254dbc71185c<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', rang=64, shuffle=True, transfo='deberta', lr=0.0003, patience=50)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --rang 64 --shuffle True --transfo deberta --lr 0.0003 --patience 50<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_dernier</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_54/checkpoints/last_epoch=72_step=279225.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chckpt_meilleur</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/lightning_logs/version_54/checkpoints/best_epoch=22_step=87975.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>64</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<hr/>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">eeb3df717903566c04d494491eb9fd40374edaab<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_generic(nom_rapport='rapport_bilin_sym_deberta.html', ckpoint_model='./lightning_logs/version_54/checkpoints/best_epoch=22_step=87975.ckpt', train=False, transfo='deberta')<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_generic --nom_rapport rapport_bilin_sym_deberta.html --ckpoint_model ./lightning_logs/version_54/checkpoints/best_epoch=22_step=87975.ckpt --train False --transfo deberta<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.Classif_Bil_S…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>chkpt_dernier</th><td><span class="ttyp"><span hidden="True">./lightning_logs/version_54/checkpoints/best_epoch=22_step=87975.ckpt</span>./lightning_logs/version_54/c…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation</h3>
+<table><tr><th>dim</th><td>1152</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>64</td></tr>
+<tr><th>cible</th><td>roles</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([115925.,   8625.,   1449.,   5115.,   5182.,  14610.,  23313.,   7340.,
+         85102.,  26108.,  14511.,   5498., 140048.,  28742.,  18006.])</span>tensor([115925.,   8625.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>115925</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>8625</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1449</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5115</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5182</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>14610</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>23313</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>7340</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>85102</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>26108</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>14511</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5498</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>140048</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>28742</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>18006</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.576879, exactitude équilibrée : 0.605349</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.577160</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.546656</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.488041</h2>
+<img src="rapport_bilin_sym_deberta_PJ/PJ_506144.svg"/>
+(Image stockée dans rapport_bilin_sym_deberta_PJ/PJ_506144.svg)
+<p><span class="ttyp"><span hidden="True">[[1015, 17, 51, 18, 5, 386, 50, 24, 48, 17, 130, 47, 72, 28, 28], [3, 73, 2, 0, 0, 18, 10, 4, 8, 2, 12, 10, 28, 0, 3], [3, 0, 1, 0, 0, 2, 0, 0, 0, 0, 3, 3, 1, 0, 0], [1, 0, 1, 30, 1, 6, 2, 2, 0, 0, 2, 1, 3, 4, 0], [0, 0, 0, 0, 72, 0, 0, 5, 7, 0, 0, 0, 3, 0, 0], [14, 4, 3, 0, 0, 214, 2, 4, 3, 7, 9, 2, 10, 0, 5], [4, 5, 5, 2, 0, 9, 275, 13, 18, 1, 23, 5, 18, 8, 3], [3, 0, 1, 1, 5, 5, 3, 75, 6, 2, 0, 5, 5, 6, 5], [26, 19, 16, 7, 48, 28, 60, 82, 1106, 10, 122, 53, 115, 27, 70], [21, 28, 7, 2, 4, 44, 15, 11, 27, 168, 13, 10, 125, 6, 16], [7, 0, 1, 0, 2, 15, 7, 0, 9, 0, 222, 1, 5, 2, 2], [1, 0, 3, 0, 0, 1, 0, 5, 6, 0, 1, 81, 5, 0, 3], [129, 95, 26, 16, 41, 120, 53, 76, 159, 61, 111, 43, 1160, 26, 197], [6, 1, 1, 5, 1, 4, 7, 11, 6, 0, 1, 8, 3, 289, 4], [5, 8, 10, 0, 0, 14, 7, 12, 13, 1, 3, 19, 26, 3, 284]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>
