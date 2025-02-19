@@ -844,6 +844,8 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
     
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
+        if "lr" in kwargs:
+            infer.lr = kwargs["lr"]
     else:
         if "lr" in kwargs:
             lr = kwargs["lr"]
