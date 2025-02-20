@@ -863,6 +863,12 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
         accelerator = kwargs["accelerator"]
     else:
         accelerator = "gpu"
+
+    if "vertices_per_batch" in kwargs:
+            vertices_per_batch = kwargs["vertices_per_batch"]
+    else:
+        vertices_per_batch = 1500
+
     if train:
         if "patience" in kwargs:
             patience = kwargs["patience"]
@@ -881,10 +887,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
                               logger=make_TBlogger(nom_rapport))
             
         print("Début de l’entrainement")
-        if "vertices_per_batch" in kwargs:
-            vertices_per_batch = kwargs["vertices_per_batch"]
-        else:
-            vertices_per_batch = 1500
+        
         sampler = BalancedGraphSampler(DARtr, avg_num=vertices_per_batch,
                                       shuffle=True)
         
