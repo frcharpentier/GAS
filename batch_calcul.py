@@ -132,16 +132,20 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
     ckpt_last = ckpt_last if (type(ckpt_last) == str and len(ckpt_last) > 0) else False
 
     assert ckpoint_model or ckpt_best or ckpt_last
+
+    checkpoints = {}
     if ckpoint_model:
-        checkpoints = {"ckpoint_model": ckpoint_model}
-    else:
-        checkpoints = {}
-        if ckpt_last:
-            checkpoints["ckpoint_last"] = ckpt_last
-            ckpoint_model = ckpt_last
-        if ckpt_best:
-            checkpoints["ckpoint_best"] = ckpt_best
-            ckpoint_model = ckpt_best
+        if ckpt_last or ckpt_best:
+            checkpoints["ckpoint_start"] = ckpoint_model
+        else:
+            checkpoints["ckpoint_model"] = ckpoint_model        
+    if ckpt_last:
+        checkpoints["ckpoint_last"] = ckpt_last
+        ckpoint_model = ckpt_last
+    if ckpt_best:
+        checkpoints["ckpoint_best"] = ckpt_best
+        ckpoint_model = ckpt_best
+        
     chemin, _ = os.path.split(ckpoint_model)
     assert chemin.endswith("checkpoints")
     chemin, _ = os.path.split(chemin)
