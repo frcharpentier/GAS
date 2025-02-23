@@ -262,7 +262,7 @@ class TRANSFORMER_ATTENTION:
                 self.model_type = "minGPT"
                 self.type_transformer = "DEC"
             elif model_type in ["hf", "huggingface"]:
-                if model_name.startswith("meta-llama"):
+                if model_name.startswith("meta-llama/Llama-3.2"):
                     self.type_transformer = "DEC"
                     self.model_type = "llama"
                 elif model_name.startswith("microsoft/deberta"):

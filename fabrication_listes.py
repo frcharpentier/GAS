@@ -338,13 +338,6 @@ def construire_graphes(fichier_out="a_tej.txt", split=False, court=False, nom_mo
     kwargs["fichier_reentrances"] = prefixe_alignements + "reentrancy_alignments.json"
     kwargs["fichier_relations"] = prefixe_alignements + "relation_alignments.json"
     if split:
-        #amr_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
-        #amr_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/dev"
-        #amr_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/test"
-        
-        #snt_rep_training = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/training"
-        #snt_rep_dev      = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/dev"
-        #snt_rep_test     = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/split/test"
         amr_rep_training = AMR_REP_TRAINING
         amr_rep_dev      = AMR_REP_DEV
         amr_rep_test     = AMR_REP_TEST
@@ -353,8 +346,6 @@ def construire_graphes(fichier_out="a_tej.txt", split=False, court=False, nom_mo
         snt_rep_test     = SNT_REP_TEST
         
     else:
-        #amr_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/unsplit"
-        #snt_rep = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/amrs/unsplit"
         amr_rep  = AMR_REP
         snt_rep  = SNT_REP
     kwargs["doublons"] = ['DF-201-185522-35_2114.33', 'bc.cctv_0000.167', 'bc.cctv_0000.191', 'bolt12_6453_3271.7']
