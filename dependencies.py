@@ -59,6 +59,7 @@ def transfo_to_filenames(transfo, QscalK):
                    "GPT2": "mingpt://gpt2",
                    "deberta": "huggingface://microsoft/deberta-v2-xxlarge",
                    "LLAMA32": "huggingface://meta-llama/Llama-3.2-3B",
+                   "LLAMA_3B": "huggingface://meta-llama/Llama-3.2-3B",
                    "mdrnBertBase" : "huggingface://answerdotai/ModernBERT-base",
                    "mdrnBertLarge" : "huggingface://answerdotai/ModernBERT-large"}
     assert transfo in implemented
