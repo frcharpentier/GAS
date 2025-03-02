@@ -230,9 +230,9 @@ class TRANSFORMER_ATTENTION:
                    "mingpt://gpt2",
                    "huggingface://microsoft/deberta-v2-xxlarge",
                    "huggingface://meta-llama/Llama-3.2-3B",
-                   "huggingface://meta-llama/Llama-3.2-3B-Instruct"
+                   "huggingface://meta-llama/Llama-3.2-3B-Instruct",
                    "huggingface://meta-llama/Llama-3.2-1B",
-                   "huggingface://meta-llama/Llama-3.2-1B-Instruct"
+                   "huggingface://meta-llama/Llama-3.2-1B-Instruct",
                    "huggingface://answerdotai/ModernBERT-base",
                    "huggingface://answerdotai/ModernBERT-large",]
     
