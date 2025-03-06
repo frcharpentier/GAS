@@ -251,7 +251,7 @@ class TRANSFORMER_ATTENTION:
         self.type_transformer = "ENC"
         
         
-    def select_modele(self, model_name, decoder_mask = True):
+    def select_modele(self, model_name, decoder_mask = True, tokenHF=None):
         try:
             assert model_name in self.implemented
             self.model_type = "hf"
@@ -289,20 +289,26 @@ class TRANSFORMER_ATTENTION:
                     KLASS = LLAMA_ATTENTION_CLASSES["eager"]
                     LLAMA_ATTENTION_CLASSES["eager"] = LlamaUnmaskedAttention
                     try:
-                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                        if tokenHF is None:
+                            self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                        else:
+                            self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True, token=tokenHF)
                     except OSError as E:
                         tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
-                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True, token=tokenHF)
                     LLAMA_ATTENTION_CLASSES["eager"] = KLASS
                 else:
                     import transformers.models.llama.modeling_llama
                     # Monkeypatching !!
                     transformers.models.llama.modeling_llama.eager_attention_forward = llama_custom_attn_function
                     try:
-                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                        if tokenHF is None:
+                            self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True)
+                        else:
+                            self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True, token=tokenHF)
                     except OSError as E:
                         tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
-                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
+                        self.modele = AutoModel.from_pretrained(model_name, attn_implementation="eager", output_attentions=True, token=tokenHF)
                 if not self.device == "cpu":
                     self.modele.to(self.device)
                 config = self.modele.config
@@ -310,7 +316,10 @@ class TRANSFORMER_ATTENTION:
                 self.num_heads = config.num_attention_heads
             elif self.model_type == "deberta":
                 try:
-                    self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                    if tokenHF is None:
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True)
+                    else:
+                        self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
                 except OSError as E:
                     tokenHF = input("Saisissez votre token d’indentification à HuggingFace...")
                     self.modele = AutoModel.from_pretrained(model_name, output_attentions=True, token=tokenHF)
@@ -332,7 +341,10 @@ class TRANSFORMER_ATTENTION:
 
 
             try:
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                if tokenHF is None:
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+                else:
+                    self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=tokenHF)
             except OSError:
                 tokenHF = input("Saisissez votre token d’indentification à HuggingFace")
                 self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=tokenHF)

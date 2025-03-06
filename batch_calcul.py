@@ -299,7 +299,7 @@ def make_alig_file(transfo):
 
 
 
-def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu"):
+def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu", tokenHF = None):
     assert CLASSE in [AligDataset, EdgeDataset]
     
     alig_file, rep_ds_grph, rep_ds_edge, _ = transfo_to_filenames(transfo, QscalK)
@@ -309,7 +309,9 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         dsTRAIN = AligDataset(rep_ds_grph + "train",
                               alig_file,
                               transform=filtre,
-                              QscalK=QscalK, split="train", device=device)
+                              QscalK=QscalK, split="train",
+                              device=device,
+                              tokenHF=tokenHF)
         
 
         if CLASSE != AligDataset:
@@ -319,7 +321,9 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         dsDEV = AligDataset(rep_ds_grph + "dev",
                             alig_file,
                             transform=filtre,
-                            QscalK=QscalK, split="dev", device=device)
+                            QscalK=QscalK, split="dev",
+                            device=device,
+                            tokenHF=tokenHF)
         if CLASSE != AligDataset:
             dsDEV = CLASSE(dsDEV, rep_ds_edge + "dev", masques="1")
         datasets += (dsDEV,)
@@ -327,7 +331,9 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         dsTEST = AligDataset(rep_ds_grph + "test",
                              alig_file,
                              transform=filtre,
-                             QscalK=QscalK, split="test", device=device)
+                             QscalK=QscalK, split="test",
+                             device=device,
+                             tokenHF=tokenHF)
         if CLASSE != AligDataset:
             dsTEST = CLASSE(dsTEST, rep_ds_edge + "test", masques="1")
         datasets += (dsTEST,)

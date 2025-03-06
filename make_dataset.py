@@ -683,7 +683,15 @@ class EdgeDatasetRdmDir(EdgeDataset):
 
 
 class AligDataset(geoDataset):
-    def __init__(self, root, alignment_file, transform=None, pre_transform=None, pre_filter=None, split=False, QscalK=False, debug_idSNT=False, device="cuda"):
+    def __init__(self, root, alignment_file,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None,
+                 split=False,
+                 QscalK=False,
+                 debug_idSNT=False,
+                 device="cuda",
+                 tokenHF = None):
         if not split:
             self.split = False
         else:
@@ -702,6 +710,7 @@ class AligDataset(geoDataset):
         self.QscalK = QscalK
         self.debug_idSNT = debug_idSNT
         self.device = device
+        self.tokenHF = tokenHF
         self.filtre = transform # Éventuellement remplacé plus tard si cette valeur est None.
         super().__init__(root, transform, pre_transform, pre_filter)
         if self.transform is None:
@@ -832,7 +841,7 @@ class AligDataset(geoDataset):
                             #assert self.QscalK == False, "Seule l’attention après softmax est disponible pour les modèles Huggingface"
                         #else:
                         #    model_name = "XXXX" # ERROR
-                        attn.select_modele(model_name)
+                        attn.select_modele(model_name, tokenHF = self.tokenHF)
                     elif etat == 0:
                         if ligne.startswith(lbl_id):
                             ligne = ligne[len(lbl_id):]
