@@ -763,6 +763,8 @@ def batch_Bilin_sym(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
 
     if "masques" in kwargs:
         masques = kwargs["masques"]
+        if not type(masques) == str:
+            masques = str(masques)
     else:
         masques = "1 2 iso"
     DARtr, DARdv, DARts = make_grph_datasets(filtre2,
