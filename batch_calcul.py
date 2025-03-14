@@ -301,7 +301,7 @@ def calculer_effectifs(*datasets):
         effectifs = datasets[0].cumRoles.numpy()
         for ds in datasets[1:]:
             effectifs = effectifs + (ds.cumRoles.numpy())
-    return effectifs
+    return effectifs.tolist()
 
 def make_alig_file(transfo):
     alig_file, _, _, model_id = transfo_to_filenames(transfo, True)
