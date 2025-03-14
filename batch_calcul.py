@@ -272,8 +272,11 @@ class PERMUT_DIR_AT_EPOCH_START(Callback):
 def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True, CLASSE = EdgeDatasetMono):
     alig_file, rep_ds_grph, rep_ds_edge, _ = transfo_to_filenames(transfo, QscalK)
     if train:
-        DGRtr_f2 = AligDataset(rep_ds_grph + "train", alig_file,
-                            transform=filtre, QscalK=QscalK, split="train")
+        DGRtr_f2 = AligDataset(rep_ds_grph + "train",
+                               alig_file,
+                               transform=filtre,
+                               QscalK=QscalK,
+                               split="train")
     if dev:
         DGRdv_f2 = AligDataset(rep_ds_grph + "dev", alig_file,
                             transform=filtre, QscalK=QscalK, split="dev")
@@ -291,6 +294,14 @@ def make_edge_datasets(transfo, QscalK, filtre, train=True, dev=True, test=True,
     
     return datasets
 
+def calculer_effectifs(*datasets):
+    with torch.no_grad():
+        for ds in datasets:
+            ds.calc_freq()
+        effectifs = datasets[0].cumRoles.numpy()
+        for ds in datasets[1:]:
+            effectifs = effectifs + (ds.cumRoles.numpy())
+    return effectifs
 
 def make_alig_file(transfo):
     alig_file, _, _, model_id = transfo_to_filenames(transfo, True)
@@ -299,7 +310,7 @@ def make_alig_file(transfo):
 
 
 
-def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu", tokenHF = None):
+def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDataset, transfo="roberta", QscalK=True, device="cpu", tokenHF = None, masques="1 2 iso"):
     assert CLASSE in [AligDataset, EdgeDataset]
     
     alig_file, rep_ds_grph, rep_ds_edge, _ = transfo_to_filenames(transfo, QscalK)
@@ -315,7 +326,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
         
 
         if CLASSE != AligDataset:
-            dsTRAIN = CLASSE(dsTRAIN, rep_ds_edge + "train", masques="1")
+            dsTRAIN = CLASSE(dsTRAIN, rep_ds_edge + "train", masques=masques)
         datasets += (dsTRAIN,)
     if dev:
         dsDEV = AligDataset(rep_ds_grph + "dev",
@@ -325,7 +336,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
                             device=device,
                             tokenHF=tokenHF)
         if CLASSE != AligDataset:
-            dsDEV = CLASSE(dsDEV, rep_ds_edge + "dev", masques="1")
+            dsDEV = CLASSE(dsDEV, rep_ds_edge + "dev", masques=masques)
         datasets += (dsDEV,)
     if test:
         dsTEST = AligDataset(rep_ds_grph + "test",
@@ -335,7 +346,7 @@ def make_grph_datasets(filtre, train=True, dev=True, test=True, CLASSE=AligDatas
                              device=device,
                              tokenHF=tokenHF)
         if CLASSE != AligDataset:
-            dsTEST = CLASSE(dsTEST, rep_ds_edge + "test", masques="1")
+            dsTEST = CLASSE(dsTEST, rep_ds_edge + "test", masques=masques)
         datasets += (dsTEST,)
 
     return datasets
@@ -750,13 +761,25 @@ def batch_Bilin_sym(nom_rapport, rang=8, ckpoint_model=None, train=True, shuffle
     else:
         filtre2 = filter_15_classes(transfo, QscalK)
 
-    DARtr, DARdv, DARts = make_edge_datasets(transfo, QscalK, filtre2, True, True, True, CLASSE = EdgeDataset)
+    if "masques" in kwargs:
+        masques = kwargs["masques"]
+    else:
+        masques = "1 2 iso"
+    DARtr, DARdv, DARts = make_grph_datasets(filtre2,
+                                             train=True, dev=True, test=True,
+                                             CLASSE = EdgeDataset,
+                                             transfo=transfo,
+                                             QscalK = QscalK,
+                                             masques=masques)
 
     dimension, _2 = DARts[0]["X"].shape
     assert _2 == 2
 
     nb_classes = len(filtre2.alias)
-    freqs = filtre2.effectifs
+    #freqs = filtre2.effectifs
+    freqs = calculer_effectifs(DARtr, DARdv, DARts)
+    filtre2.effectifs = freqs
+    
     modele = tm_bil_sym_2(dimension, nb_classes, rang=rang)
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)

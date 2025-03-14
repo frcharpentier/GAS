@@ -482,6 +482,10 @@ class EdgeDataset(torchDataset):
         indices = self.sens.to(dtype = torch.long)
         cumSens.scatter_add_(0, indices, uns)
 
+        self.cumRoles = cumRoles
+        self.cumARGn = cumARGn
+        self.cumSens = cumSens
+
         self.freqRoles = cumRoles / self.Nadj
         self.freqARGn  = cumARGn / self.Nadj
         self.freqSens  = cumSens / self.Nadj 
@@ -650,23 +654,23 @@ class EdgeDatasetMono(EdgeDataset):
     # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
     # un vecteur de double dimension, dans un ordre déterminé par le sens
     # de l’arête
-    def __init__(self, aligDS, repertoire):
-        super().__init__(aligDS, repertoire)
+    def __init__(self, aligDS, repertoire, masques = "1 2 iso"):
+        super().__init__(aligDS, repertoire, masques)
         self.redresser_X(self.sens)
 
 class EdgeDatasetMonoEnvers(EdgeDataset):
     # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
     # un vecteur de double dimension, dans un ordre déterminé par le sens
     # de l’arête, le sens inverse du dataset ci-dessus
-    def __init__(self, aligDS, repertoire):
-        super().__init__(aligDS, repertoire)
+    def __init__(self, aligDS, repertoire, masques = "1 2 iso"):
+        super().__init__(aligDS, repertoire, masques)
         self.redresser_X(1-self.sens)
         
 class EdgeDatasetRdmDir(EdgeDataset):
     # Dataset d’arêtes, où les descripteurs CS et SC sont concaténés dans
     # un vecteur de double dimension, dans un ordre aléatoire
-    def __init__(self, aligDS, repertoire):
-        super().__init__(aligDS, repertoire)
+    def __init__(self, aligDS, repertoire, masques = "1 2 iso"):
+        super().__init__(aligDS, repertoire, masques)
         self.permutation_aleatoire()
 
     def permutation_aleatoire(self):
