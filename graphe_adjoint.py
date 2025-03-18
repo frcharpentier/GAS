@@ -233,6 +233,8 @@ class TRANSFORMER_ATTENTION:
                    "huggingface://meta-llama/Llama-3.2-3B-Instruct",
                    "huggingface://meta-llama/Llama-3.2-1B",
                    "huggingface://meta-llama/Llama-3.2-1B-Instruct",
+                   "huggingface://meta-llama/Llama-3.1-8B",
+                   "huggingface://meta-llama/Llama-3.1-8B-Instruct",
                    "huggingface://answerdotai/ModernBERT-base",
                    "huggingface://answerdotai/ModernBERT-large",]
     
@@ -265,7 +267,7 @@ class TRANSFORMER_ATTENTION:
                 self.model_type = "minGPT"
                 self.type_transformer = "DEC"
             elif model_type in ["hf", "huggingface"]:
-                if model_name.startswith("meta-llama/Llama-3.2"):
+                if model_name.startswith("meta-llama/Llama-3."):
                     self.type_transformer = "DEC"
                     self.model_type = "llama"
                 elif model_name.startswith("microsoft/deberta"):

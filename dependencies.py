@@ -63,6 +63,8 @@ def transfo_to_filenames(transfo, QscalK):
                    "Llama3Bi": "huggingface://meta-llama/Llama-3.2-3B-Instruct",
                    "Llama1B": "huggingface://meta-llama/Llama-3.2-1B",
                    "Llama1Bi": "huggingface://meta-llama/Llama-3.2-1B-Instruct",
+                   "Llama8B": "huggingface://meta-llama/Llama-3.1-8B",
+                   "Llama8Bi": "huggingface://meta-llama/Llama-3.1-8B-Instruct",
                    "mdrnBertBase" : "huggingface://answerdotai/ModernBERT-base",
                    "mdrnBertLarge" : "huggingface://answerdotai/ModernBERT-large"}
     assert transfo in implemented

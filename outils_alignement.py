@@ -138,7 +138,7 @@ class AMR_modif(AMR):
 class ALIGNEUR:
     @staticmethod
     def detecter_params(tknz):
-        if tknz.name_or_path.startswith("meta-llama/Llama-3.2"):
+        if tknz.name_or_path.startswith("meta-llama/Llama-3."):
             tok_bos = tknz.bos_token
             tok_eos = tknz.eos_token
         else:
