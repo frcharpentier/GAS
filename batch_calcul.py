@@ -956,6 +956,7 @@ def batch_GAT_sym(nom_rapport, h, nbheads, nbcouches, rang=8, ckpoint_model=None
 if __name__ == "__main__" :
     manual_seed(53)
     random.seed(53)
+    torch.set_float32_matmul_precision("medium")
     if DEBUG:
         print("""
 DDD   EEEE  BBB   U   U   GGG
