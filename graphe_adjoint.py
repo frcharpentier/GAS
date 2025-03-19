@@ -286,6 +286,8 @@ class TRANSFORMER_ATTENTION:
                 self.modele = GPT.from_pretrained(model_name)
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
+                if not self.device == "cpu":
+                    self.modele.to(self.device)
             elif self.model_type == "llama":
                 if transformers_version == "4.47.1":
                     KLASS = LLAMA_ATTENTION_CLASSES["eager"]
