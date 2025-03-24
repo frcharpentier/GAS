@@ -1,0 +1,105 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+
+<body>
+<h1>GPT2_bilin</h1>
+<hr/>
+<h2>version_0</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">b5b3dcce8e56f2a9bdbc9df73e7152376ee7970b<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='resultats_GPT2/GPT2_bilin.html', shuffle=True, transfo='GPT2', lr=0.0003, patience=20, filter='filter_21_classes', masques=1)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport resultats_GPT2/GPT2_bilin.html --shuffle True --transfo GPT2 --lr 0.0003 --patience 20 --filter filter_21_classes --masques 1<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/GPT2_bilin_LOGS/version_0/checkpoints/last_epoch=72_step=1284581.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/GPT2_bilin_LOGS/version_0/checkpoints/best_epoch=52_step=932641.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([124654.,   9208.,   1536.,   5096.,   5625.,  15423.,  26947.,   8164.,
+         94380.,  28873.,  15857.,   5854., 148109.,  31190.,  19434.,   1170.,
+         69674., 558820.,  20814.,    610.,   5636.])</span>tensor([124654.,   9208.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>124654</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9208</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1536</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5096</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5625</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15423</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>26947</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8164</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>94380</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>28873</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>15857</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5854</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>148109</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>31190</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19434</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>1170</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>69674</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>558820</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>20814</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>610</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>5636</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.588116, exactitude équilibrée : 0.518182</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.494091</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.567522</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.445985</h2>
+<img src="GPT2_bilin_PJ/PJ_647120.svg"/>
+(Image stockée dans GPT2_bilin_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[2496, 203, 104, 56, 24, 384, 216, 57, 80, 278, 137, 105, 118, 82, 93, 63, 49, 11, 59, 6, 12], [21, 187, 3, 6, 1, 17, 34, 9, 15, 42, 34, 20, 13, 6, 14, 12, 4, 4, 3, 0, 0], [5, 1, 1, 0, 0, 3, 0, 1, 0, 4, 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 1], [2, 3, 0, 62, 1, 1, 0, 4, 1, 5, 0, 5, 6, 5, 3, 2, 2, 1, 2, 0, 0], [0, 0, 0, 1, 108, 1, 1, 2, 10, 2, 2, 0, 2, 0, 2, 1, 1, 5, 0, 0, 1], [42, 19, 6, 2, 3, 262, 14, 8, 19, 30, 8, 9, 9, 1, 7, 8, 6, 0, 7, 1, 5], [33, 91, 9, 12, 8, 15, 961, 25, 37, 59, 131, 29, 28, 39, 35, 91, 90, 40, 21, 3, 8], [5, 7, 1, 11, 27, 1, 19, 102, 9, 8, 1, 12, 8, 19, 7, 5, 13, 7, 2, 3, 1], [66, 114, 24, 25, 124, 55, 245, 128, 1391, 122, 345, 83, 132, 160, 84, 85, 120, 80, 78, 17, 26], [86, 61, 10, 14, 12, 51, 42, 27, 22, 563, 28, 34, 75, 15, 24, 19, 11, 7, 5, 0, 4], [20, 39, 1, 2, 0, 12, 44, 19, 21, 9, 413, 3, 7, 13, 11, 19, 24, 12, 6, 2, 13], [26, 10, 0, 2, 0, 2, 6, 9, 10, 4, 0, 138, 6, 2, 12, 4, 3, 0, 5, 0, 1], [400, 346, 44, 98, 133, 163, 205, 120, 277, 711, 158, 169, 1130, 157, 381, 93, 90, 45, 102, 8, 33], [23, 5, 7, 49, 17, 7, 54, 30, 26, 19, 5, 24, 27, 1098, 7, 15, 12, 9, 1, 6, 7], [24, 26, 17, 5, 1, 12, 18, 17, 27, 35, 11, 39, 44, 13, 413, 8, 16, 3, 4, 0, 2], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 5], [39, 39, 6, 83, 11, 15, 163, 91, 34, 39, 61, 42, 39, 68, 45, 355, 2347, 54, 22, 21, 218], [52, 182, 27, 6, 95, 23, 378, 55, 355, 71, 308, 54, 55, 195, 79, 188, 641, 10343, 59, 215, 84], [8, 6, 0, 0, 2, 3, 4, 0, 4, 6, 13, 1, 1, 0, 1, 9, 9, 8, 598, 2, 5], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 2, 7, 4, 0, 10, 4], [1, 4, 1, 0, 0, 0, 4, 4, 6, 5, 3, 3, 2, 2, 5, 9, 31, 2, 3, 15, 48]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

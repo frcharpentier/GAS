@@ -38,7 +38,7 @@ Type the following command : `python ./batch_calcul.py make_alig_file --transfo 
 
 * The parameter "split=True") will build three files : One for training, one for dev, and one for test.
 
-* The parameter `--transfo` is a shorthand for the model. (used for the tokenizer). You can use `"gpt2"`,  `"roberta-base"` "`deberta`" or "`LLAMA32`".
+* The parameter `--transfo` is a shorthand for the model. (used for the tokenizer). You can use `"GPT2"`,  `"roberta"` (for roberta-base), "`deberta`", "`Llama1B`", "Llama1Bi" (for Llama-1B instruct), `"Llama3B"`, `"Llama3Bi"`, `"Llama8B"`, `"Llama8Bi"`, `"mdrnBertBase"` or `"mdrnBertLarge"`. (The complete list is to be found in the function `transfo_to_filenames` in the file `dependencies.py`.)
 
 The process assumes you have the LDC_2020_T02 dataset under `../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training ... /dev, and .../test`.
 

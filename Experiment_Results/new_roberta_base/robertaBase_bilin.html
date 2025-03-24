@@ -1,0 +1,279 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+<body>
+<h1>robertaBase_bilin</h1>
+<hr/>
+<h2>version_0</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">9391ab02d388e5f795e44e10464c1e6405679582<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='Roberta_base/robertaBase_bilin.html', shuffle=True, lr=0.0003, patience=20)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport Roberta_base/robertaBase_bilin.html --shuffle True --lr 0.0003 --patience 20<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_0/checkpoints/last_epoch=89_step=324180.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_0/checkpoints/best_epoch=69_step=252140.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([57263.,  4162.,   770.,  2356.,  3130.,  8840.,  8690.,  3485., 44936.,
+        11888.,  7306.,  2601., 72547.,  9127.,  9406.])</span>tensor([57263.,  4162.,   770…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>57263</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>4162</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>770</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>2356</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>3130</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>8840</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>8690</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>3485</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>44936</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>11888</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>7306</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>2601</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>72547</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>9127</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>9406</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.541697, exactitude équilibrée : 0.632901</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.606680</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.508961</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.438889</h2>
+<img src="robertaBase_bilin_PJ/PJ_647120.svg"/>
+(Image stockée dans robertaBase_bilin_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[991, 58, 164, 35, 7, 141, 54, 18, 44, 93, 43, 54, 49, 23, 22], [8, 87, 9, 4, 0, 1, 10, 2, 9, 12, 3, 6, 4, 0, 5], [1, 0, 3, 0, 0, 3, 0, 0, 0, 1, 0, 3, 0, 0, 0], [2, 0, 2, 39, 0, 0, 0, 2, 0, 1, 0, 1, 2, 1, 1], [0, 0, 1, 0, 70, 0, 0, 3, 6, 0, 0, 1, 1, 1, 0], [26, 3, 4, 4, 1, 175, 4, 0, 3, 17, 9, 2, 5, 2, 2], [10, 19, 10, 3, 1, 1, 241, 8, 12, 11, 5, 10, 7, 6, 3], [2, 2, 6, 7, 4, 2, 3, 63, 2, 3, 0, 6, 5, 3, 2], [27, 31, 51, 6, 48, 13, 70, 90, 972, 58, 70, 103, 62, 38, 40], [14, 15, 15, 3, 6, 15, 18, 7, 7, 309, 2, 12, 35, 1, 5], [3, 8, 7, 2, 1, 4, 7, 0, 3, 3, 203, 0, 7, 8, 2], [0, 3, 4, 3, 0, 0, 0, 0, 1, 1, 0, 84, 3, 1, 2], [94, 126, 107, 53, 55, 51, 52, 76, 149, 343, 47, 92, 723, 41, 178], [5, 0, 5, 15, 2, 1, 10, 9, 9, 4, 2, 12, 6, 252, 5], [6, 7, 12, 5, 1, 3, 3, 7, 15, 19, 2, 34, 22, 4, 244]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_1</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">9391ab02d388e5f795e44e10464c1e6405679582<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='Roberta_base/robertaBase_bilin.html', rang=16, shuffle=True, lr=0.0003, patience=20)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport Roberta_base/robertaBase_bilin.html --rang 16 --shuffle True --lr 0.0003 --patience 20<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_1/checkpoints/last_epoch=60_step=219722.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_1/checkpoints/best_epoch=40_step=147682.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>nb_classes</th><td>15</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([57263.,  4162.,   770.,  2356.,  3130.,  8840.,  8690.,  3485., 44936.,
+        11888.,  7306.,  2601., 72547.,  9127.,  9406.])</span>tensor([57263.,  4162.,   770…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>57263</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>4162</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>770</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>2356</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>3130</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>8840</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>8690</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>3485</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>44936</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>11888</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>7306</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>2601</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>72547</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>9127</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>9406</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.552760, exactitude équilibrée : 0.621649</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.594624</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.520814</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.452433</h2>
+<img src="robertaBase_bilin_PJ/PJ_894652.svg"/>
+(Image stockée dans robertaBase_bilin_PJ/PJ_894652.svg)
+<p><span class="ttyp"><span hidden="True">[[1056, 66, 48, 22, 6, 202, 87, 25, 64, 66, 36, 39, 45, 11, 23], [11, 101, 4, 1, 1, 2, 11, 3, 9, 6, 2, 4, 2, 0, 3], [1, 0, 1, 0, 0, 2, 0, 1, 1, 2, 0, 2, 1, 0, 0], [2, 0, 0, 38, 0, 0, 0, 1, 1, 1, 0, 2, 2, 3, 1], [0, 0, 0, 0, 72, 0, 0, 1, 7, 0, 0, 1, 0, 2, 0], [18, 10, 1, 2, 1, 193, 4, 2, 6, 11, 5, 0, 3, 0, 1], [8, 17, 1, 2, 0, 2, 258, 8, 18, 8, 7, 5, 7, 4, 2], [1, 8, 1, 5, 9, 2, 6, 51, 6, 2, 0, 4, 4, 7, 4], [23, 49, 5, 4, 45, 16, 92, 67, 1129, 36, 64, 35, 42, 49, 23], [20, 54, 5, 2, 6, 18, 27, 8, 13, 264, 3, 10, 28, 1, 5], [2, 12, 1, 0, 1, 9, 12, 0, 8, 5, 201, 0, 1, 4, 2], [0, 4, 1, 1, 0, 0, 2, 2, 5, 1, 0, 78, 3, 3, 2], [87, 267, 23, 39, 48, 100, 95, 85, 201, 256, 52, 52, 609, 73, 200], [4, 2, 1, 18, 2, 1, 20, 15, 5, 3, 2, 11, 4, 244, 5], [5, 25, 2, 5, 0, 5, 9, 9, 28, 11, 3, 15, 8, 7, 252]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_2</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">9391ab02d388e5f795e44e10464c1e6405679582<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='Roberta_base/robertaBase_bilin.html', shuffle=True, lr=0.0003, patience=20, filter='filter_21_classes', masques=1)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport Roberta_base/robertaBase_bilin.html --shuffle True --lr 0.0003 --patience 20 --filter filter_21_classes --masques 1<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_2/checkpoints/last_epoch=47_step=844656.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_2/checkpoints/best_epoch=27_step=492716.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+<tr><th>rang</th><td>8</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([124654.,   9208.,   1536.,   5096.,   5625.,  15423.,  26947.,   8164.,
+         94380.,  28873.,  15857.,   5854., 148109.,  31190.,  19434.,   1170.,
+         69674., 558820.,  20814.,    610.,   5636.])</span>tensor([124654.,   9208.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>124654</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9208</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1536</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5096</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5625</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15423</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>26947</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8164</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>94380</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>28873</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>15857</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5854</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>148109</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>31190</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19434</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>1170</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>69674</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>558820</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>20814</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>610</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>5636</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.635423, exactitude équilibrée : 0.562591</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.540720</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.617194</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.509616</h2>
+<img src="robertaBase_bilin_PJ/PJ_933378.svg"/>
+(Image stockée dans robertaBase_bilin_PJ/PJ_933378.svg)
+<p><span class="ttyp"><span hidden="True">[[2014, 224, 797, 83, 4, 255, 143, 53, 77, 293, 168, 89, 160, 47, 68, 8, 54, 17, 50, 15, 14], [13, 235, 14, 3, 0, 3, 28, 3, 12, 36, 24, 17, 22, 1, 15, 0, 5, 6, 7, 1, 0], [4, 0, 7, 0, 0, 4, 0, 0, 2, 1, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0], [1, 0, 5, 78, 1, 0, 0, 1, 1, 3, 0, 0, 4, 3, 4, 0, 2, 0, 1, 0, 1], [1, 0, 0, 3, 103, 0, 0, 12, 4, 1, 1, 0, 4, 4, 1, 0, 0, 4, 0, 1, 0], [39, 15, 24, 2, 1, 265, 5, 2, 11, 46, 14, 6, 13, 3, 7, 0, 5, 0, 3, 5, 0], [17, 78, 28, 20, 3, 6, 1100, 21, 49, 76, 85, 12, 22, 28, 15, 3, 98, 63, 14, 17, 10], [3, 9, 8, 11, 16, 4, 10, 131, 5, 5, 0, 11, 12, 6, 3, 0, 17, 7, 1, 4, 5], [27, 153, 66, 29, 141, 29, 247, 162, 1365, 117, 266, 191, 153, 117, 72, 9, 117, 167, 43, 15, 18], [30, 64, 41, 8, 8, 24, 33, 16, 22, 672, 21, 19, 81, 8, 24, 0, 22, 7, 7, 2, 1], [2, 43, 5, 2, 1, 5, 46, 2, 16, 9, 478, 1, 3, 15, 9, 1, 27, 7, 7, 9, 2], [9, 7, 14, 20, 0, 1, 7, 8, 6, 1, 1, 138, 7, 2, 2, 0, 9, 1, 2, 5, 0], [213, 413, 237, 136, 104, 114, 183, 130, 224, 801, 138, 107, 1238, 101, 463, 6, 71, 66, 88, 14, 16], [6, 8, 19, 67, 9, 2, 67, 28, 12, 8, 4, 11, 19, 1131, 13, 0, 17, 5, 2, 16, 4], [14, 38, 36, 17, 2, 5, 14, 9, 11, 42, 6, 32, 44, 8, 438, 0, 7, 6, 1, 4, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 1], [37, 24, 20, 114, 6, 8, 94, 14, 28, 28, 55, 49, 32, 15, 46, 27, 2940, 29, 5, 118, 103], [18, 208, 7, 7, 104, 1, 225, 54, 261, 89, 194, 50, 80, 96, 49, 33, 164, 11484, 9, 298, 34], [4, 11, 2, 6, 0, 2, 2, 1, 2, 2, 8, 0, 4, 0, 1, 0, 7, 1, 621, 6, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 6, 2, 0, 18, 1], [2, 0, 0, 0, 0, 0, 3, 0, 8, 1, 0, 2, 0, 3, 2, 2, 50, 6, 4, 21, 44]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+<hr/>
+<h2>version_3</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">9391ab02d388e5f795e44e10464c1e6405679582<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='Roberta_base/robertaBase_bilin.html', rang=16, shuffle=True, lr=0.0003, patience=20, filter='filter_21_classes', masques=1)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport Roberta_base/robertaBase_bilin.html --rang 16 --shuffle True --lr 0.0003 --patience 20 --filter filter_21_classes --masques 1<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_3/checkpoints/last_epoch=36_step=651089.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaBase_bilin_LOGS/version_3/checkpoints/best_epoch=16_step=299149.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>144</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([124654.,   9208.,   1536.,   5096.,   5625.,  15423.,  26947.,   8164.,
+         94380.,  28873.,  15857.,   5854., 148109.,  31190.,  19434.,   1170.,
+         69674., 558820.,  20814.,    610.,   5636.])</span>tensor([124654.,   9208.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>124654</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9208</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1536</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5096</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5625</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15423</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>26947</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8164</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>94380</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>28873</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>15857</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5854</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>148109</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>31190</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19434</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>1170</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>69674</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>558820</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>20814</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>610</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>5636</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.644034, exactitude équilibrée : 0.562582</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.540711</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.626235</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.521198</h2>
+<img src="robertaBase_bilin_PJ/PJ_226549.svg"/>
+(Image stockée dans robertaBase_bilin_PJ/PJ_226549.svg)
+<p><span class="ttyp"><span hidden="True">[[2271, 189, 303, 37, 4, 448, 143, 85, 47, 301, 191, 114, 165, 80, 97, 15, 61, 9, 33, 16, 24], [15, 209, 5, 2, 0, 3, 36, 7, 19, 38, 34, 19, 23, 2, 16, 1, 4, 4, 7, 1, 0], [4, 1, 3, 0, 0, 4, 0, 0, 2, 3, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1], [3, 0, 7, 60, 1, 0, 0, 3, 0, 1, 0, 4, 4, 10, 5, 0, 5, 0, 0, 0, 2], [0, 1, 0, 1, 97, 0, 0, 18, 5, 2, 0, 1, 3, 6, 1, 1, 0, 2, 0, 1, 0], [39, 10, 4, 6, 1, 286, 7, 3, 5, 46, 17, 10, 12, 1, 8, 0, 6, 0, 1, 2, 2], [25, 52, 11, 3, 4, 11, 1108, 34, 33, 52, 92, 15, 25, 61, 16, 5, 116, 65, 12, 15, 10], [3, 4, 2, 4, 7, 4, 10, 150, 7, 6, 1, 14, 11, 10, 5, 0, 13, 5, 0, 7, 5], [36, 68, 33, 14, 91, 28, 271, 185, 1293, 183, 374, 163, 178, 152, 92, 18, 109, 124, 34, 27, 31], [32, 61, 14, 4, 9, 22, 43, 18, 12, 698, 23, 24, 83, 12, 19, 1, 21, 2, 3, 3, 6], [2, 27, 1, 1, 1, 12, 32, 2, 11, 12, 516, 2, 5, 15, 10, 4, 24, 2, 4, 4, 3], [7, 4, 7, 5, 0, 5, 9, 12, 8, 4, 4, 139, 5, 9, 10, 2, 4, 1, 1, 3, 1], [244, 332, 100, 63, 88, 163, 206, 194, 161, 789, 161, 125, 1446, 161, 418, 10, 63, 33, 68, 10, 28], [3, 7, 7, 24, 7, 2, 57, 32, 5, 6, 4, 12, 11, 1215, 10, 0, 15, 4, 1, 9, 17], [17, 24, 16, 5, 2, 4, 6, 18, 14, 51, 9, 37, 50, 17, 442, 2, 8, 7, 1, 4, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 5, 0, 0, 0, 4], [19, 20, 5, 55, 2, 10, 110, 33, 9, 15, 43, 47, 76, 36, 32, 84, 2706, 20, 6, 84, 380], [21, 104, 8, 1, 59, 10, 226, 108, 238, 77, 323, 28, 67, 208, 64, 55, 105, 11495, 2, 208, 58], [10, 8, 1, 0, 0, 3, 1, 1, 1, 2, 19, 1, 2, 0, 5, 0, 6, 1, 617, 0, 2], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 5, 3, 2, 0, 14, 4], [0, 0, 0, 0, 0, 1, 4, 1, 2, 2, 1, 1, 3, 1, 5, 3, 36, 2, 3, 18, 65]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

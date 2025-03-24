@@ -1,0 +1,110 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+
+<body>
+<h1>Llama3Bi_GAT</h1>
+<hr/>
+<h2>version_0</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">7ab2a5df70e8d67d0fec287294e792310850584c<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_GAT_sym(nom_rapport='LLAMA_3Bi/Llama3Bi_GAT.html', h=336, nbheads=1, nbcouches=2, transfo='Llama3Bi', patience=15, lr=0.0003, vertices_per_batch=950)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_GAT_sym --nom_rapport LLAMA_3Bi/Llama3Bi_GAT.html --h 336 --nbheads 1 --nbcouches 2 --transfo Llama3Bi --patience 15 --lr 0.0003 --vertices_per_batch 950<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles2.torchmodule_GAT_role_classif'&gt;</span>&lt;class 'modeles2.torchmodule_…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/Llama3Bi_GAT_LOGS/version_0/checkpoints/last_epoch=28_step=345825.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/Llama3Bi_GAT_LOGS/version_0/checkpoints/best_epoch=13_step=166950.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim_in</th><td>672</td></tr>
+<tr><th>dim_h1</th><td>336</td></tr>
+<tr><th>dim_h2</th><td>336</td></tr>
+<tr><th>heads</th><td>1</td></tr>
+<tr><th>nb_couches</th><td>2</td></tr>
+<tr><th>rang_sim</th><td>8</td></tr>
+<tr><th>dropout_p</th><td>0.3</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: (b.x, b.edge_index)</td></tr>
+<tr><th>f_target</th><td>lambda b: b.y1</td></tr>
+<tr><th>f_msk</th><td>lambda b: b.msk1</td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([ 126551.,    9458.,    1588.,    5258.,    5641.,   15697.,   27182.,
+           8388.,   95649.,   29890.,   16008.,    6006.,  150713.,   37427.,
+          19494.,    2336.,  138199., 1025180.,   41548.,    1544.,   11450.])</span>tensor([ 126551.,    9458.,  …<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>126551</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9458</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1588</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5258</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5641</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15697</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>27182</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8388</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>95649</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>29890</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>16008</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>6006</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>150713</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>37427</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19494</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>2336</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>138199</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>1025180</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>41548</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>1544</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>11450</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.759676, exactitude équilibrée : 0.687946</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.672344</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.747660</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.626435</h2>
+<img src="Llama3Bi_GAT_PJ/PJ_647120.svg"/>
+(Image stockée dans Llama3Bi_GAT_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[2470, 79, 34, 21, 6, 231, 33, 31, 126, 112, 113, 81, 104, 94, 58, 0, 30, 1, 11, 0, 3], [16, 207, 0, 1, 0, 3, 4, 0, 18, 8, 31, 13, 21, 5, 6, 0, 0, 1, 5, 0, 0], [3, 0, 6, 0, 0, 2, 0, 0, 2, 4, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1], [1, 0, 1, 64, 0, 2, 1, 0, 0, 0, 0, 1, 1, 3, 2, 0, 1, 0, 1, 0, 2], [0, 1, 0, 2, 91, 0, 0, 1, 11, 2, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [22, 2, 1, 1, 0, 304, 3, 4, 12, 11, 4, 4, 6, 0, 4, 0, 2, 0, 1, 0, 0], [21, 20, 1, 1, 3, 10, 916, 10, 84, 50, 57, 8, 27, 32, 6, 1, 10, 41, 7, 1, 0], [6, 7, 0, 3, 16, 4, 9, 107, 15, 1, 0, 4, 8, 6, 3, 0, 15, 2, 1, 0, 1], [26, 13, 2, 11, 83, 41, 110, 70, 1697, 23, 230, 131, 59, 104, 61, 0, 28, 42, 10, 0, 3], [73, 20, 5, 3, 9, 36, 14, 7, 34, 504, 14, 20, 79, 9, 10, 0, 8, 2, 1, 1, 3], [10, 5, 0, 1, 1, 9, 9, 0, 28, 2, 362, 1, 7, 3, 2, 0, 0, 4, 1, 0, 0], [4, 7, 0, 4, 0, 0, 2, 4, 8, 1, 0, 139, 4, 2, 10, 0, 0, 0, 1, 0, 0], [249, 133, 12, 53, 90, 161, 103, 73, 449, 379, 100, 88, 1500, 156, 256, 1, 41, 14, 26, 3, 11], [6, 1, 1, 7, 2, 1, 13, 3, 11, 3, 2, 7, 9, 1344, 4, 0, 4, 0, 1, 1, 0], [3, 6, 13, 4, 1, 10, 9, 7, 30, 12, 8, 34, 31, 8, 392, 0, 2, 2, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 4], [10, 9, 1, 13, 1, 16, 85, 7, 45, 15, 60, 17, 25, 38, 25, 0, 1724, 59, 4, 38, 6], [26, 9, 4, 7, 52, 11, 65, 26, 375, 12, 241, 59, 18, 80, 15, 0, 11, 12017, 1, 12, 7], [9, 4, 0, 2, 0, 4, 2, 0, 17, 1, 17, 0, 1, 4, 0, 0, 0, 0, 424, 0, 0], [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 12, 2], [2, 0, 0, 0, 0, 0, 2, 0, 3, 1, 0, 0, 3, 0, 1, 0, 20, 4, 1, 3, 111]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>
