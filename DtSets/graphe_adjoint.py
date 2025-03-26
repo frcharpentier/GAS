@@ -5,16 +5,16 @@ import logging
 import random
 import numpy as np
 import torch
-from outils_alignement import ALIGNEUR
+from alig.outils_alignement import ALIGNEUR
 from torch.nn import functional as F
 from transformers import AutoTokenizer, AutoModel
 from transformers import utils as transfo_utils
 from transformers import __version__ as transformers_version
 if transformers_version == "4.47.1":
     from transformers.models.llama.modeling_llama import LLAMA_ATTENTION_CLASSES
-    from mod_huggingface import LlamaUnmaskedAttention
+    from DtSets.mod_huggingface import LlamaUnmaskedAttention
 elif transformers_version == "4.48.2":
-    from mod_huggingface import llama_custom_attn_function, modernBert_custom_attn
+    from DtSets.mod_huggingface import llama_custom_attn_function, modernBert_custom_attn
     from transformers.models.modernbert.modeling_modernbert import MODERNBERT_ATTENTION_FUNCTION
 from transformers.cache_utils import Cache
 
@@ -490,7 +490,7 @@ def test2():
     trafo.compute_attn_tensor(snt)
 
 def test3():
-    from liste_tous_roles import dico_roles
+    from DtSets.liste_tous_roles import dico_roles
     tokens = ["\u00a4<s>", "\u00a4Est", "\u00a4ablish", "\u00a4ing", "Models",
               "in", "Industrial", "Innovation", "\u00a4</s>"]
     sommets = [1, 2, 3, 4, 6, 7]

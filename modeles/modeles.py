@@ -6,7 +6,7 @@ import lightning as LTN
 import random
 from torchmetrics.aggregation import CatMetric
 
-from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
+from DtSets.make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 
 class Classif_Logist(LTN.LightningModule):

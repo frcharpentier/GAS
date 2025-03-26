@@ -5,7 +5,7 @@ import re
 import csv
 import json
 import random
-from traiter_AMR_adjectifs import generateur_candidats_txt
+from outils.traiter_AMR_adjectifs import generateur_candidats_txt
 from dependencies import PROPBANK_TO_VERBATLAS, UMR_91_ROLESETS, PROPBANK_DIRECTORY, AMR_UMR_91_ROLESETS_XML
 
 def faire_roles_en_91():

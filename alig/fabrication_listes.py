@@ -6,14 +6,14 @@ import re
 import fire
 
 from amr_utils.amr_readers import AMR_Reader
-from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
-from algebre_relationnelle import RELATION
-from enchainables import MAILLON
-from outils_alignement import (AMR_modif,
+from alig.examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
+from alig.algebre_relationnelle import RELATION
+from outils.enchainables import MAILLON
+from alig.outils_alignement import (AMR_modif,
     GRAPHE_PHRASE, ALIGNEUR, preparer_alignements,
     compter_compos_connexes, transfo_aligs)
 
-from strategies_syntaxe import definir_strategie
+from alig.strategies_syntaxe import definir_strategie
 
 from dependencies import (
         PREFIXE_ALIGNEMENTS,

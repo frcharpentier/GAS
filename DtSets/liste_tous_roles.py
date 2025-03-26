@@ -1,4 +1,4 @@
-from enchainables import MAILLON
+from outils.enchainables import MAILLON
 from collections import OrderedDict, defaultdict
 import json
 import re

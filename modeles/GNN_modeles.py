@@ -8,7 +8,7 @@ import datetime
 from torchmetrics.aggregation import CatMetric
 from torch_geometric.nn import GATv2Conv
 
-from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
+from DtSets.make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 
 class GAT_role_classif(LTN.LightningModule):

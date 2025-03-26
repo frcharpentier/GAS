@@ -2,7 +2,7 @@ import os
 import re
 import csv
 import re
-from enchainables import MAILLON
+from outils.enchainables import MAILLON
 from lxml import etree as ET
 
 

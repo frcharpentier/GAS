@@ -2,9 +2,9 @@ from transformers import AutoTokenizer
 from amr_utils.amr_readers import AMR_Reader, AMR
 from amr_utils.amr_readers import Matedata_Parser as Metadata_Parser
 from amr_utils.alignments import AMR_Alignment
-from examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
-from aligneur_seq import aligneur_seq
-from algebre_relationnelle import RELATION
+from alig.examiner_framefiles import EXPLICITATION_AMR #expliciter_AMR
+from alig.aligneur_seq import aligneur_seq
+from alig.algebre_relationnelle import RELATION
 
 import re
 import os

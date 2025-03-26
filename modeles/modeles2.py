@@ -8,7 +8,7 @@ from torchmetrics.aggregation import CatMetric
 from torchmetrics import Accuracy as TMAccuracy
 from torch_geometric.nn import GATv2Conv
 
-from make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
+from DtSets.make_dataset import AligDataset, EdgeDataset, EdgeDatasetMono, EdgeDatasetRdmDir
 
 class torchmodule_Classif_Lin(torch.nn.Module):
     def __init__(self, dim, nb_classes):

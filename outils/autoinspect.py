@@ -1,7 +1,7 @@
 import fire
-from interface_git import git_get_commit
+from outils.interface_git import git_get_commit
 import sys
-from report_generator import HTML_REPORT
+from outils.report_generator import HTML_REPORT
 import inspect
 
 

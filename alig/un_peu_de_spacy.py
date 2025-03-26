@@ -2,8 +2,8 @@ import os
 import re
 import csv
 import spacy
-from aligneur_seq import aligneur_seq
-from algebre_relationnelle import RELATION
+from alig.aligneur_seq import aligneur_seq
+from alig.algebre_relationnelle import RELATION
 import json
 #L’environnement TORCH_et_TALN contient le package spacy, par exemple
 

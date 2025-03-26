@@ -1,5 +1,5 @@
 import os
-from algebre_relationnelle import RELATION
+from alig.algebre_relationnelle import RELATION
 
 
 

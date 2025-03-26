@@ -1,15 +1,14 @@
 import sys
 import pygraphviz as pgv
 import random
-import random
 import re
-from micro_serveur import EXEC_ADDRESS, ServeurReq, lancer_serveur
+from visu.micro_serveur import EXEC_ADDRESS, ServeurReq, lancer_serveur
 
 
 from lxml import etree as ET
 
 from amr_utils.amr_readers import AMR_Reader
-from examiner_framefiles import EXPLICITATION_AMR
+from alig.examiner_framefiles import EXPLICITATION_AMR
 #from amr_utils.propbank_frames import propbank_frames_dictionary
 import json
 

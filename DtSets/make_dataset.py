@@ -11,11 +11,11 @@ from torch_geometric.data import Dataset as geoDataset, download_url
 from torch_geometric.data import Data
 from torch_geometric.loader import DynamicBatchSampler
 import torch_geometric.transforms as TRF
-from graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
+from DtSets.graphe_adjoint import TRANSFORMER_ATTENTION, faire_graphe_adjoint
 from collections import OrderedDict, defaultdict, namedtuple
 from tqdm import tqdm
 from inspect import isfunction
-from liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
+from DtSets.liste_tous_roles import cataloguer_roles, liste_roles, sourcer_fichier_txt
 import random
 import hashlib
 
