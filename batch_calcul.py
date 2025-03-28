@@ -3,18 +3,17 @@ import os
 #os.environ['CUDA_VISIBLE_DEVICES']='1,4'
 #os.environ['CUDA_VISIBLE_DEVICES']='3'
 
-from interface_git import nettoyer_logs_lightning
-from autoinspect import autoinspect
+from outils.interface_git import nettoyer_logs_lightning
+from outils.autoinspect import autoinspect
 nettoyer_logs_lightning()
 
 import fire
-#import inspect
-from make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset, BalancedGraphSampler
+from DtSets.make_dataset import FusionElimination as FILT, AligDataset, PermutEdgeDataset, BalancedGraphSampler
 import torch
 from torch import optim, nn, utils, manual_seed
 import random
 import logging
-from report_generator import HTML_REPORT, HTML_IMAGE
+from outils.report_generator import HTML_REPORT, HTML_IMAGE
 import matplotlib.pyplot as plt
 import seaborn as sbn
 from sklearn.metrics import (confusion_matrix,
@@ -25,17 +24,17 @@ from sklearn.metrics import (confusion_matrix,
 
 import numpy as np
 from dependencies import transfo_to_filenames
-from fabrication_listes import construire_graphes as make_aligs
+from alig.fabrication_listes import construire_graphes as make_aligs
 
-from make_dataset import ( AligDataset, EdgeDataset,
+from DtSets.make_dataset import ( AligDataset, EdgeDataset,
                           EdgeDatasetMono, EdgeDatasetRdmDir,
                           EdgeDatasetMonoEnvers)
 
 import lightning as LTN
-from modeles import (Classif_Logist, Classif_Bil_Sym,
+from modeles.modeles import (Classif_Logist, Classif_Bil_Sym,
                      Classif_Bil_Sym_2, Classif_Bil_Antisym,
                      Classif_Bil_Antisym_2)
-from modeles2 import (torchmodule_Classif_Lin as tm_Classif_Lin,
+from modeles.modeles2 import (torchmodule_Classif_Lin as tm_Classif_Lin,
                       torchmodule_Classif_Bil_Sym   as tm_bil_sym,
                       torchmodule_Classif_Bil_Sym_2 as tm_bil_sym_2,
                       torchmodule_GAT_role_classif as tm_GAT,
@@ -44,7 +43,7 @@ from modeles2 import (torchmodule_Classif_Lin as tm_Classif_Lin,
                       make_GAT_model,
                       INFERENCE
                       )
-from GNN_modeles import GAT_role_classif, GAT_sans_GAT
+from modeles.GNN_modeles import GAT_role_classif, GAT_sans_GAT
 from torch_geometric.loader import DynamicBatchSampler, DataLoader as GeoDataLoader
 
 #from lightning.pytorch.callbacks.early_stopping import EarlyStopping
