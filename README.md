@@ -26,9 +26,19 @@ transformers==4.45.0
 protobuf==5.28.2
 ```
 
-* run the final following command : 
+* You will also need a modified version of the `amr-utils ` library by A-Blodgett : Run the following :
 
-  `pip install git+https://github.com/frcharpentier/amr-utils.git@master`
+`git clone https://github.com/ablodge/amr-utils.git`
+
+make sure the checked-out commit has number `be5534db1312dc7c6ba25ee50eafeb0d0f5e3f69`
+
+apply the patch with the command :
+
+`git apply ./diff_be5534d_1ef1da1.diff`
+
+Install the library :
+
+`pip install ./amr-utils`
 
 ## Instructions to build the dataset :
 

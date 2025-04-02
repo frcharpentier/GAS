@@ -1,0 +1,1983 @@
+diff --git a/amr_utils/alignments.py b/amr_utils/alignments.py
+index 8d65407..4b3dd67 100644
+--- a/amr_utils/alignments.py
++++ b/amr_utils/alignments.py
+@@ -52,6 +52,12 @@ def load_from_json(json_file, amrs=None, unanonymize=False):
+         alignments = json.load(f)
+     for k in alignments:
+         if unanonymize:
++            if not k in amrs:
++                print('Failed to un-anonymize: no matching AMR:', k)
++                amr = None
++            else:
++                amr = amrs[k]
++                egal = lambda x,y: (amr.isi_node_mapping[x] == amr.isi_node_mapping[y])
+             if unanonymize and not amrs:
+                 raise Exception('To un-anonymize alignments, the parameter "amrs" is required.')
+             for a in alignments[k]:
+@@ -59,17 +65,18 @@ def load_from_json(json_file, amrs=None, unanonymize=False):
+                     a['nodes'] = []
+                 if 'edges' not in a:
+                     a['edges'] = []
+-                amr = amrs[k]
+-                for i,e in enumerate(a['edges']):
+-                    s,r,t = e
+-                    if r is None:
+-                        new_e = [e2 for e2 in amr.edges if e2[0]==s and e2[2]==t]
+-                        if not new_e:
+-                            print('Failed to un-anonymize:', amr.id, e, file=sys.stderr)
+-                        else:
+-                            new_e = new_e[0]
+-                            a['edges'][i] = [s, new_e[1], t]
+-        alignments[k] = [AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']]) for a in alignments[k]]
++                if amr is not None:
++                    for i,e in enumerate(a['edges']):
++                        s,r,t = e
++                        if r is None:
++                            try:
++                                new_e = [e_2 for e_2 in amr.edges if egal(e_2[0],s) and egal(e_2[2],t)]
++                            except KeyError:
++                                print('Failed to un-anonymize:', amr.id, e, file=sys.stderr)
++                            else:
++                                new_e = new_e[0]
++                                a['edges'][i] = [s, new_e[1], t]
++        alignments[k] = [AMR_Alignment(a['type'], a['tokens'], a['nodes'], [tuple(e) for e in a['edges']] if "edges" in a else None) for a in alignments[k]]
+     if amrs:
+         for k in alignments:
+             for align in alignments[k]:
+@@ -88,7 +95,9 @@ def write_to_json(json_file, alignments, anonymize=False, amrs=None):
+             for a in new_alignments[k]:
+                 amr = next(amr_ for amr_ in  amrs if amr_.id==k)
+                 for i,e in enumerate(a['edges']):
+-                    if len([e2 for e2 in amr.edges if e2[0]==e[0] and e2[2]==e[2]])==1:
++                    if len([
++    e2 for e2 in amr.edges if amr.isi_node_mapping[e2[0]]==amr.isi_node_mapping[e[0]] and amr.isi_node_mapping[e2[2]]==amr.isi_node_mapping[e[2]]
++                            ])==1:
+                         a['edges'][i] = [e[0],None,e[2]]
+                 if 'string' in a:
+                     del a['string']
+diff --git a/amr_utils/amr.py b/amr_utils/amr.py
+index 83d5646..26c02b2 100644
+--- a/amr_utils/amr.py
++++ b/amr_utils/amr.py
+@@ -5,7 +5,15 @@ from amr_utils.alignments import AMR_Alignment
+ 
+ class AMR:
+ 
+-    def __init__(self, tokens:list=None, id=None, root=None, nodes:dict=None, edges:list=None, metadata:dict=None):
++    def __init__(self, tokens:list=None,
++                 id=None,
++                 root=None,
++                 nodes:dict=None,
++                 edges:list=None,
++                 metadata:dict=None,
++                 variables:list=None):
++                 #relations:dict=None,
++                 #attributes:dict=None):
+ 
+         if edges is None: edges = []
+         if nodes is None: nodes = {}
+@@ -16,20 +24,154 @@ class AMR:
+         self.root = root
+         self.nodes = nodes
+         self.edges = edges
++        if variables is None:
++            self.variables = [ X for X in self.nodes]
++        else:
++            self.variables = variables
++        #if relations is None:
++        #    self.relations = self.edges
++        #if attributes is None:
++        #    self.attributes = []
+         self.id = 'None' if id is None else id
+         self.metadata = metadata
+ 
++    def __getattr__(self, item):
++        if item == "instances":
++            return [(":instance", s ,self.nodes[s]) for s in self.variables]
++        elif item == "attributes":
++            attrib = [("TOP", self.root, self.nodes[self.root])]
++            attrib.extend((r, s, self.nodes[t]) for s,r,t in self.edges if not t in self.variables)
++            return attrib
++        #elif item == "attributes_redir":
++        #    attrib = [("TOP", self.root, self.nodes[self.root])]
++        #    for s,r,t in self.edges:
++        #        if not t in self.variables:
++        #            if r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
++        #                attrib.append((r[:-len("-of")], self.nodes[t], s))
++        #            else:
++        #                attrib.append((r, s, self.nodes[t]))
++        #    return attrib
++        elif item == "relations":
++            return [(r, s, t) for s,r,t in self.edges if t in self.variables]
++        elif item == "relations_redir":
++            relat = []
++            for s,r,t in self.edges:
++                if t in self.variables:
++                    if r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
++                        relat.append((r[:-len("-of")], t, s))
++                    else:
++                        relat.append((r, s, t))
++            return relat
++        else:
++            raise AttributeError
++        
++    def edges_redir(self):
++        for s, r, t in self.edges:
++            if r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
++                s,r,t = t, r[:-len("-of")], s
++            yield (s,r,t)
++
++
+     def copy(self):
+         return AMR(self.tokens.copy(), self.id, self.root, self.nodes.copy(), self.edges.copy(), self.metadata.copy())
+ 
+     def __str__(self):
+         return metadata_string(self)
+ 
++    def trouver_nom_variable(self, node, instances, noms_vars):
++        if node in instances:
++            return instances[node]
++        lettre = self.nodes[node][0].lower()
++        if not lettre in noms_vars:
++            noms_vars[lettre] = 0
++            nom_var = lettre
++        else:
++            noms_vars[lettre] += 1
++            nom_var = "%s%d"%(lettre, noms_vars[lettre])
++        instances[node] = nom_var
++        return nom_var
++
+     def graph_string(self):
+-        return graph_string(self)
++        if (not hasattr(self, "reconstruction")):
++            return graph_string(self)
++        else:
++            resu = ""
++            prfdr = 0
++            instances = dict()
++            noms_vars = dict()
++            last_triple = False
++            noeuds_ouverts = []
++            for typ, eltN in self.reconstruction:
++                if typ == "I":
++                    node = self.variables[eltN]
++                    #assert not node in instances, "Double Instanciation, c’est normal ??"
++                    if last_triple and (node == last_triple[2]):
++                        s,r,_ = last_triple
++                        last_triple = False
++                        resu += "\n" + "  "*prfdr + r + " "
++                    elif last_triple:
++                        nom_cible = self.trouver_nom_variable(node, instances, noms_vars)
++                        resu += "\n" + "  "*prfdr + r + " " + nom_cible
++                    noeuds_ouverts.append(node)
++                    prfdr += 1
++                    nom_var = self.trouver_nom_variable(node, instances, noms_vars)
++                    resu += "(" + nom_var + " / " + self.nodes[node]
++
++                else:
++                    if last_triple:
++                        s1, r1, t1 = last_triple
++                        nom_cible = self.trouver_nom_variable(t1, instances, noms_vars)
++                        resu += "\n" + "  "*prfdr + r1 + " " + nom_cible
++                        last_triple = False
++                    if typ == "R":
++                        s,r,t = self.edges[eltN]
++                        assert s in instances, "Un triplet dont la source n’est pas instanciée, c’est absolument pas normal"
++                        while s != noeuds_ouverts[-1]:
++                            resu += ")"
++                            noeuds_ouverts.pop()
++                            prfdr -= 1
++                        #if t in instances:
++                        #    resu += "\n" + "  "*prfdr + r + " " + instances[t]
++                        #else:
++                        last_triple = (s,r,t)
++                        
++
++                    elif typ == "A":
++                        s,r,t = self.edges[eltN]
++                        assert s in instances, "Un triplet dont la source n’est pas instanciée, c’est absolument pas normal"
++                        while s != noeuds_ouverts[-1]:
++                            resu += ")"
++                            noeuds_ouverts.pop()
++                            prfdr -= 1
++                        resu += "\n" + "  "*prfdr + r + " " + self.nodes[t]
++
++                    elif typ == "W":
++                        # W : liens wiki éliminés
++                        node, lk = self.variables[eltN[0]], eltN[1]
++                        assert node in instances, "Un triplet :wiki dont la source n’est pas instanciée, c’est absolument pas normal"
++                        while node != noeuds_ouverts[-1]:
++                            resu += ")"
++                            noeuds_ouverts.pop()
++                            prfdr -= 1
++                        resu += "\n" + "  "*prfdr + ":wiki %s"%lk
++
++            if last_triple:
++                s1, r1, t1 = last_triple
++                nom_cible = self.trouver_nom_variable(t1, instances, noms_vars)
++                resu += "\n" + "  "*prfdr + r1 + " " + nom_cible
++            if prfdr > 0:
++                resu += ")"*prfdr
++        return resu
+ 
+     def amr_string(self):
+-        return metadata_string(self) + graph_string(self)+'\n\n'
++        if hasattr(self, "prefix"):
++            entete = self.prefix + "\n"
++        else:
++            entete = metadata_string(self)
++        
++        return entete + self.graph_string()
++        
++        
+ 
+     def get_alignment(self, alignments, token_id=None, node_id=None, edge=None):
+         if not isinstance(alignments, dict):
+@@ -46,19 +188,37 @@ class AMR:
+         return AMR_Alignment()
+ 
+     def triples(self, normalize_inverse_edges=False):
+-        taken_nodes = {self.root}
+-        yield self.root, ':instance', self.nodes[self.root]
++        #taken_nodes = {self.root}
++        #yield self.root, ':instance', self.nodes[self.root]
++        #for s,r,t in self.edges:
++        #    #if not self.nodes[t][0].isalpha() or self.nodes[t] in ['imperative', 'expressive', 'interrogative']:
++        #    if not t in self.variables:
++        #        yield s, r, self.nodes[t]
++        #        continue
++        #    if normalize_inverse_edges and r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
++        #        yield t, r[:-len('-of')], s
++        #    else:
++        #        yield s, r, t
++        #    if t not in taken_nodes:
++        #        yield t, ':instance', self.nodes[t]
++        #        taken_nodes.add(t)
++                
++        for v in self.variables:
++            yield v, ":instance", self.nodes[v]
+         for s,r,t in self.edges:
+-            if not self.nodes[t][0].isalpha() or self.nodes[t] in ['imperative', 'expressive', 'interrogative']:
+-                yield s, r, self.nodes[t]
+-                continue
++            if not t in self.variables:
++                t = self.nodes[t]
+             if normalize_inverse_edges and r.endswith('-of') and r not in [':consist-of', ':prep-out-of', ':prep-on-behalf-of']:
+-                yield t, r[:-len('-of')], s
+-            else:
+-                yield s, r, t
+-            if t not in taken_nodes:
+-                yield t, ':instance', self.nodes[t]
+-                taken_nodes.add(t)
++                s,r,t = t, r[:-len("-of")], s
++            yield s,r,t
++
++    #def get_triples(self, normalize_inverse_edges=False):
++    #    for iden in self.variables:
++    #        yield iden, ":instance", self.nodes[iden]
++    #    for id1, rel, id2 in self.relations:
++    #        yield id1, rel, id2
++    #    for id1, rel, attr in self.attributes:
++    #        yield id1, rel, self.nodes[attr]
+ 
+     def _rename_node(self, a, b):
+         if b in self.nodes:
+diff --git a/amr_utils/amr_readers.py b/amr_utils/amr_readers.py
+index 38ae6c7..65ba004 100644
+--- a/amr_utils/amr_readers.py
++++ b/amr_utils/amr_readers.py
+@@ -11,13 +11,15 @@ from amr_utils.amr import AMR
+ 
+ class Matedata_Parser:
+ 
+-    token_range_re = re.compile('^(\d-\d|\d(,\d)+)$')
+-    metadata_re = re.compile('(?<=[^#]) ::')
++    token_range_re = re.compile(r'^(\d-\d|\d(,\d)+)$')
++    metadata_re = re.compile(r'(?<=[^#]) ::')
+ 
+     def __init__(self):
+         pass
+ 
+-    def get_token_range(self, string):
++    #def get_token_range(self, string):
++    @staticmethod
++    def get_token_range(string):
+         if '-' in string:
+             start = int(string.split('-')[0])
+             end = int(string.split('-')[-1])
+@@ -25,11 +27,15 @@ class Matedata_Parser:
+         else:
+             return [int(i) for i in string.split(',')]
+ 
+-    def readlines(self, lines):
+-        lines = self.metadata_re.sub('\n# ::', lines)
++    #def readlines(self, lines):
++    @staticmethod
++    def readlines(lines):
++        #lines = self.metadata_re.sub('\n# ::', lines)
++        lines = Matedata_Parser.metadata_re.sub('\n# ::', lines)
+         metadata = {}
+         graph_metadata = {}
+-        rows = [self.readline_(line) for line in lines.split('\n')]
++        #rows = [self.readline_(line) for line in lines.split('\n')]
++        rows = [Matedata_Parser.readline_(line) for line in lines.split('\n')]
+         labels = {label for label,_ in rows}
+         for label in labels:
+             if label in ['root','node','edge']:
+@@ -40,7 +46,9 @@ class Matedata_Parser:
+             metadata['snt'] = ['']
+         return metadata, graph_metadata
+ 
+-    def readline_(self, line):
++    #def readline_(self, line):
++    @staticmethod
++    def readline_(line):
+         if not line.startswith('#'):
+             label = 'snt'
+             metadata = line.strip()
+@@ -62,8 +70,10 @@ class Matedata_Parser:
+             rows = [row for row in csv.reader([line], delimiter='\t', quotechar='|')]
+             metadata = rows[0]
+             for i, s in enumerate(metadata):
+-                if self.token_range_re.match(s):
+-                    metadata[i] = self.get_token_range(s)
++                #if self.token_range_re.match(s):
++                #    metadata[i] = self.get_token_range(s)
++                if Matedata_Parser.token_range_re.match(s):
++                    metadata[i] = Matedata_Parser.get_token_range(s)
+         elif line.startswith('# ::'):
+             label = line[len('# ::'):].split()[0]
+             line = line[len(f'# ::{label} '):]
+@@ -90,7 +100,268 @@ class PENMAN_Wrapper:
+     def __init__(self, style='isi'):
+         self.style = style
+ 
+-    def parse_amr(self, tokens, amr_string):
++    @staticmethod
++    def parse_amr_s(tokens, amr_string, arg_style = "isi"):
++        graphe = penman.decode(amr_string, model=TreePenmanModel())
++        triples = graphe.triples() if callable(graphe.triples) else graphe.triples
++
++        # Les triplets (source, relation, cible) sont de trois types
++        # La source est toujours le nom d’une variable.
++        # * Si la relation est
++        #   ":instance", la cible est un nom de concept, et on est en présence
++        #   d’un triplet d’INSTANCE
++        # * Si la relation n’est pas ":instance", et que la cible est le nom
++        #   d’une autre variable, on est en présence d’un triplet de RELATION
++        # * Si la relation n’est pas ":instance", et que la cible est le nom
++        #   d’une constante, on est en présence d’un triplet d’ATTRIBUT.
++
++        classif = [("I", s,r,t) if (r==":instance") else("?", s,r,t) for (s,r,t) in triples]
++        # I comme Instance
++
++        noms_variables = {s: (s,r,t) for c,s,r,t in classif if c == "I"}
++        
++        for i, (c,s,r,t) in enumerate(classif):
++            if c != "I":
++                if t in noms_variables:
++                    classif[i] = ("R", s,r,t)
++                    # R comme relation
++                else:
++                    classif[i] = ("A", s,r,t)
++                    # A comme attribut
++
++        sommets = dict()
++        # Les sommets de l’AMR seront soit des variables, soit des étiquettes constantes.
++        # (On exclut les noms de concept, qu’on identifie aux variables)
++        # Les clés de ce dictionnaire seront des noms de variable (en lettres dans la
++        # description de l’AMR), ou les triplets entiers pour les noms d’attribut
++        # Les valeurs seront les adresses GORN au format ISI et JAMR dans un n-uplet.
++
++        aretes = dict()
++        # Les clés de ce dictionnaire seront les triplets de relation ou d’attribut.
++        # Les valeurs seront les triplets où les sommets auront été remplacés par les
++        # adresses GORN, ainsi que les adresses ISI d’arête.
++        
++        nroot_isi = 1 #numéro de la racine
++        nroot_jmr = 0 #numéro de la racine
++        # reentrances_isi = dict()
++        # aretes_isi = dict()
++        #aretes_jmr = []
++        
++        var_index = { x:(1,0) for x in noms_variables }
++        # l’index de départ pour numéroter les sommets descendants de chaque variable,
++        # au format ISI, suivi de l’index au format JAMR.
++        
++        for categ,s,r,t in classif:
++            if categ == "I":
++                continue
++
++            if not s in sommets:
++                sommets[s] = ((str(nroot_isi),), str(nroot_jmr))
++                nroot_isi += 1
++                nroot_jmr += 1
++
++            source_isi, source_jmr = sommets[s][0][0], sommets[s][1]
++            cibles_isi = tuple(x + "." + str(var_index[s][0]) for x in sommets[s][0])
++            #cibles_isi = sommets[s][0][0] + "." + str(var_index[s][0])
++            cible_jmr = sommets[s][1] + "." + str(var_index[s][1])
++            
++            if categ == "R":
++                # Triplet de relation : La cible est une variable
++                if t in sommets:
++                    # Réentrance. On ajoute l’adresse ISI redondante du sommet.
++                    liste_isi, cible_jmr = sommets[t]
++                    liste_isi = liste_isi + cibles_isi
++                    #liste_isi = liste_isi + (cible_isi,)
++                    sommets[t] = (liste_isi, cible_jmr)
++                    # Création des ids de l’arête
++                    aretes[(s,r,t)] = (
++                                        "var",            # nature du sommet cible
++                                        tuple(x + ".r" for x in cibles_isi), # Adresse d’arête pour ISI
++                                        #cible_isi + ".r", # Adresse d’arête pour ISI
++                                        (source_isi, r, liste_isi[0]), #Triplet normalisé au format ISI
++                                        (source_jmr, r, cible_jmr)     #Triplet normalisé au format JAMR
++                                    )
++                    # On incrémente l’index ISI, mais pas l’index JAMR
++                    var_index[s] = (1 + var_index[s][0], var_index[s][1])
++                else:
++                    # On crée les adresses ISI et JAMR pour le sommet
++                    sommets[t] = (cibles_isi, cible_jmr)
++                    #sommets[t] = ((cible_isi,), cible_jmr)
++                    # Création des ids de l’arête
++                    aretes[(s,r,t)] = (
++                                        "var",            # nature du sommet cible
++                                        tuple(x + ".r" for x in cibles_isi), # Adresse d’arête pour ISI
++                                        #cible_isi + ".r", # Adresse d’arête pour ISI
++                                        (source_isi, r, cibles_isi[0]), # Triplet normalisé au format ISI
++                                        #(source_isi, r, cible_isi), # Triplet normalisé au format ISI
++                                        (source_jmr, r, cible_jmr)  # Triplet normalisé au format JAMR
++                                    )
++                    # On incrémente les index ISI et JAMR
++                    var_index[s] = (1 + var_index[s][0], 1 + var_index[s][1])
++                
++            elif categ == "A":
++                # Triplet de relation : La cible est une constante
++                # Pour les constantes, la clé dans le dico des sommets est le triplet entier.
++                sommets[(s,r,t)] = (cibles_isi, cible_jmr)
++                #sommets[(s,r,t)] = ((cible_isi,), cible_jmr)
++                # Création des ids de l’arête
++                aretes[(s,r,t)] = (
++                                    "const",          # nature du sommet cible
++                                    tuple(x + ".r" for x in cibles_isi), # Adresse d’arête pour ISI
++                                    #cible_isi + ".r", # Adresse d’arête pour ISI
++                                    (source_isi, r, cibles_isi[0]), # Triplet normalisé au format ISI
++                                    #(source_isi, r, cible_isi), # Triplet normalisé au format ISI
++                                    (source_jmr, r, cible_jmr)  # Triplet normalisé au format JAMR
++                                )
++                # On incrémente les index ISI et JAMR
++                var_index[s] = (1 + var_index[s][0], 1 + var_index[s][1])
++
++        for s in noms_variables:
++            if not s in sommets:
++                sommets[s] = ((str(nroot_isi),), str(nroot_jmr))
++                nroot_isi += 1
++                nroot_jmr += 1
++        
++        if arg_style == "isi":
++            racine = "1"
++            amr_nodes = dict()
++            amr_edges = []
++            amr_vars = dict()
++            isi_node_mapping = dict()
++            isi_edges_addr = dict()
++            jamr_node_mapping = dict()
++            letter_labels = dict()
++            idx_muet = 0
++            for k, (addresses_isi, addr_jmr) in sommets.items():
++                addr_isi_canon = addresses_isi[0]
++                for addr in addresses_isi:
++                    isi_node_mapping[addr] = addr_isi_canon
++                jamr_node_mapping[addr_jmr] = addr_isi_canon
++                if not type(k) is tuple:
++                    # k est un identifiant de variable
++                    amr_vars[addr_isi_canon] = k
++                    varb, rel, concept = noms_variables[k]
++                    assert varb == k and rel == ":instance"
++                    amr_nodes[addr_isi_canon] = concept
++                    letter_labels[k] = addr_isi_canon
++                else:
++                    _, _, constante = k[0], k[1], k[2]
++                    amr_nodes[addr_isi_canon] = constante
++                    while "x%d"%(idx_muet) in letter_labels:
++                        idx_muet += 1
++                    letter_labels["x%d"%(idx_muet)] = addr_isi_canon
++                    idx_muet += 1
++
++            #for k, (nat, addr_isi, trip_isi, trip_jmr) in aretes.items():
++            for k, (nat, addresses_isi, trip_isi, trip_jmr) in aretes.items():
++                amr_edges.append(trip_isi)
++                for addr_isi in addresses_isi:
++                    isi_edges_addr[addr_isi] = trip_isi
++
++        else: # if arg_style == "jamr":
++            racine = "0"
++            amr_nodes = dict()
++            amr_edges = []
++            amr_vars = dict()
++            isi_node_mapping = dict()
++            isi_edges_addr = dict()
++            jamr_node_mapping = dict()
++            letter_labels = dict()
++            idx_muet = 0
++            for k, (addresses_isi, addr_jmr) in sommets.items():
++                for addr in addresses_isi:
++                    isi_node_mapping[addr] = addr_jmr
++                jamr_node_mapping[addr_jmr] = addr_jmr
++                if not type(k) is tuple:
++                    # k est un identifiant de variable
++                    amr_vars[addr_jmr] = k
++                    varb, rel, concept = noms_variables[k]
++                    assert varb == k and rel == ":instance"
++                    amr_nodes[addr_jmr] = concept
++                    letter_labels[k] = addr_jmr
++                else:
++                    _, _, constante = k[0], k[1], k[2]
++                    amr_nodes[addr_jmr] = constante
++                    while "x%d"%(idx_muet) in letter_labels:
++                        idx_muet += 1
++                    letter_labels["x%d"%(idx_muet)] = addr_jmr
++                    idx_muet += 1
++
++            #for k, (nat, addr_isi, trip_isi, trip_jmr) in aretes.items():
++            for k, (nat, addresses_isi, trip_isi, trip_jmr) in aretes.items():
++                amr_edges.append(trip_jmr)
++                for addr_isi in addresses_isi:
++                    isi_edges_addr[addr_isi] = trip_jmr
++
++        amr = AMR(
++                    tokens = tokens,
++                    id = None,
++                    root = racine,
++                    nodes = amr_nodes,
++                    edges = amr_edges,
++                    metadata = None,
++                    variables = [x for x in amr_vars]
++                )
++                
++        aligns = []  
++    
++        for (s,r,t), epi in graphe.epidata.items():
++            for ali in epi:
++                if type(ali) is penman.surface.Alignment:
++                    if r == ":instance":
++                        somm = sommets[s][0][0] if arg_style == "isi" else sommets[s][1]
++                        aligns.append(AMR_Alignment(type = arg_style,
++                                                    tokens=list(ali.indices),
++                                                    nodes=[somm]))
++                    elif t in noms_variables:
++                        # si t est le nom d’une variable, c’est aussi une clé de sommets.
++                        somm = sommets[t][0][0] if arg_style == "isi" else sommets[t][1]
++                        aligns.append(AMR_Alignment(type = arg_style,
++                                                    tokens=list(ali.indices),
++                                                    nodes=[somm]))
++                    else:
++                        somm = sommets[(s, r, t)][0][0] if arg_style == "isi" else sommets[(s, r, t)][1]
++                        aligns.append(AMR_Alignment(type = arg_style,
++                                                    tokens=list(ali.indices),
++                                                    nodes=[somm]))
++                elif type(ali) is penman.surface.RoleAlignment:
++                    if r != ":instance":
++                        source = sommets[s][0][0] if arg_style == "isi" else sommets[s][1]
++                        if t in noms_variables:
++                            # si t est le nom d’une variable, c’est aussi une clé de sommets.
++                            cible  = sommets[t][0][0] if arg_style == "isi" else sommets[t][1]
++                        else:
++                            cible = sommets[(s,r,t)][0][0] if arg_style == "isi" else sommets[(s,r,t)][1]
++                        arete = (source, r, cible)
++                        aligns.append(AMR_Alignment(type = arg_style,
++                                                    tokens=list(ali.indices),
++                                                    edges=[arete]))
++                            
++        amr.isi_node_mapping = isi_node_mapping
++        reconstruction = []
++        for (c, s, r, t) in classif:
++            if c == "I":
++                varb = letter_labels[s]
++                varbN = amr.variables.index(varb)
++                reconstruction.append(('I', varbN))
++            elif c == "R":
++                edg = (letter_labels[s], r, letter_labels[t])
++                edgN = amr.edges.index(edg)
++                reconstruction.append(('R', edgN))
++            elif c == "A":
++                if arg_style == "isi":
++                    edg = (letter_labels[s], r, sommets[(s,r,t)][0][0])
++                else:
++                    edg = (letter_labels[s], r, sommets[(s,r,t)][1])
++                edgN = amr.edges.index(edg)
++                reconstruction.append(('A', edgN))
++        amr.reconstruction = reconstruction
++        return amr, (letter_labels, jamr_node_mapping, isi_node_mapping, isi_edges_addr, aligns)
++
++
++
++    @staticmethod
++    def parse_amr_s_0(tokens, amr_string, arg_style = 'isi'):
+         amr = AMR(tokens=tokens)
+         g = penman.decode(amr_string, model=TreePenmanModel())
+         triples = g.triples() if callable(g.triples) else g.triples
+@@ -110,6 +381,9 @@ class PENMAN_Wrapper:
+         edges = []
+         reentrancies = []
+ 
++        
++        instances = set(s for s,r,t in triples if r == ":instance")
++
+         for i,tr in enumerate(triples):
+             s, r, t = tr
+             # an amr node
+@@ -126,7 +400,8 @@ class PENMAN_Wrapper:
+                 nodes.append(tr)
+             # an amr edge
+             elif t not in letter_labels:
+-                if len(t) > 5 or not t[0].isalpha():
++                #if len(t) > 5 or not t[0].isalpha():
++                if not t in instances:
+                     if tr in letter_labels:
+                         isi_labels['ignore'] = isi_labels[s] + '.' + str(isi_edge_idx[s])
+                         isi_edge_labels['ignore'] = isi_labels[s] + '.' + str(isi_edge_idx[s])+'.r'
+@@ -152,6 +427,9 @@ class PENMAN_Wrapper:
+                     jamr_labels[t] = jamr_labels[s] + '.' + str(jamr_edge_idx[s])
+                     if i+1<len(triples) and triples[i+1][1]==':instance':
+                         jamr_edge_idx[s] += 1
++                    else:
++                        jamr_edge_idx[s] += 1
++                        jamr_edge_idx[s] -= 1
+                     isi_labels[t] = isi_labels[s] + '.' + str(isi_edge_idx[s])
+                     isi_edge_labels[tr] = isi_labels[s] + '.' + str(isi_edge_idx[s])+'.r'
+                     isi_edge_idx[s] += 1
+@@ -164,26 +442,33 @@ class PENMAN_Wrapper:
+                 reentrancies.append(tr)
+ 
+         default_labels = letter_labels
+-        if self.style=='isi':
++        if arg_style=='isi':
+             default_labels = isi_labels
+-        elif self.style=='jamr':
++        elif arg_style=='jamr':
+             default_labels = jamr_labels
+ 
+         amr.root = default_labels[g.top]
+         edge_map = {}
++        amr.variables = []
++        #amr.attributes = []
++        #amr.relations = []
+         for tr in nodes:
+             s,r,t = tr
+             amr.nodes[default_labels[s]] = t
++            amr.variables.append(default_labels[s])
++
+         for tr in attributes:
+             s,r,t = tr
+             if not r.startswith(':'): r = ':' + r
+             amr.nodes[default_labels[tr]] = t
+             amr.edges.append((default_labels[s], r, default_labels[tr]))
++            #amr.attributes.append((default_labels[s], r, default_labels[tr]))
+             edge_map[tr] = (default_labels[s], r, default_labels[tr])
+         for tr in edges:
+             s, r, t = tr
+             if not r.startswith(':'): r = ':' + r
+             amr.edges.append((default_labels[s], r, default_labels[t]))
++            #amr.relations.append((default_labels[s], r, default_labels[t]))
+             edge_map[tr] = (default_labels[s], r, default_labels[t])
+ 
+         aligns = []
+@@ -205,7 +490,11 @@ class PENMAN_Wrapper:
+         isi_labels = {v: default_labels[k] if k!='ignore' else k for k, v in isi_labels.items()}
+         isi_edge_labels = {v: edge_map[k] if k in edge_map else k for k, v in isi_edge_labels.items()}
+ 
+-        return amr, (letter_labels, jamr_labels, isi_labels, isi_edge_labels, aligns)
++        return amr, (letter_labels, jamr_labels, isi_labels, isi_edge_labels, aligns) 
++
++
++    def parse_amr(self, tokens, amr_string):
++        return PENMAN_Wrapper.parse_amr_s(tokens, amr_string, self.style)
+ 
+ 
+ class AMR_Reader:
+@@ -213,12 +502,102 @@ class AMR_Reader:
+     def __init__(self, style='isi'):
+         self.style=style
+ 
+-    def load(self, amr_file_name, remove_wiki=False, output_alignments=False):
++    def loads(self, amr_string, remove_wiki=False, output_alignments=False, no_tokens=True, link_string=False):
++        aligns = None
++        amr_string_0 = amr_string.replace('\r', '')
++        lignes = amr_string_0.split('\n')
++        lignes = [l for l in lignes if len(l.strip()) > 0]
++        prefix_lines = [line for i,line in enumerate(lignes) if line.strip().startswith('#') or (i==0 and not no_tokens)]
++        prefix = '\n'.join(prefix_lines)
++        amr_string_lines = [line for i, line in enumerate(lignes)
++                            if not line.strip().startswith('#') and (i>0 or no_tokens)]
++        amr_string = ''.join(amr_string_lines).strip()
++        amr_string = re.sub(' +', ' ', amr_string)
++        if not amr_string:
++            return False
++        if not amr_string.startswith('(') or not amr_string.endswith(')'):
++            raise Exception('Could not parse AMR from: ', amr_string)
++        metadata, graph_metadata = Matedata_Parser.readlines(prefix)
++        tokens = metadata['tok'] if 'tok' in metadata else metadata['snt'].split()
++        tokens = self._clean_tokens(tokens)
++        if graph_metadata:
++            amr, aligns = self._parse_amr_from_metadata(tokens, graph_metadata)
++            amr.id = metadata['id']
++        else:
++            amr, (letter_labels, jamr_labels, isi_labels, isi_edge_labels, amraligns) = PENMAN_Wrapper.parse_amr_s(tokens, amr_string, self.style)
++            if 'id' in metadata:
++                amr.id = metadata['id']
++            else:
++                amr.id = ""
++            if output_alignments:
++                if 'alignments' in metadata:
++                    aligns = metadata['alignments'].split()
++                    if any('|' in a for a in aligns):
++                        aligns = self._parse_jamr_alignments(amr, "", aligns, jamr_labels)
++                    else:
++                        aligns = self._parse_isi_alignments(amr, "", aligns, isi_labels, isi_edge_labels)
++                else:
++                    aligns = amraligns
++        amr.metadata = {k:v for k,v in metadata.items() if k not in ['tok','id']}
++        if remove_wiki:
++            if hasattr(amr,"reconstruction"):
++                recons = []
++                for typ, n in amr.reconstruction:
++                    if typ == "I":
++                        recons.append(("I", n))
++                    else:
++                        s,r,t = amr.edges[n]
++                        if r == ":wiki":
++                            recons.append(("A", (s, ":wiki", amr.nodes[t])))
++                        else:
++                            recons.append((typ, (s,r,t)))
++            else:
++                recons = False
++            wiki_nodes = []
++            wiki_edges = []
++            for s, r, t in amr.edges.copy():
++                if r == ':wiki':
++                    amr.edges.remove((s, r, t))
++                    del amr.nodes[t]
++                    wiki_nodes.append(t)
++                    wiki_edges.append((s,r,t))
++            if aligns:
++                for align in aligns:
++                    for n in wiki_nodes:
++                        if n in align.nodes:
++                            align.nodes.remove(n)
++                    for e in wiki_edges:
++                        if e in align.edges:
++                            align.edges.remove(e)
++            if recons:
++                amr.reconstruction = []
++                for typ, elt in recons:
++                    if typ == "I":
++                        amr.reconstruction.append(('I', elt))
++                    elif typ == "R":
++                        edgN = amr.edges.index(elt)
++                        amr.reconstruction.append(('R', edgN))
++                    elif typ == "A":
++                        s,r,t = elt
++                        if r == ":wiki":
++                            varbN = amr.variables.index(s)
++                            amr.reconstruction.append(('W', (varbN, t)))
++                        else:
++                            edgN = amr.edges.index(elt)
++                            amr.reconstruction.append(('A', edgN))
++
++        if link_string:
++            #amr.amr_string = amr_string_0
++            amr.amr_chaine_brute = "\n".join(amr_string_lines)
++            amr.prefix = prefix
++        if output_alignments:
++            return amr, aligns
++        return amr
++    
++    def load(self, amr_file_name, remove_wiki=False, output_alignments=False, link_string=False):
+         print('[amr]', 'Loading AMRs from file:', amr_file_name)
+         amrs = []
+         alignments = {}
+-        penman_wrapper = PENMAN_Wrapper(style=self.style)
+-        metadata_parser = Matedata_Parser()
+ 
+         with open(amr_file_name, 'r', encoding='utf8') as f:
+             sents = f.read().replace('\r', '').split('\n\n')
+@@ -228,67 +607,100 @@ class AMR_Reader:
+                 no_tokens = True
+ 
+             for sent in sents:
+-                prefix_lines = [line for i,line in enumerate(sent.split('\n')) if line.strip().startswith('#') or (i==0 and not no_tokens)]
+-                prefix = '\n'.join(prefix_lines)
+-                amr_string_lines = [line for i, line in enumerate(sent.split('\n'))
+-                                    if not line.strip().startswith('#') and (i>0 or no_tokens)]
+-                amr_string = ''.join(amr_string_lines).strip()
+-                amr_string = re.sub(' +', ' ', amr_string)
+-                if not amr_string: continue
+-                if not amr_string.startswith('(') or not amr_string.endswith(')'):
+-                    raise Exception('Could not parse AMR from: ', amr_string)
+-                metadata, graph_metadata = metadata_parser.readlines(prefix)
+-                tokens = metadata['tok'] if 'tok' in metadata else metadata['snt'].split()
+-                tokens = self._clean_tokens(tokens)
+-                if graph_metadata:
+-                    amr, aligns = self._parse_amr_from_metadata(tokens, graph_metadata)
+-                    amr.id = metadata['id']
+-                    if output_alignments:
+-                        alignments[amr.id] = aligns
++                resu = self.loads(sent, remove_wiki, output_alignments, no_tokens, link_string)
++                if not resu:
++                    continue
++                if output_alignments:
++                    amr, aligns = resu[0], resu[1]
+                 else:
+-                    amr, other_stuff = penman_wrapper.parse_amr(tokens, amr_string)
+-                    if 'id' in metadata:
+-                        amr.id = metadata['id']
+-                    else:
+-                        amr.id = str(amr_idx)
+-                    if output_alignments:
+-                        alignments[amr.id] = []
+-                        if 'alignments' in metadata:
+-                            aligns = metadata['alignments'].split()
+-                            if any('|' in a for a in aligns):
+-                                jamr_labels = other_stuff[1]
+-                                alignments[amr.id] = self._parse_jamr_alignments(amr, amr_file_name, aligns, jamr_labels, metadata_parser)
+-                            else:
+-                                isi_labels, isi_edge_labels = other_stuff[2:4]
+-                                alignments[amr.id] = self._parse_isi_alignments(amr, amr_file_name, aligns, isi_labels, isi_edge_labels)
+-                        else:
+-                            aligns = other_stuff[4]
+-                            alignments[amr.id] = aligns
+-                amr.metadata = {k:v for k,v in metadata.items() if k not in ['tok','id']}
++                    amr = resu
++                if amr.id == "":
++                    amr.id = str(amr_idx)
++
+                 amrs.append(amr)
++                if output_alignments:
++                    alignments[amr.id] = aligns
+                 amr_idx += 1
+-        if remove_wiki:
+-            for amr in amrs:
+-                wiki_nodes = []
+-                wiki_edges = []
+-                for s, r, t in amr.edges.copy():
+-                    if r == ':wiki':
+-                        amr.edges.remove((s, r, t))
+-                        del amr.nodes[t]
+-                        wiki_nodes.append(t)
+-                        wiki_edges.append((s,r,t))
+-                if alignments and amr.id in alignments:
+-                    for align in alignments[amr.id]:
+-                        for n in wiki_nodes:
+-                            if n in align.nodes:
+-                                align.nodes.remove(n)
+-                        for e in wiki_edges:
+-                            if e in align.edges:
+-                                align.edges.remove(e)
++
+         if output_alignments:
+             return amrs, alignments
+         return amrs
+ 
++    # def load_0(self, amr_file_name, remove_wiki=False, output_alignments=False):
++    #     print('[amr]', 'Loading AMRs from file:', amr_file_name)
++    #     amrs = []
++    #     alignments = {}
++
++    #     with open(amr_file_name, 'r', encoding='utf8') as f:
++    #         sents = f.read().replace('\r', '').split('\n\n')
++    #         amr_idx = 0
++    #         no_tokens = False
++    #         if all(sent.strip().startswith('(') for sent in sents):
++    #             no_tokens = True
++
++    #         for sent in sents:
++    #             prefix_lines = [line for i,line in enumerate(sent.split('\n')) if line.strip().startswith('#') or (i==0 and not no_tokens)]
++    #             prefix = '\n'.join(prefix_lines)
++    #             amr_string_lines = [line for i, line in enumerate(sent.split('\n'))
++    #                                 if not line.strip().startswith('#') and (i>0 or no_tokens)]
++    #             amr_string = ''.join(amr_string_lines).strip()
++    #             amr_string = re.sub(' +', ' ', amr_string)
++    #             if not amr_string: continue
++    #             if not amr_string.startswith('(') or not amr_string.endswith(')'):
++    #                 raise Exception('Could not parse AMR from: ', amr_string)
++    #             metadata, graph_metadata = Matedata_Parser.readlines(prefix)
++    #             tokens = metadata['tok'] if 'tok' in metadata else metadata['snt'].split()
++    #             tokens = self._clean_tokens(tokens)
++    #             if graph_metadata:
++    #                 amr, aligns = self._parse_amr_from_metadata(tokens, graph_metadata)
++    #                 amr.id = metadata['id']
++    #                 if output_alignments:
++    #                     alignments[amr.id] = aligns
++    #             else:
++    #                 amr, other_stuff = PENMAN_Wrapper.parse_amr_s(tokens, amr_string, self.style)
++    #                 if 'id' in metadata:
++    #                     amr.id = metadata['id']
++    #                 else:
++    #                     amr.id = str(amr_idx)
++    #                 if output_alignments:
++    #                     alignments[amr.id] = []
++    #                     if 'alignments' in metadata:
++    #                         aligns = metadata['alignments'].split()
++    #                         if any('|' in a for a in aligns):
++    #                             jamr_labels = other_stuff[1]
++    #                             alignments[amr.id] = self._parse_jamr_alignments(amr, amr_file_name, aligns, jamr_labels)#, metadata_parser)
++    #                         else:
++    #                             isi_labels, isi_edge_labels = other_stuff[2:4]
++    #                             alignments[amr.id] = self._parse_isi_alignments(amr, amr_file_name, aligns, isi_labels, isi_edge_labels)
++    #                     else:
++    #                         aligns = other_stuff[4]
++    #                         alignments[amr.id] = aligns
++    #             amr.metadata = {k:v for k,v in metadata.items() if k not in ['tok','id']}
++    #             amrs.append(amr)
++    #             amr_idx += 1
++    #     if remove_wiki:
++    #         for amr in amrs:
++    #             wiki_nodes = []
++    #             wiki_edges = []
++    #             for s, r, t in amr.edges.copy():
++    #                 if r == ':wiki':
++    #                     amr.edges.remove((s, r, t))
++    #                     del amr.nodes[t]
++    #                     wiki_nodes.append(t)
++    #                     wiki_edges.append((s,r,t))
++    #             if alignments and amr.id in alignments:
++    #                 for align in alignments[amr.id]:
++    #                     for n in wiki_nodes:
++    #                         if n in align.nodes:
++    #                             align.nodes.remove(n)
++    #                     for e in wiki_edges:
++    #                         if e in align.edges:
++    #                             align.edges.remove(e)
++    #     if output_alignments:
++    #         return amrs, alignments
++    #     return amrs
++    
++
+     def load_from_dir(self, dir, remove_wiki=False, output_alignments=False):
+         all_amrs = []
+         all_alignments = {}
+@@ -334,7 +746,7 @@ class AMR_Reader:
+         write_to_json(json_file, alignments)
+ 
+     @staticmethod
+-    def _parse_jamr_alignments(amr, amr_file, aligns, jamr_labels, metadata_parser):
++    def _parse_jamr_alignments(amr, amr_file, aligns, jamr_labels, metadata_parser=Matedata_Parser):
+         aligns = [(metadata_parser.get_token_range(a.split('|')[0]), a.split('|')[-1].split('+')) for a in aligns if '|' in a]
+ 
+         alignments = []
+@@ -454,6 +866,44 @@ def main():
+     reader.write_to_file(output_file, amrs)
+     reader.save_alignments_to_json(output_file.replace('.txt','.alignments.json'), alignments)
+ 
++def main2():
++    reader = AMR_Reader()
++    chaine = '(w / want-01:ARG0 (b / boy):ARG1 (g/ go-01:ARG0 b:polarity -:ARG1 (m / museum)))'
++    chaine2 = """
++    # ::id lpp_1943.2 ::date 2012-06-07T17:06:20 ::annotator ISI-AMR-05 ::preferred
++    # ::snt Once when I was six years old I saw a magnificent picture in a book , called True Stories from Nature , about the primeval forest .
++    # ::save-date Mon May 13, 2013 ::file lpp_1943_2.txt
++    (s / see-01
++        :ARG0 (i / i)
++        :ARG1 (p / picture
++                :mod (m / magnificent)
++                :location (b2 / book :wiki -
++                    :name (n / name :op1 "True" :op2 "Stories" :op3 "from" :op4 "Nature")
++                    :topic (f / forest
++                            :mod (p2 / primeval))))
++        :mod (o / once)
++        :time (a / age-01
++                :ARG1 i
++                :ARG2 (t / temporal-quantity :quant 6
++                    :unit (y / year))))
++                  """
++    amr = reader.loads(chaine2, remove_wiki=False)
++    tri1 = [tri for tri in amr.triples()]
++    tri2 = [tri for tri in amr.get_triples()]
++    assert all(t in tri1 for t in tri2)
++    assert all(t in tri2 for t in tri1)
++    petit_prince_data = r"C:/Users/fcharpentier/Documents/Boulot/visuAMR/Le_Petit_Prince_AMR/Le_petit_prince_GOLD.txt"
++    amrs = reader.load(petit_prince_data, remove_wiki=False, output_alignments=False)
++    for amr in amrs:
++        #print(amr.id)
++        #tri1 = [tri for tri in amr.triples()]
++        #tri2 = [tri for tri in amr.get_triples()]
++        #if (not all(t in tri1 for t in tri2)) or (not all(t in tri2 for t in tri1)):
++        #    print("ERREUR : ", amr.id)
++        if not all(t in amr.edges for t in amr.attributes + amr.relations):
++            print("ERREUR1 :", amr.id)
++        if not all(t in amr.attributes + amr.relations for t in amr.edges):
++            print("ERREUR1 :", amr.id)
+ 
+ if __name__ == '__main__':
+-    main()
++    main2()
+diff --git a/amr_utils/smatch_class.py b/amr_utils/smatch_class.py
+new file mode 100644
+index 0000000..6e8d0fc
+--- /dev/null
++++ b/amr_utils/smatch_class.py
+@@ -0,0 +1,961 @@
++# -*- coding: utf-8 -*-
++#!/usr/bin/env python
++
++"""
++This script computes smatch score between two AMRs.
++For detailed description of smatch, see http://www.isi.edu/natural-language/amr/smatch-13.pdf
++
++"""
++
++from amr_utils.amr import AMR
++from amr_utils.amr_readers import AMR_Reader
++
++import os
++import random
++import sys
++import time
++import argparse
++
++# Error log location
++ERROR_LOG = sys.stderr
++
++# Debug log location
++DEBUG_LOG = sys.stderr
++
++
++
++def build_arg_parser():
++    """
++    Build an argument parser using argparse. Use it when python version is 2.7 or later.
++
++    """
++    parser = argparse.ArgumentParser(description="Smatch calculator -- arguments")
++    parser.add_argument('-f', nargs=2, required=True, type=argparse.FileType('r'),
++                        help='Two files containing AMR pairs. AMRs in each file are separated by a single blank line')
++    parser.add_argument('-r', type=int, default=4, help='Restart number (Default:4)')
++    parser.add_argument('-v', action='store_true', help='Verbose output (Default:false)')
++    parser.add_argument('--ms', action='store_true', default=False,
++                        help='Output multiple scores (one AMR pair a score)' \
++                             'instead of a single document-level smatch score (Default: false)')
++    parser.add_argument('--pr', action='store_true', default=False,
++                        help="Output precision and recall as well as the f-score. Default: false")
++    return parser
++
++
++def recreate_inst_attr_rels(relats, conc_dict, prefix=None):
++    instances = []
++    attributes = []
++    relations = []
++    if prefix == None:
++        trafo = lambda x: x
++    else:
++        table = {
++                    k:v for k,v in zip(
++                        [kk for kk in conc_dict],
++                        ["%s%d"%(prefix, i) for i in range(len(conc_dict))]
++                    )
++                }
++        trafo = lambda x:table[x]
++    for E, N1, N2 in relats:
++        assert N1 in conc_dict
++        if N2 in conc_dict:
++            relations.append((E, trafo(N1), trafo(N2)))
++        elif E == "instance":
++            instances.append((E, trafo(N1), N2))
++        else:
++            attributes.append((E, trafo(N1), N2))
++    return instances, attributes, relations
++
++
++def normalize(item):
++    """
++    lowercase and remove quote signifiers from items that are about to be compared
++    """
++    return item.lower().rstrip('_')
++
++def normalize_triples(variables, insts, attrs, rels):
++    vars = {var: i for i, var in enumerate(variables)}
++    resu = ()
++    
++    res = []
++    for r, s, t in insts:
++        s = vars[s]
++        res.append((r, s, t))
++    resu = resu + (res,)
++
++    res = []
++    for r, s, t in attrs:
++        s = vars[s]
++        res.append((r, s, t))
++    resu = resu + (res,)
++
++    res = []
++    for r, s, t in rels:
++        s = vars[s]
++        if t in vars:
++            t = vars[t]
++        res.append((r, s, t))
++    resu = resu + (res,)
++
++    if len(resu) == 0:
++        return None
++    if len(resu) == 1:
++        return resu[0]
++    return resu
++
++
++
++def compute_pool(instance1, attribute1, relation1,
++                 instance2, attribute2, relation2,
++                 prefix1, prefix2):
++    """
++    compute all possible node mapping candidates and their weights (the triple matching number gain resulting from
++    mapping one node in AMR 1 to another node in AMR2)
++
++    Arguments:
++        instance1: instance triples of AMR 1
++        attribute1: attribute triples of AMR 1 (attribute name, node name, attribute value)
++        relation1: relation triples of AMR 1 (relation name, node 1 name, node 2 name)
++        instance2: instance triples of AMR 2
++        attribute2: attribute triples of AMR 2 (attribute name, node name, attribute value)
++        relation2: relation triples of AMR 2 (relation name, node 1 name, node 2 name
++        prefix1: prefix label for AMR 1
++        prefix2: prefix label for AMR 2
++    Returns:
++      candidate_mapping: a list of candidate nodes.
++                       The ith element contains the node indices (in AMR 2) the ith node (in AMR 1) can map to.
++                       (resulting in non-zero triple match)
++      weight_dict: a dictionary which contains the matching triple number for every pair of node mapping. The key
++                   is a node pair. The value is another dictionary. key {-1} is triple match resulting from this node
++                   pair alone (instance triples and attribute triples), and other keys are node pairs that can result
++                   in relation triple match together with the first node pair.
++
++
++    """
++    candidate_mapping = []
++    weight_dict = {}
++    for i in range(0, len(instance1)):
++        # each candidate mapping is a set of node indices
++        candidate_mapping.append(set())
++        for j in range(0, len(instance2)):
++            # if both triples are instance triples and have the same value
++            if instance1[i][0].lower() == instance2[j][0].lower() \
++                    and instance1[i][2].lower() == instance2[j][2].lower():
++                # get node index by stripping the prefix
++                node1_index = int(instance1[i][1])  #[len(prefix1):])
++                node2_index = int(instance2[j][1])  #[len(prefix2):])
++                candidate_mapping[node1_index].add(node2_index)
++                node_pair = (node1_index, node2_index)
++                # use -1 as key in weight_dict for instance triples and attribute triples
++                if node_pair in weight_dict:
++                    weight_dict[node_pair][-1] += 1
++                else:
++                    weight_dict[node_pair] = {}
++                    weight_dict[node_pair][-1] = 1
++    for i in range(0, len(attribute1)):
++        for j in range(0, len(attribute2)):
++            # if both attribute relation triple have the same relation name and value
++            if attribute1[i][0].lower() == attribute2[j][0].lower() \
++                    and attribute1[i][2].lower() == attribute2[j][2].lower():
++                node1_index = int(attribute1[i][1])  #[len(prefix1):])
++                node2_index = int(attribute2[j][1])  #[len(prefix2):])
++                candidate_mapping[node1_index].add(node2_index)
++                node_pair = (node1_index, node2_index)
++                # use -1 as key in weight_dict for instance triples and attribute triples
++                if node_pair in weight_dict:
++                    weight_dict[node_pair][-1] += 1
++                else:
++                    weight_dict[node_pair] = {}
++                    weight_dict[node_pair][-1] = 1
++    for i in range(0, len(relation1)):
++        for j in range(0, len(relation2)):
++            # if both relation share the same name
++            if relation1[i][0].lower() == relation2[j][0].lower():
++                node1_index_amr1 = int(relation1[i][1])  #[len(prefix1):])
++                node1_index_amr2 = int(relation2[j][1])  #[len(prefix2):])
++                node2_index_amr1 = int(relation1[i][2])  #[len(prefix1):])
++                node2_index_amr2 = int(relation2[j][2])  #[len(prefix2):])
++                # add mapping between two nodes
++                candidate_mapping[node1_index_amr1].add(node1_index_amr2)
++                candidate_mapping[node2_index_amr1].add(node2_index_amr2)
++                node_pair1 = (node1_index_amr1, node1_index_amr2)
++                node_pair2 = (node2_index_amr1, node2_index_amr2)
++                if node_pair2 != node_pair1:
++                    # update weight_dict weight. Note that we need to update both entries for future search
++                    # i.e weight_dict[node_pair1][node_pair2]
++                    #     weight_dict[node_pair2][node_pair1]
++                    if node1_index_amr1 > node2_index_amr1:
++                        # swap node_pair1 and node_pair2
++                        node_pair1 = (node2_index_amr1, node2_index_amr2)
++                        node_pair2 = (node1_index_amr1, node1_index_amr2)
++                    if node_pair1 in weight_dict:
++                        if node_pair2 in weight_dict[node_pair1]:
++                            weight_dict[node_pair1][node_pair2] += 1
++                        else:
++                            weight_dict[node_pair1][node_pair2] = 1
++                    else:
++                        weight_dict[node_pair1] = {}
++                        weight_dict[node_pair1][-1] = 0
++                        weight_dict[node_pair1][node_pair2] = 1
++                    if node_pair2 in weight_dict:
++                        if node_pair1 in weight_dict[node_pair2]:
++                            weight_dict[node_pair2][node_pair1] += 1
++                        else:
++                            weight_dict[node_pair2][node_pair1] = 1
++                    else:
++                        weight_dict[node_pair2] = {}
++                        weight_dict[node_pair2][-1] = 0
++                        weight_dict[node_pair2][node_pair1] = 1
++                else:
++                    # two node pairs are the same. So we only update weight_dict once.
++                    # this generally should not happen.
++                    if node_pair1 in weight_dict:
++                        weight_dict[node_pair1][-1] += 1
++                    else:
++                        weight_dict[node_pair1] = {}
++                        weight_dict[node_pair1][-1] = 1
++    return candidate_mapping, weight_dict
++
++
++def smart_init_mapping(candidate_mapping, instance1, instance2):
++    """
++    Initialize mapping based on the concept mapping (smart initialization)
++    Arguments:
++        candidate_mapping: candidate node match list
++        instance1: instance triples of AMR 1
++        instance2: instance triples of AMR 2
++    Returns:
++        initialized node mapping between two AMRs
++
++    """
++    random.seed()
++    matched_dict = {}
++    result = []
++    # list to store node indices that have no concept match
++    no_word_match = []
++    for i, candidates in enumerate(candidate_mapping):
++        if len(candidates) == 0:
++            # no possible mapping
++            result.append(-1)
++            continue
++        # node value in instance triples of AMR 1
++        value1 = instance1[i][2]
++        for node_index in candidates:
++            value2 = instance2[node_index][2]
++            # find the first instance triple match in the candidates
++            # instance triple match is having the same concept value
++            if value1 == value2:
++                if node_index not in matched_dict:
++                    result.append(node_index)
++                    matched_dict[node_index] = 1
++                    break
++        if len(result) == i:
++            no_word_match.append(i)
++            result.append(-1)
++    # if no concept match, generate a random mapping
++    for i in no_word_match:
++        candidates = list(candidate_mapping[i])
++        while len(candidates) > 0:
++            # get a random node index from candidates
++            rid = random.randint(0, len(candidates) - 1)
++            if candidates[rid] in matched_dict:
++                candidates.pop(rid)
++            else:
++                matched_dict[candidates[rid]] = 1
++                result[i] = candidates[rid]
++                break
++    return result
++        
++
++def random_init_mapping(candidate_mapping):
++    """
++    Generate a random node mapping.
++    Args:
++        candidate_mapping: candidate_mapping: candidate node match list
++    Returns:
++        randomly-generated node mapping between two AMRs
++
++    """
++    # if needed, a fixed seed could be passed here to generate same random (to help debugging)
++    random.seed()
++    matched_dict = {}
++    result = []
++    for c in candidate_mapping:
++        candidates = list(c)
++        if len(candidates) == 0:
++            # -1 indicates no possible mapping
++            result.append(-1)
++            continue
++        found = False
++        while len(candidates) > 0:
++            # randomly generate an index in [0, length of candidates)
++            rid = random.randint(0, len(candidates) - 1)
++            # check if it has already been matched
++            if candidates[rid] in matched_dict:
++                candidates.pop(rid)
++            else:
++                matched_dict[candidates[rid]] = 1
++                result.append(candidates[rid])
++                found = True
++                break
++        if not found:
++            result.append(-1)
++    return result
++    
++            
++        
++
++class SMATCH():
++
++    def __init__(self, restarts=4, multiscore=False, verbose=False, PrecRecall=False, Print=True):
++        # total number of iteration in smatch computation
++        self.iteration_num = restarts + 1
++
++        # verbose output switch.
++        # Default false (no verbose output)
++        self.verbose = verbose
++        self.Print = Print
++
++        # single score output switch.
++        # Default true (compute a single score for all AMRs in two files)
++        self.single_score = not(multiscore)
++
++        # precision and recall output switch.
++        # Default false (do not output precision and recall, just output F score)
++        self.pr_flag = PrecRecall
++
++        # dictionary to save pre-computed node mapping and its resulting triple match count
++        # key: tuples of node mapping
++        # value: the matching triple count
++        self.match_triple_dict = {}
++        # set the iteration number
++
++        self.prefix1 = "a"
++        self.prefix2 = "b"
++        
++    def get_matching_triples(self, AMR1, AMR2):
++        vars1 = [v for v in AMR1.variables]
++        vars2 = [v for v in AMR2.variables]
++
++        inst1_brut, attr1_brut, rel1_brut = AMR1.instances, AMR1.attributes, AMR1.relations_redir
++        inst1_num, attr1_num, rel1_num = normalize_triples(vars1, inst1_brut, attr1_brut, rel1_brut)
++        inst2_brut, attr2_brut, rel2_brut = AMR2.instances, AMR2.attributes, AMR2.relations_redir
++        inst2_num, attr2_num, rel2_num = normalize_triples(vars2, inst2_brut, attr2_brut, rel2_brut)
++
++        ref = len(inst1_num) + len(attr1_num) + len(rel1_brut)
++        test = len(inst2_num) + len(attr2_num) + len(rel2_brut)
++
++        best_mapping, best_match_num = self.get_best_match(inst1_num, attr1_num, rel1_num,
++                                                           inst2_num, attr2_num, rel2_num, None, None)
++        
++        corres = dict()
++        trips2 = set(inst2_brut + attr2_brut + rel2_brut)
++        for liste1 in [inst1_num, attr1_num, rel1_num]:
++            for r, s, t in liste1:
++                s2 = best_mapping[s]
++                if s2 == -1:
++                    continue
++                s1 = vars1[s]
++                s2 = vars2[s2]
++                if type(t) is int:
++                    t2 = best_mapping[t]
++                    if t2 == -1:
++                        continue
++                    t1 = vars1[t]
++                    t2 = vars2[t2]
++                else:
++                    t1 = t
++                    t2 = t
++                if (r, s2, t2) in trips2:
++                    corres[(r, s1, t1)] = (r, s2, t2)
++        assert len(corres) == best_match_num
++        precision, rappel, smatch = self.compute_f(best_match_num, test, ref)
++        return corres, precision, rappel, smatch
++
++
++    def get_best_match(self, instance1, attribute1, relation1,
++                    instance2, attribute2, relation2,
++                    prefix1, prefix2):
++        """
++        Get the highest triple match number between two sets of triples via hill-climbing.
++        Arguments:
++            instance1: instance triples of AMR 1 ("instance", node name, node value)
++            attribute1: attribute triples of AMR 1 (attribute name, node name, attribute value)
++            relation1: relation triples of AMR 1 (relation name, node 1 name, node 2 name)
++            instance2: instance triples of AMR 2 ("instance", node name, node value)
++            attribute2: attribute triples of AMR 2 (attribute name, node name, attribute value)
++            relation2: relation triples of AMR 2 (relation name, node 1 name, node 2 name)
++            prefix1: prefix label for AMR 1
++            prefix2: prefix label for AMR 2
++        Returns:
++            best_match: the node mapping that results in the highest triple matching number
++            best_match_num: the highest triple matching number
++
++        """
++        # Compute candidate pool - all possible node match candidates.
++        # In the hill-climbing, we only consider candidate in this pool to save computing time.
++        # weight_dict is a dictionary that maps a pair of node
++        (candidate_mappings, weight_dict) = compute_pool(instance1, attribute1, relation1,
++                                                        instance2, attribute2, relation2,
++                                                        prefix1, prefix2)
++
++        if self.verbose:
++            print("Candidate mappings:", file=DEBUG_LOG)
++            print(candidate_mappings, file=DEBUG_LOG)
++            print("Weight dictionary", file=DEBUG_LOG)
++            print(weight_dict, file=DEBUG_LOG)
++        best_match_num = 0
++        # initialize best match mapping
++        # the ith entry is the node index in AMR 2 which maps to the ith node in AMR 1
++        best_mapping = [-1] * len(instance1)
++        for i in range(0, self.iteration_num):
++            if self.verbose:
++                print("Iteration", i, file=DEBUG_LOG)
++            if i == 0:
++                # smart initialization used for the first round
++                cur_mapping = smart_init_mapping(candidate_mappings, instance1, instance2)
++            else:
++                # random initialization for the other round
++                cur_mapping = random_init_mapping(candidate_mappings)
++            # compute current triple match number
++            match_num = self.compute_match(cur_mapping, weight_dict)
++            if self.verbose:
++                print("Node mapping at start", cur_mapping, file=DEBUG_LOG)
++                print("Triple match number at start:", match_num, file=DEBUG_LOG)
++            while True:
++                # get best gain
++                (gain, new_mapping) = self.get_best_gain(cur_mapping, candidate_mappings, weight_dict,
++                                                    len(instance2), match_num)
++                if self.verbose:
++                    print("Gain after the hill-climbing", gain, file=DEBUG_LOG)
++                # hill-climbing until there will be no gain for new node mapping
++                if gain <= 0:
++                    break
++                # otherwise update match_num and mapping
++                match_num += gain
++                cur_mapping = new_mapping[:]
++                if self.verbose:
++                    print("Update triple match number to:", match_num, file=DEBUG_LOG)
++                    print("Current mapping:", cur_mapping, file=DEBUG_LOG)
++            if match_num > best_match_num:
++                best_mapping = cur_mapping[:]
++                best_match_num = match_num
++        return best_mapping, best_match_num
++
++
++    #def compute_pool(...)
++
++
++
++
++ 
++    def compute_match(self, mapping, weight_dict):
++        """
++        Given a node mapping, compute match number based on weight_dict.
++        Args:
++        mappings: a list of node index in AMR 2. The ith element (value j) means node i in AMR 1 maps to node j in AMR 2.
++        Returns:
++        matching triple number
++        Complexity: O(m*n) , m is the node number of AMR 1, n is the node number of AMR 2
++
++        """
++        # If this mapping has been investigated before, retrieve the value instead of re-computing.
++        if self.verbose:
++            print("Computing match for mapping", file=DEBUG_LOG)
++            print(mapping, file=DEBUG_LOG)
++        if tuple(mapping) in self.match_triple_dict:
++            if self.verbose:
++                print("saved value", self.match_triple_dict[tuple(mapping)], file=DEBUG_LOG)
++            return self.match_triple_dict[tuple(mapping)]
++        match_num = 0
++        # i is node index in AMR 1, m is node index in AMR 2
++        for i, m in enumerate(mapping):
++            if m == -1:
++                # no node maps to this node
++                continue
++            # node i in AMR 1 maps to node m in AMR 2
++            current_node_pair = (i, m)
++            if current_node_pair not in weight_dict:
++                continue
++            if self.verbose:
++                print("node_pair", current_node_pair, file=DEBUG_LOG)
++            for key in weight_dict[current_node_pair]:
++                if key == -1:
++                    # matching triple resulting from instance/attribute triples
++                    match_num += weight_dict[current_node_pair][key]
++                    if self.verbose:
++                        print("instance/attribute match", weight_dict[current_node_pair][key], file=DEBUG_LOG)
++                # only consider node index larger than i to avoid duplicates
++                # as we store both weight_dict[node_pair1][node_pair2] and
++                #     weight_dict[node_pair2][node_pair1] for a relation
++                elif key[0] < i:
++                    continue
++                elif mapping[key[0]] == key[1]:
++                    match_num += weight_dict[current_node_pair][key]
++                    if self.verbose:
++                        print("relation match with", key, weight_dict[current_node_pair][key], file=DEBUG_LOG)
++        if self.verbose:
++            print("match computing complete, result:", match_num, file=DEBUG_LOG)
++        # update match_triple_dict
++        self.match_triple_dict[tuple(mapping)] = match_num
++        return match_num  
++
++
++    def move_gain(self, mapping, node_id, old_id, new_id, weight_dict, match_num):
++        """
++        Compute the triple match number gain from the move operation
++        Arguments:
++            mapping: current node mapping
++            node_id: remapped node in AMR 1
++            old_id: original node id in AMR 2 to which node_id is mapped
++            new_id: new node in to which node_id is mapped
++            weight_dict: weight dictionary
++            match_num: the original triple matching number
++        Returns:
++            the triple match gain number (might be negative)
++
++        """
++        # new node mapping after moving
++        new_mapping = (node_id, new_id)
++        # node mapping before moving
++        old_mapping = (node_id, old_id)
++        # new nodes mapping list (all node pairs)
++        new_mapping_list = mapping[:]
++        new_mapping_list[node_id] = new_id
++        # if this mapping is already been investigated, use saved one to avoid duplicate computing
++        if tuple(new_mapping_list) in self.match_triple_dict:
++            return self.match_triple_dict[tuple(new_mapping_list)] - match_num
++        gain = 0
++        # add the triple match incurred by new_mapping to gain
++        if new_mapping in weight_dict:
++            for key in weight_dict[new_mapping]:
++                if key == -1:
++                    # instance/attribute triple match
++                    gain += weight_dict[new_mapping][-1]
++                elif new_mapping_list[key[0]] == key[1]:
++                    # relation gain incurred by new_mapping and another node pair in new_mapping_list
++                    gain += weight_dict[new_mapping][key]
++        # deduct the triple match incurred by old_mapping from gain
++        if old_mapping in weight_dict:
++            for k in weight_dict[old_mapping]:
++                if k == -1:
++                    gain -= weight_dict[old_mapping][-1]
++                elif mapping[k[0]] == k[1]:
++                    gain -= weight_dict[old_mapping][k]
++        # update match number dictionary
++        self.match_triple_dict[tuple(new_mapping_list)] = match_num + gain
++        return gain
++
++
++    def swap_gain(self, mapping, node_id1, mapping_id1, node_id2, mapping_id2, weight_dict, match_num):
++        """
++        Compute the triple match number gain from the swapping
++        Arguments:
++        mapping: current node mapping list
++        node_id1: node 1 index in AMR 1
++        mapping_id1: the node index in AMR 2 node 1 maps to (in the current mapping)
++        node_id2: node 2 index in AMR 1
++        mapping_id2: the node index in AMR 2 node 2 maps to (in the current mapping)
++        weight_dict: weight dictionary
++        match_num: the original matching triple number
++        Returns:
++        the gain number (might be negative)
++
++        """
++        new_mapping_list = mapping[:]
++        # Before swapping, node_id1 maps to mapping_id1, and node_id2 maps to mapping_id2
++        # After swapping, node_id1 maps to mapping_id2 and node_id2 maps to mapping_id1
++        new_mapping_list[node_id1] = mapping_id2
++        new_mapping_list[node_id2] = mapping_id1
++        if tuple(new_mapping_list) in self.match_triple_dict:
++            return self.match_triple_dict[tuple(new_mapping_list)] - match_num
++        gain = 0
++        new_mapping1 = (node_id1, mapping_id2)
++        new_mapping2 = (node_id2, mapping_id1)
++        old_mapping1 = (node_id1, mapping_id1)
++        old_mapping2 = (node_id2, mapping_id2)
++        if node_id1 > node_id2:
++            new_mapping2 = (node_id1, mapping_id2)
++            new_mapping1 = (node_id2, mapping_id1)
++            old_mapping1 = (node_id2, mapping_id2)
++            old_mapping2 = (node_id1, mapping_id1)
++        if new_mapping1 in weight_dict:
++            for key in weight_dict[new_mapping1]:
++                if key == -1:
++                    gain += weight_dict[new_mapping1][-1]
++                elif new_mapping_list[key[0]] == key[1]:
++                    gain += weight_dict[new_mapping1][key]
++        if new_mapping2 in weight_dict:
++            for key in weight_dict[new_mapping2]:
++                if key == -1:
++                    gain += weight_dict[new_mapping2][-1]
++                # to avoid duplicate
++                elif key[0] == node_id1:
++                    continue
++                elif new_mapping_list[key[0]] == key[1]:
++                    gain += weight_dict[new_mapping2][key]
++        if old_mapping1 in weight_dict:
++            for key in weight_dict[old_mapping1]:
++                if key == -1:
++                    gain -= weight_dict[old_mapping1][-1]
++                elif mapping[key[0]] == key[1]:
++                    gain -= weight_dict[old_mapping1][key]
++        if old_mapping2 in weight_dict:
++            for key in weight_dict[old_mapping2]:
++                if key == -1:
++                    gain -= weight_dict[old_mapping2][-1]
++                # to avoid duplicate
++                elif key[0] == node_id1:
++                    continue
++                elif mapping[key[0]] == key[1]:
++                    gain -= weight_dict[old_mapping2][key]
++        self.match_triple_dict[tuple(new_mapping_list)] = match_num + gain
++        return gain
++
++
++    def get_best_gain(self, mapping, candidate_mappings, weight_dict, instance_len, cur_match_num):
++        """
++        Hill-climbing method to return the best gain swap/move can get
++        Arguments:
++        mapping: current node mapping
++        candidate_mappings: the candidates mapping list
++        weight_dict: the weight dictionary
++        instance_len: the number of the nodes in AMR 2
++        cur_match_num: current triple match number
++        Returns:
++        the best gain we can get via swap/move operation
++
++        """
++        largest_gain = 0
++        # True: using swap; False: using move
++        use_swap = True
++        # the node to be moved/swapped
++        node1 = None
++        # store the other node affected. In swap, this other node is the node swapping with node1. In move, this other
++        # node is the node node1 will move to.
++        node2 = None
++        # unmatched nodes in AMR 2
++        unmatched = set(range(0, instance_len))
++        # exclude nodes in current mapping
++        # get unmatched nodes
++        for nid in mapping:
++            if nid in unmatched:
++                unmatched.remove(nid)
++        for i, nid in enumerate(mapping):
++            # current node i in AMR 1 maps to node nid in AMR 2
++            for nm in unmatched:
++                if nm in candidate_mappings[i]:
++                    # remap i to another unmatched node (move)
++                    # (i, m) -> (i, nm)
++                    if self.verbose:
++                        print("Remap node", i, "from ", nid, "to", nm, file=DEBUG_LOG)
++                    mv_gain = self.move_gain(mapping, i, nid, nm, weight_dict, cur_match_num)
++                    if self.verbose:
++                        print("Move gain:", mv_gain, file=DEBUG_LOG)
++                        new_mapping = mapping[:]
++                        new_mapping[i] = nm
++                        new_match_num = self.compute_match(new_mapping, weight_dict)
++                        if new_match_num != cur_match_num + mv_gain:
++                            print(mapping, new_mapping, file=ERROR_LOG)
++                            print("Inconsistency in computing: move gain", cur_match_num, mv_gain, \
++                                new_match_num, file=ERROR_LOG)
++                    if mv_gain > largest_gain:
++                        largest_gain = mv_gain
++                        node1 = i
++                        node2 = nm
++                        use_swap = False
++        # compute swap gain
++        for i, m in enumerate(mapping):
++            for j in range(i+1, len(mapping)):
++                m2 = mapping[j]
++                # swap operation (i, m) (j, m2) -> (i, m2) (j, m)
++                # j starts from i+1, to avoid duplicate swap
++                if self.verbose:
++                    print("Swap node", i, "and", j, file=DEBUG_LOG)
++                    print("Before swapping:", i, "-", m, ",", j, "-", m2, file=DEBUG_LOG)
++                    print(mapping, file=DEBUG_LOG)
++                    print("After swapping:", i, "-", m2, ",", j, "-", m, file=DEBUG_LOG)
++                sw_gain = self.swap_gain(mapping, i, m, j, m2, weight_dict, cur_match_num)
++                if self.verbose:
++                    print("Swap gain:", sw_gain, file=DEBUG_LOG)
++                    new_mapping = mapping[:]
++                    new_mapping[i] = m2
++                    new_mapping[j] = m
++                    print(new_mapping, file=DEBUG_LOG)
++                    new_match_num = self.compute_match(new_mapping, weight_dict)
++                    if new_match_num != cur_match_num + sw_gain:
++                        print(match, new_match, file=ERROR_LOG)
++                        print("Inconsistency in computing: swap gain", cur_match_num, sw_gain, new_match_num, file=ERROR_LOG)
++                if sw_gain > largest_gain:
++                    largest_gain = sw_gain
++                    node1 = i
++                    node2 = j
++                    use_swap = True
++        # generate a new mapping based on swap/move
++        cur_mapping = mapping[:]
++        if node1 is not None:
++            if use_swap:
++                if self.verbose:
++                    print("Use swap gain", file=DEBUG_LOG)
++                temp = cur_mapping[node1]
++                cur_mapping[node1] = cur_mapping[node2]
++                cur_mapping[node2] = temp
++            else:
++                if self.verbose:
++                    print("Use move gain", file=DEBUG_LOG)
++                cur_mapping[node1] = node2
++        else:
++            if self.verbose:
++                print("no move/swap gain found", file=DEBUG_LOG)
++        if self.verbose:
++            print("Original mapping", mapping, file=DEBUG_LOG)
++            print("Current mapping", cur_mapping, file=DEBUG_LOG)
++        return largest_gain, cur_mapping
++
++    @staticmethod
++    def print_alignment(mapping, instance1, instance2):
++        """
++        print the alignment based on a node mapping
++        Args:
++            match: current node mapping list
++            instance1: nodes of AMR 1
++            instance2: nodes of AMR 2
++
++        """
++        result = []
++        for i, m in enumerate(mapping):
++            if m == -1:
++                result.append(str(instance1[i][1]) + "(" + str(instance1[i][2]) + ")" + "-Null")
++            else:
++                result.append(str(instance1[i][1]) + "(" + str(instance1[i][2]) + ")" + "-"
++                            + str(instance2[m][1]) + "(" + str(instance2[m][2]) + ")")
++        return " ".join(result)
++
++
++    def compute_f(self, match_num, test_num, gold_num):
++        """
++        Compute the f-score based on the matching triple number,
++                                    triple number of AMR set 1,
++                                    triple number of AMR set 2
++        Args:
++            match_num: matching triple number
++            test_num:  triple number of AMR 1 (test file)
++            gold_num:  triple number of AMR 2 (gold file)
++        Returns:
++            precision: match_num/test_num
++            recall: match_num/gold_num
++            f_score: 2*precision*recall/(precision+recall)
++        """
++        if test_num == 0 or gold_num == 0:
++            return 0.00, 0.00, 0.00
++        precision = (0.000 + match_num) / (test_num + 0.000)
++        recall = (0.000 + match_num) / (gold_num + 0.000)
++        if (precision + recall) != 0:
++            f_score = 2 * precision * recall / (precision + recall)
++            if self.verbose:
++                print("F-score:", f_score, file=DEBUG_LOG)
++            return precision, recall, f_score
++        else:
++            if self.verbose:
++                print("F-score:", "0.0", file=DEBUG_LOG)
++            return precision, recall, 0.00
++        
++    def compute_smatch(self, REPR1, REPR2, idents=None):
++        """
++        Main function of smatch score calculation
++        """
++        # matching triple number
++        total_match_num = 0
++        # triple number in test file
++        total_test_num = 0
++        # triple number in gold file
++        total_gold_num = 0
++        # sentence number
++        sent_num = 1
++        
++        reader = AMR_Reader()
++
++        if not type(REPR1) is list:
++            assert type(REPR1 in (str, AMR, tuple))
++            REPR1 = [REPR1]
++        if not type(REPR2) is list:
++            assert type(REPR2 in (str, AMR, tuple))
++            REPR2 = [REPR2]
++        assert len(REPR1) == len(REPR2)
++        
++        assert all(type(x) in (str, AMR, tuple) for x in REPR1)
++        assert all(type(x) in (str, AMR, tuple) for x in REPR2)
++        assert all(len(x) == 3 for x in REPR1 if type(x) is tuple)
++        assert all(len(x) == 3 for x in REPR2 if type(x) is tuple)
++
++        if not self.single_score:
++            resu = []
++        else:
++            resu = dict()
++        if self.single_score or (idents == None) or len(idents) != len(REPR1):
++            listezip = (REPR1, REPR2)
++            BoolIden = False
++        else:
++            listezip = (REPR1, REPR2, idents)
++            BoolIden = True
++        #for IAR1, IAR2 in zip(REPR1, REPR2):
++        for tup in zip(*listezip):
++            IAR1, IAR2 = tup[0], tup[1]
++            if BoolIden:
++                idnt = tup[2]
++            else:
++                idnt = False
++            if self.verbose:
++                print("============================================", file=DEBUG_LOG)
++            if type(IAR1) is str:
++                if self.verbose:
++                    print("AMR 1 (one-line):", IAR1, file=DEBUG_LOG)
++                amr_ = reader.loads(IAR1, remove_wiki=True, output_alignments=False) # amr.AMR.parse_AMR_line(IAR1)
++                #amr_.rename_node(self.prefix1)
++                instance1, attributes1, relation1 = amr_.instances, amr_.attributes, amr_.relations_redir
++                instance1, attributes1, relation1 = normalize_triples(amr_.variables, instance1, attributes1, relation1)
++            elif type(IAR1) is AMR:
++                instance1, attributes1, relation1 = IAR1.instances, IAR1.attributes, IAR1.relations_redir
++                instance1, attributes1, relation1 = normalize_triples(IAR1.variables, instance1, attributes1, relation1)
++                if not BoolIden:
++                    idnt = IAR1.id
++            else:
++                (instance1, attributes1, relation1) = IAR1
++                varbls = [s for r,s,t in instance1]
++                instance1, attributes1, relation1 = normalize_triples(varbls, instance1, attributes1, relation1)
++            if type(IAR2) is str:
++                if self.verbose:
++                    print("AMR 2 (one-line):", IAR2, file=DEBUG_LOG)
++                amr_ = reader.loads(IAR2, remove_wiki=True, output_alignments=False) # amr.AMR.parse_AMR_line(IAR2)
++                #amr_.rename_node(self.prefix2)
++                instance2, attributes2, relation2 = amr_.instances, amr_.attributes, amr_.relations_redir
++                instance2, attributes2, relation2 = normalize_triples(amr_.variables, instance2, attributes2, relation2)
++            elif type(IAR2) is AMR:
++                instance2, attributes2, relation2 = IAR2.instances, IAR2.attributes, IAR2.relations_redir
++                instance2, attributes2, relation2 = normalize_triples(IAR2.variables, instance2, attributes2, relation2)
++            else:
++                (instance2, attributes2, relation2) = IAR2
++                varbls = [s for r,s,t in instance2]
++                instance2, attributes2, relation2 = normalize_triples(varbls, instance2, attributes2, relation2)
++            if self.verbose:
++                # print parse results of two AMRs
++                print("Instance triples of AMR 1:", len(instance1), file=DEBUG_LOG)
++                print(instance1, file=DEBUG_LOG)
++                print("Attribute triples of AMR 1:", len(attributes1), file=DEBUG_LOG)
++                print(attributes1, file=DEBUG_LOG)
++                print("Relation triples of AMR 1:", len(relation1), file=DEBUG_LOG)
++                print(relation1, file=DEBUG_LOG)
++                print("Instance triples of AMR 2:", len(instance2), file=DEBUG_LOG)
++                print(instance2, file=DEBUG_LOG)
++                print("Attribute triples of AMR 2:", len(attributes2), file=DEBUG_LOG)
++                print(attributes2, file=DEBUG_LOG)
++                print("Relation triples of AMR 2:", len(relation2), file=DEBUG_LOG)
++                print(relation2, file=DEBUG_LOG)
++                # print parse results of two AMRs
++                print("AMR pair", sent_num, file=DEBUG_LOG)
++                print("============================================", file=DEBUG_LOG)
++            (best_mapping, best_match_num) = self.get_best_match(instance1, attributes1, relation1,
++                                                            instance2, attributes2, relation2,
++                                                            self.prefix1, self.prefix2)
++            if self.verbose:
++                print("best match number", best_match_num, file=DEBUG_LOG)
++                print("best node mapping", best_mapping, file=DEBUG_LOG)
++                print("Best node mapping alignment:", SMATCH.print_alignment(best_mapping, instance1, instance2), file=DEBUG_LOG)
++            test_triple_num = len(instance1) + len(attributes1) + len(relation1)
++            gold_triple_num = len(instance2) + len(attributes2) + len(relation2)
++            if not self.single_score:
++                # if each AMR pair should have a score, compute and output it here
++                (precision, recall, best_f_score) = self.compute_f(best_match_num,
++                                                            test_triple_num,
++                                                            gold_triple_num)
++                #print ("Sentence", sent_num)
++                if(self.Print):
++                    if BoolIden or idnt:
++                        outp = "SNT %s : "%(idnt)
++                    else:
++                        outp = ""
++                    if self.pr_flag:
++                        outp += "Prec: %.2f, Rcal: %.2f, " %(precision, recall)
++                    outp += "Smatch: %.2f" % best_f_score
++                    #print ("Smatch score: %.2f" % best_f_score)
++                    print(outp)
++                reslt = dict()
++                if BoolIden or idnt:
++                    reslt["iden"] = idnt
++                if self.pr_flag:
++                    reslt["precision"] = precision
++                    reslt["recall"] = recall
++                reslt["smatch"] = best_f_score
++                resu.append(reslt)
++            total_match_num += best_match_num
++            total_test_num += test_triple_num
++            total_gold_num += gold_triple_num
++            # clear the matching triple dictionary for the next AMR pair
++            self.match_triple_dict.clear()
++            sent_num += 1
++        if self.verbose:
++            print("Total match number, total triple number in AMR 1, and total triple number in AMR 2:", file=DEBUG_LOG)
++            print(total_match_num, total_test_num, total_gold_num, file=DEBUG_LOG)
++            print("---------------------------------------------------------------------------------", file=DEBUG_LOG)
++        # output document-level smatch score (a single f-score for all AMR pairs in two files)
++        (precision, recall, best_f_score) = self.compute_f(total_match_num, total_test_num, total_gold_num)
++        if self.Print:
++            if self.pr_flag:
++                print("Document-level precision: %.2f" % precision)
++                print("Document-level Recall: %.2f" % recall)
++            print ("Document-level F-score: %.2f, %.4f" % (best_f_score, best_f_score))
++        if not self.single_score:
++            resu = {"detail": resu}
++        if self.pr_flag:
++            resu["precision"] = precision
++            resu["recall"] = recall
++        resu["smatch"] = best_f_score
++        return resu
++
++        
++
++
++def main(arguments):
++    # Read amr pairs from two files
++    amr_1_lignes = [A for A in yield_amr_line(arguments.f[0])]
++    amr_2_lignes = [A for A in yield_amr_line(arguments.f[1])]
++    arguments.f[0].close()
++    arguments.f[1].close()
++
++    REPR1 = []
++    REPR2 = []
++    if len(amr_1_lignes) < len(amr_2_lignes):
++        print("Error: File 1 has less AMRs than file 2", file=ERROR_LOG)
++        print("Ignoring remaining AMRs", file=ERROR_LOG)
++        amr_2_lignes = amr_2_lignes[:len(amr_1_lignes)]
++    elif len(amr_2_lignes) < len(amr_1_lignes):
++        print("Error: File 2 has less AMRs than file 1", file=ERROR_LOG)
++        print("Ignoring remaining AMRs", file=ERROR_LOG)
++        amr_1_lignes = amr_1_lignes[:len(amr_2_lignes)]
++    
++    Smatch = SMATCH(arguments.r, arguments.ms, arguments.v, arguments.pr)
++    Smatch.compute_smatch(amr_1_lignes, amr_2_lignes)
++
++
++
++
++
++
++class DEBUG_ARGU():
++    def __init__(self):
++        self.r = 9
++        self.ms = False
++        self.v = True
++        self.pr = True
++        self.f = ["../AMR_1.txt", "../AMR_2.txt"]
++
++if __name__ == "__main__":
++    parser = None
++    args = None
++    
++    #parser = build_arg_parser()
++    #args = parser.parse_args()
++    args = DEBUG_ARGU()
++    files = [open(f, "r", encoding="UTF-8") for f in args.f]
++    args.f = files
++    main(args)
