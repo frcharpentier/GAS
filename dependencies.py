@@ -56,6 +56,8 @@ if False:
     
 def transfo_to_filenames(transfo, QscalK):
     implemented = {"roberta": "minbert://roberta-base",
+                   "robertaBase": "minbert://roberta-base",
+                   "robertaLarge": "minbert://roberta-large",
                    "GPT2": "mingpt://gpt2",
                    "deberta": "huggingface://microsoft/deberta-v2-xxlarge",
                    "LLAMA32": "huggingface://meta-llama/Llama-3.2-3B",

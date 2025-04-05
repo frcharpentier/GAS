@@ -227,6 +227,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
 class TRANSFORMER_ATTENTION:
     implemented = ["minbert://roberta-base",
+                   "minbert://roberta-large",
                    "mingpt://gpt2",
                    "huggingface://microsoft/deberta-v2-xxlarge",
                    "huggingface://meta-llama/Llama-3.2-3B",
