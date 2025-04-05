@@ -283,12 +283,12 @@ class TRANSFORMER_ATTENTION:
                 self.modele = BERT.from_huggingface_model_name(model_name)
                 self.num_layers = len(self.modele.encoder)
                 self.num_heads = self.modele.encoder[0].attn.n_head
+                self.modele.to(self.device)
             elif self.model_type == "minGPT":
                 self.modele = GPT.from_pretrained(model_name)
                 self.num_layers = len(self.modele.transformer.h)
                 self.num_heads = self.modele.transformer.h[0].attn.n_head
-                if not self.device == "cpu":
-                    self.modele.to(self.device)
+                self.modele.to(self.device)
             elif self.model_type == "llama":
                 if transformers_version == "4.47.1":
                     KLASS = LLAMA_ATTENTION_CLASSES["eager"]
