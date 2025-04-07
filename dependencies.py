@@ -68,7 +68,8 @@ def transfo_to_filenames(transfo, QscalK):
                    "Llama8B": "huggingface://meta-llama/Llama-3.1-8B",
                    "Llama8Bi": "huggingface://meta-llama/Llama-3.1-8B-Instruct",
                    "mdrnBertBase" : "huggingface://answerdotai/ModernBERT-base",
-                   "mdrnBertLarge" : "huggingface://answerdotai/ModernBERT-large"}
+                   "mdrnBertLarge" : "huggingface://answerdotai/ModernBERT-large",
+                   "spring" : "huggingface://facebook/bart-large"}
     assert transfo in implemented
     label_QK = "QK" if QscalK else "att"
     rep_ds_grph = "./ds_graph_%s_%s_"%(transfo, label_QK)
