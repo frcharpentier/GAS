@@ -159,21 +159,81 @@ class torchmodule_Classif_Bil_Antisym(torch.nn.Module):
         # w : (1, r, dim)
         B = self.bias_vecto.unsqueeze(0).unsqueeze(-1)
         # B : (1, dim, 1) et X-B : (b, dim, 2)
-        Y = torch.matmul(W, (X-B))
+        Y = torch.matmul(W, (X-B)) # Y = W·(X-B)
         # Y : (b, r, 2)
-        B1 = torch.matmul(W, B) # shape: (1, r, 1)
+        B1 = torch.matmul(W, B) # shape: (1, r, 1) B1=W·B
         A = self.antisym.triu(1)
         A = A - (A.T)
         A = A.unsqueeze(0) # shape: (1, r, r)
-        Y1 = Y[...,1].unsqueeze(-1) # shape: (b, r, 1)
-        Y1 = torch.matmul(A, Y1)    # shape: (b, r, 1)
-        B2 = torch.matmul(A, B1) # shape: (1, r, 1)
+        Y1 = Y[...,1].unsqueeze(-1) # shape: (b, r, 1) Y1 = W·(X1-B)
+        Y1 = torch.matmul(A, Y1)    # shape: (b, r, 1) Y1 = A·W·(X1-B)
+        B2 = torch.matmul(A, B1) # shape: (1, r, 1)  B2 = A·W·B
         tBMB = (B1.squeeze() * B2.squeeze()).sum() # shape: ()
+        # tBMB = tB·tW·A·W·B
 
-        Y0 = Y[...,0].unsqueeze(-2)  # shape: (b, 1, r)
-        Y = torch.matmul(Y0, Y1)     # shape: (b, 1, 1)
+        Y0 = Y[...,0].unsqueeze(-2)  # shape: (b, 1, r) Y2 = t(W·(X0-B))
+        Y = torch.matmul(Y0, Y1)     # shape: (b, 1, 1) Y = t(X0-B)·tW·A·W·(X1-B)
         Y = Y.reshape(-1)            # shape: (b,)
-        Y = Y + tBMB.unsqueeze(0)    # shape: (b,)
+        Y = Y + tBMB.unsqueeze(0)    # shape: (b,) Y = t(X0-B)·tW·A·W·(X1-B) + tB·tW·A·W·B
+        return Y
+    
+class torchmodule_Classif_Bil_Antisym_2(torch.nn.Module):
+    def __init__(self, dim, rang=2):
+        # On n’a que deux classes, a priori.
+        super(torchmodule_Classif_Bil_Antisym_2, self).__init__()
+        assert (rang % 2) == 0
+        self.dim = dim
+        self.rang = rang
+        self.hparams = {"dim": dim, "rang": rang}
+        self.nb_classes = "binary"
+        self.weight = nn.Parameter(torch.empty(rang, dim))
+        nn.init.xavier_normal_(self.weight)
+        self.antisym = nn.Parameter(torch.empty(rang//2))
+        nn.init.xavier_normal_(self.antisym)
+        self.bias_vecto = nn.Parameter(torch.empty(dim,))
+        nn.init.normal_(self.bias_vecto)
+
+        idx = torch.LongTensor(
+            [2*(i//2) + 1-(i%2) for i in range(rang)]
+            )
+        #[1,0,3,2,5,4,...] (indexation pour intervertir les lignes deux à deux)
+
+        self.register_buffer("idx", idx)
+
+        
+        #self.save_hyperparameters()
+        
+
+    def forward(self, X):
+        # X : (b, dim, 2)
+
+        Av = self.antisym.unsqueeze(-1) * torch.tensor([[1, -1]], requires_grad=False)
+        # Av : (r/2, 2), la deuxième colonne est l’opposé de la première.
+        Av = Av.reshape(self.rang).unsqueeze(-1) # shape: (r, 1)
+
+        W = self.weight
+        # W : (r, dim)
+        Wperm = torch.index_select(W, 0, self.idx)
+        # Permutation des lignes deux à deux.
+        AW = Av*Wperm # shape : (r, dim) AW = A·W
+        AW = AW.unsqueeze(0) # shape : (1, r, dim)
+
+        B = self.bias_vecto.unsqueeze(0).unsqueeze(-1)
+        # B : (1, dim, 1)
+        Xb = X-B # X-B : (b, dim, 2)
+        X1b = Xb[...,1].unsqueeze(-1) # shape : (b, dim, 1) X1b = X1 - B
+        X0b = Xb[...,0].unsqueeze(-1) # shape : (b, dim, 1) X0b = X0 - B
+        WX0b = torch.matmul(W.unsqueeze(0), X0b) #shape : (b, r, 1) WX0b = W·(X0-B)
+
+        AWX1b = torch.matmul(AW, X1b) # shape: (b, r, 1) AWX1b = A·W·(X1-B)
+        Y = (WX0b * AWX1b).reshape(-1, self.rang).sum(axis=1) # shape : (b,) Y = t(X0-B)·tW·A·W·(X1-B)
+
+        AWB = torch.matmul(AW, B) #shape : (b, r, 1) AWB = A·W·B
+        WB = torch.matmul(W.unsqueeze(0), B) #shape : (b, r, 1) WB = W·B
+        tBMB = (WB*AWB).reshape(-1, self.rang).sum(axis=1) # shape : (b,) tBMB = tB·tW·A·W·B
+
+        Y = Y + tBMB # shape : (b,) Y = t(X0-B)·tW·A·W·(X1-B) + tB·tW·A·W·B
+
         return Y
 
 class torchmodule_GAT_role_classif(torch.nn.Module):

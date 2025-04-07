@@ -40,6 +40,7 @@ from modeles.modeles2 import (torchmodule_Classif_Lin as tm_Classif_Lin,
                       torchmodule_GAT_role_classif as tm_GAT,
                       torchmodule_GAT_sans_GAT as tm_GAT_sans_GAT,
                       torchmodule_Classif_Bil_Antisym as tm_Classif_Bil_Antisym,
+                      torchmodule_Classif_Bil_Antisym_2 as tm_Classif_Bil_Antisym_2,
                       make_GAT_model,
                       INFERENCE
                       )
