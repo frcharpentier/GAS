@@ -11,19 +11,25 @@ def calcul_scores(confusion, nb=None):
     N = i
     if nb == None:
         nb = N
+
+    resu = dict()
     
     diago = np.diag(confusion)[:nb]
     somme = (confusion[:nb]).sum(axis=1)
     accuracy = diago.sum()/somme.sum()
     bal_accuracy = (diago / somme).mean()
-    print("%d : %f / %f"%(nb, accuracy, bal_accuracy))
+    #print("%d : %f / %f"%(nb, accuracy, bal_accuracy))
+    resu[nb] = (accuracy, bal_accuracy)
     if nb < N:
         diago = np.diag(confusion)
         somme = confusion.sum(axis=1)
         accuracy = diago.sum()/somme.sum()
         bal_accuracy = (diago / somme).mean()
-        print("%d : %f / %f"%(N, accuracy, bal_accuracy))
+        #print("%d : %f / %f"%(N, accuracy, bal_accuracy))
+        resu[N] = (accuracy, bal_accuracy)
 
 
 if __name__ == "__main__":
-    calcul_scores(matrice,15)
+    scores = calcul_scores(matrice,15)
+    for n, (acc, balacc) in scores :
+        print("%d : %f / %f"%(n, acc, balacc))

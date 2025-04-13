@@ -13,6 +13,8 @@ from alig.fabrication_listes import (
     calculer_graphe_toks,
     ecrire_liste
 )
+from calcul_scores import calcul_scores
+from tqdm import tqdm
 
 
 
@@ -221,12 +223,12 @@ def enum_paires_graphes(fichier_ground, fichier_pred):
             yield ids, derniere_ligne
 
     idsGROUND = [ids for ids, lig in lecture_un_fichier(fichier_ground)]
-    idsINTER = (ids for ids,lig in lecture_un_fichier(fichier_pred) if ids in idsGROUND)
+    idsINTER = [ids for ids,lig in lecture_un_fichier(fichier_pred) if ids in idsGROUND]
 
     genGROUND = lecture_un_fichier(fichier_ground)
     genPRED = lecture_un_fichier(fichier_pred)
 
-    for ids in idsINTER:
+    for ids in tqdm(idsINTER):
         while True:
             idsG, jsnG = next(genGROUND)
             if idsG == ids:
@@ -237,7 +239,7 @@ def enum_paires_graphes(fichier_ground, fichier_pred):
                 break
         yield ids, jsnG, jsnP
 
-def evaluer_SPRING(fichierGROUND, fichierPRED):
+def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
     confusion = dict()
 
     liste_rel=[[':>AGENT'], [':beneficiary', ':>BENEFICIARY'],
@@ -267,6 +269,18 @@ def evaluer_SPRING(fichierGROUND, fichierPRED):
         for P in alias:
             clef = clef = "G= %s ; P= %s"%(G, P)
             conf.append(confusion.get(clef, 0))
+
+    scores = calcul_scores(conf, 15)
+    acc, bal_acc = scores[15]
+    print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc))
+    with open(fichier_resu, "w", encoding="utf-8") as F:
+        print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc), file=F)
+        print("confusion = [", file = F)
+        for ligConf in conf:
+            print("%s,"%repr(ligConf), file=F)
+        print("]", file=F)
+
+
     
     
         
