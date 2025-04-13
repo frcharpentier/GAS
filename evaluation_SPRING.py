@@ -15,6 +15,7 @@ from alig.fabrication_listes import (
 )
 from calcul_scores import calcul_scores
 from tqdm import tqdm
+import fire
 
 
 
@@ -183,8 +184,11 @@ def json_to_token_graph(dicjsn,liste_rel, alias):
         assert type(i) == type(j) == int
         assert type(rel) == str
         i, j = sommets[i], sommets[j]
+        if rel.startswith(":") and rel.endswith(")") and len(rel)>=4 and rel[-3] == "(" and rel[-2] in "0123456789":
+            rel = rel[:-3]
         if rel in dico_filtre:
-            graphe[i,j] = rel
+            graphe[i,j] = dico_filtre[rel]
+    return graphe
 
 
 
@@ -242,17 +246,21 @@ def enum_paires_graphes(fichier_ground, fichier_pred):
 def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
     confusion = dict()
 
-    liste_rel=[[':>AGENT'], [':beneficiary', ':>BENEFICIARY'],
+    liste_rel = [[':>AGENT'], [':beneficiary', ':>BENEFICIARY'],
                    [':>CAUSE'], [':condition', ':>CONDITION'], [':degree'],
                    [':>EXPERIENCER'], [':location', ':>LOCATION'],
                    [':manner', ':>MANNER'], [':mod', ':>MOD'],
                    [':>PATIENT'], [':poss'], [':purpose', ':>PURPOSE'],
-                   [':>THEME'], [':time', ':>TIME'], [':topic', ':>TOPIC']],
+                   [':>THEME'], [':time', ':>TIME'], [':topic', ':>TOPIC'],
+                   ["{and_or}"],["{and}"],["{groupe}"],["{idem}"],["{inter}"],["{or}"]
+                ]
     
     alias = [':>AGENT', ':>BENEFICIARY', ':>CAUSE', ':>CONDITION',
                  ':degree', ':>EXPERIENCER', ':>LOCATION', ':>MANNER',
                  ':>MOD', ':>PATIENT', ':poss', ':>PURPOSE',
-                 ':>THEME', ':>TIME', ':>TOPIC']
+                 ':>THEME', ':>TIME', ':>TOPIC',
+                 "{and_or}", "{and}", "{groupe}", "{idem}", "{inter}", "{or}"
+                ]
 
     for ids, jsnG, jsnP in enum_paires_graphes(fichierGROUND, fichierPRED):
         jsnG = json.loads(jsnG)
@@ -268,7 +276,11 @@ def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
         conf.append(ligneConf)
         for P in alias:
             clef = clef = "G= %s ; P= %s"%(G, P)
-            conf.append(confusion.get(clef, 0))
+            ligneConf.append(confusion.get(clef, 0))
+
+
+    # ÉQUILIBRAGE
+    conf = [lig[:-1] for lig in conf[:-1]]
 
     scores = calcul_scores(conf, 15)
     acc, bal_acc = scores[15]
@@ -346,4 +358,11 @@ def make_SPRING_alig_file(
 if __name__ == "__main__":
     #essai()
     #essai2()
-    make_SPRING_alig_file()
+    #make_SPRING_alig_file()
+    #----------------------
+    #ground = "./alig_AMR_spring_test.txt"
+    #pred = "./alig_AMR_spring_pred_test.txt"
+    #resu = "./Experiment_Results/resu_SPRING.txt"
+    #evaluer_SPRING(ground, pred, resu)
+    #----------------------
+    fire.Fire()
