@@ -1,0 +1,105 @@
+<head>
+<title>Report</title>
+<meta charset="utf-8"/>
+<style media="screen" type="text/css">
+table, tr, td, th {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.ttyp {
+  font-family: "Lucida Console", "Courier New", monospace;
+  background-color: beige;
+}
+    </style>
+<!--
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    -->
+<script>
+let COPIER = function(event){
+	let spanExt = event.target.parentNode;
+	let elt = spanExt.firstChild;
+	let texte;
+	if (elt.nodeType == 3) //Nœud texte
+	{
+		texte = elt.nodeValue;
+	}
+	else
+	{
+		texte = elt.innerText;
+	}
+	navigator.clipboard.writeText(texte);
+};
+   </script>
+</head><!DOCTYPE html>
+
+<html>
+
+<body>
+<h1>robertaLarge_Bilin</h1>
+<hr/>
+<h2>version_0</h2>
+<h2>Pour réexécuter :</h2>
+<p>Numéro MD5 de l’instantané GIT :</p>
+<p><span class="ttyp">b41f50397bf52e118d38567300f4ea64a5fff5b2<button onclick="COPIER(event)">copier</button></span></p>
+<p>Commandes :</p>
+<p><span class="ttyp">batch_Bilin_sym(nom_rapport='robertaLarge/robertaLarge_Bilin.html', rang=16, shuffle=True, transfo='robertaLarge', lr=0.0003, patience=20, filter='filter_21_classes', masques=1)<button onclick="COPIER(event)">copier</button></span></p>
+<p>ou</p>
+<p><span class="ttyp">batch_Bilin_sym --nom_rapport robertaLarge/robertaLarge_Bilin.html --rang 16 --shuffle True --transfo robertaLarge --lr 0.0003 --patience 20 --filter filter_21_classes --masques 1<button onclick="COPIER(event)">copier</button></span></p>
+<h2>Informations de reproductibilité</h2>
+<table><tr><th>classe_modele</th><td><span class="ttyp"><span hidden="True">&lt;class 'modeles.modeles2.torchmodule_Classif_Bil_Sym_2'&gt;</span>&lt;class 'modeles.modeles2.torc…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_last</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaLarge_Bilin_LOGS/version_0/checkpoints/last_epoch=41_step=739074.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>ckpoint_best</th><td><span class="ttyp"><span hidden="True">/home/frederic/projets/detection_aretes/logs_training/robertaLarge_Bilin_LOGS/version_0/checkpoints/best_epoch=21_step=387134.ckpt</span>/home/frederic/projets/detect…<button onclick="COPIER(event)">copier</button></span></td></tr>
+</table>
+<h3>paramètres d’instanciation du modele</h3>
+<table><tr><th>dim</th><td>384</td></tr>
+<tr><th>nb_classes</th><td>21</td></tr>
+<tr><th>rang</th><td>16</td></tr>
+</table>
+<h3>paramètres d’instanciation du système d’inférence</h3>
+<table><tr><th>f_features</th><td>lambda b: b['X']</td></tr>
+<tr><th>f_target</th><td>lambda b: b['roles']</td></tr>
+<tr><th>f_msk</th><td></td></tr>
+<tr><th>lr</th><td>0.0003</td></tr>
+<tr><th>perte</th><td>CrossEntropyLoss</td></tr>
+<tr><th>freqs</th><td><span class="ttyp"><span hidden="True">tensor([124654.,   9208.,   1536.,   5096.,   5625.,  15423.,  26947.,   8164.,
+         94380.,  28873.,  15857.,   5854., 148109.,  31190.,  19434.,   1170.,
+         69674., 558820.,  20814.,    610.,   5636.])</span>tensor([124654.,   9208.,   1…<button onclick="COPIER(event)">copier</button></span></td></tr>
+<tr><th>no_bal_acc</th><td>False</td></tr>
+</table>
+<h2>Dataset (classe et effectifs)</h2>
+<table><tr><th>relations</th><th>groupes</th><th>effectifs</th></tr>
+<tr><td>:&gt;AGENT</td><td>:&gt;AGENT</td><td>124654</td></tr>
+<tr><td>:&gt;BENEFICIARY</td><td>:beneficiary :&gt;BENEFICIARY</td><td>9208</td></tr>
+<tr><td>:&gt;CAUSE</td><td>:&gt;CAUSE</td><td>1536</td></tr>
+<tr><td>:&gt;CONDITION</td><td>:condition :&gt;CONDITION</td><td>5096</td></tr>
+<tr><td>:degree</td><td>:degree</td><td>5625</td></tr>
+<tr><td>:&gt;EXPERIENCER</td><td>:&gt;EXPERIENCER</td><td>15423</td></tr>
+<tr><td>:&gt;LOCATION</td><td>:location :&gt;LOCATION</td><td>26947</td></tr>
+<tr><td>:&gt;MANNER</td><td>:manner :&gt;MANNER</td><td>8164</td></tr>
+<tr><td>:&gt;MOD</td><td>:mod :&gt;MOD</td><td>94380</td></tr>
+<tr><td>:&gt;PATIENT</td><td>:&gt;PATIENT</td><td>28873</td></tr>
+<tr><td>:poss</td><td>:poss</td><td>15857</td></tr>
+<tr><td>:&gt;PURPOSE</td><td>:purpose :&gt;PURPOSE</td><td>5854</td></tr>
+<tr><td>:&gt;THEME</td><td>:&gt;THEME</td><td>148109</td></tr>
+<tr><td>:&gt;TIME</td><td>:time :&gt;TIME</td><td>31190</td></tr>
+<tr><td>:&gt;TOPIC</td><td>:topic :&gt;TOPIC</td><td>19434</td></tr>
+<tr><td>{and_or}</td><td>{and_or}</td><td>1170</td></tr>
+<tr><td>{and}</td><td>{and}</td><td>69674</td></tr>
+<tr><td>{groupe}</td><td>{groupe}</td><td>558820</td></tr>
+<tr><td>{idem}</td><td>{idem}</td><td>20814</td></tr>
+<tr><td>{inter}</td><td>{inter}</td><td>610</td></tr>
+<tr><td>{or}</td><td>{or}</td><td>5636</td></tr>
+</table>
+<h2>Meilleur modèle :</h2>
+<h2>Exactitude : 0.712192, exactitude équilibrée : 0.616411</h2>
+<h2>Exactitude équilibrée rééchelonnée entre hasard et perfection : 0.597232</h2>
+<h2>Exactitude rééchelonnée entre hasard uniforme et perfection : 0.697802</h2>
+<h2>Exactitude rééchelonnée entre hasard selon a priori et perfection : 0.612877</h2>
+<img src="robertaLarge_Bilin_PJ/PJ_647120.svg"/>
+(Image stockée dans robertaLarge_Bilin_PJ/PJ_647120.svg)
+<p><span class="ttyp"><span hidden="True">[[3258, 178, 47, 95, 15, 111, 60, 36, 101, 178, 131, 71, 66, 58, 104, 2, 71, 7, 24, 4, 16], [24, 282, 0, 3, 1, 5, 22, 3, 7, 32, 9, 14, 7, 5, 19, 1, 3, 1, 7, 0, 0], [4, 0, 7, 1, 0, 0, 0, 0, 2, 4, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0], [8, 1, 2, 76, 0, 0, 1, 2, 1, 0, 0, 1, 2, 5, 3, 0, 1, 0, 0, 0, 2], [0, 0, 1, 3, 112, 1, 4, 6, 5, 1, 0, 1, 0, 0, 0, 0, 2, 3, 0, 0, 0], [43, 8, 1, 8, 2, 308, 2, 8, 20, 28, 4, 5, 7, 0, 13, 4, 4, 0, 1, 0, 0], [25, 132, 10, 14, 7, 11, 1075, 20, 85, 54, 46, 12, 21, 23, 33, 12, 91, 57, 22, 10, 5], [7, 5, 0, 6, 26, 6, 6, 139, 14, 5, 0, 7, 3, 7, 3, 1, 19, 9, 2, 3, 0], [81, 153, 6, 36, 106, 22, 154, 116, 1942, 65, 244, 69, 36, 73, 140, 6, 105, 96, 30, 12, 12], [54, 47, 2, 8, 13, 20, 28, 8, 28, 766, 20, 10, 36, 12, 28, 3, 23, 1, 1, 0, 2], [13, 46, 1, 1, 2, 3, 19, 1, 34, 2, 513, 0, 4, 12, 13, 0, 7, 8, 6, 2, 3], [22, 15, 1, 8, 0, 0, 5, 6, 10, 1, 0, 140, 3, 3, 8, 0, 15, 1, 1, 0, 1], [468, 387, 16, 162, 141, 68, 171, 115, 412, 597, 141, 103, 1296, 97, 473, 6, 69, 45, 68, 8, 20], [14, 9, 2, 47, 4, 1, 23, 29, 33, 4, 1, 8, 6, 1200, 13, 3, 9, 35, 0, 3, 4], [17, 30, 4, 15, 4, 6, 8, 9, 28, 23, 4, 21, 15, 3, 533, 1, 12, 1, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 10], [38, 59, 2, 50, 5, 18, 71, 12, 40, 22, 44, 15, 46, 48, 33, 36, 2890, 30, 6, 63, 264], [31, 134, 3, 6, 16, 2, 117, 15, 259, 23, 97, 23, 14, 112, 60, 15, 135, 12239, 3, 116, 45], [11, 4, 0, 6, 0, 2, 1, 0, 11, 3, 18, 0, 0, 5, 7, 1, 8, 0, 600, 1, 2], [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5, 2, 0, 16, 4], [2, 2, 0, 0, 0, 0, 4, 1, 4, 5, 3, 0, 0, 3, 2, 2, 30, 3, 3, 16, 68]]</span><button onclick="COPIER(event)">Copier la matrice de confusion</button></span></p>
+<hr/>
+</body>
+</html>

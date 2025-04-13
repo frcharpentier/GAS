@@ -89,18 +89,6 @@ def load_AMRs(amr_reader, enumerateur, remove_wiki=False, output_alignments=Fals
 
 
 def preparer_alignements_SPRING(fichier_amr, fichier_tokenisation, leamr_subg, leamr_rel, leamr_reent, explicit_arg=True, doublons=[]):
-    #explicit_arg, si VRAI, transformera tous les rôles ARGn en une description sémantique
-    #plus explicite. (Sans doute plus facile à classer, également.)
-
-    #fichiers_snt = [fichier_amr]
-    #fichiers_amr = [fichier_amr]
-    
-    #fichier_sous_graphes = leamr_subg
-    #fichier_reentrances = leamr_reent
-    #fichier_relations = leamr_rel
-
-
-
     amr_reader = AMR_Reader()
     enumerateur = enum_AMRS(fichier_amr, fichier_tokenisation)
     
@@ -115,7 +103,6 @@ def preparer_alignements_SPRING(fichier_amr, fichier_tokenisation, leamr_subg, l
     # et dont les valeurs seront les objets AMR correspondants
     
     
-    #print(amrfile)
     listeG = [AMR_modif(G) for G in load_AMRs(amr_reader, enumerateur, remove_wiki=True, link_string=True) if not G.id in doublons] #Élimination des doublons
     # listeG est une liste remplie d’objets AMR_modif (classe dérivée de la classe AMR).
     if explicit_arg:
@@ -126,19 +113,7 @@ def preparer_alignements_SPRING(fichier_amr, fichier_tokenisation, leamr_subg, l
 
         amr_dict[amrid] = amr
         
-        #if not "snt" in amr.metadata:
-        #    if amrid in snt_dict:
-        #        amr.metadata["snt"] = snt_dict[amrid]
-        #    else:
-        #        #toks = graphe.tokens
-        #        toks = amr.words
-        #        amr.metadata["snt"] = " ".join(toks)
         assert "snt" in amr.metadata
-
-    
-
-
-    #monamr = amr_dict["DF-199-192821-670_2956.4"]
 
     print("%d graphes AMR au total."%len(amr_liste))
     if explicit_arg:
@@ -161,7 +136,144 @@ def preparer_alignements_SPRING(fichier_amr, fichier_tokenisation, leamr_subg, l
 
     return alignements
 
+class graphe_de_tokens:
+    AUTRE = "{OTHER}"
+    def __init__(self):
+        self.dico = dict()
 
+    def __setitem__(self, key, value):
+        assert type(key) is tuple and len(key) == 2
+        i, j = key
+        assert type(i) is int
+        assert type(j) is int
+        if i < j:
+            i,j = j,i
+            direction = -1
+        else:
+            direction = 1
+        if value.startswith("{") and value.endswith("}"):
+            direction = 0
+        if not (i,j) in self.dico:
+            self.dico[(i,j)] = (value, direction)
+        else:
+            val, dir = self.dico[(i,j)]
+            if not (val == value and dir == direction):
+                self.dico[(i,j)] = (graphe_de_tokens.AUTRE, 0)
+
+    def __getitem__(self, key):
+        if key in self.dico:
+            return self.dico[key]
+        else:
+            return (graphe_de_tokens.AUTRE, 0)
+        
+def json_to_token_graph(dicjsn,liste_rel, alias):
+    assert type(dicjsn) is dict
+    sommets = dicjsn["sommets"]
+    assert type(sommets) == list and all((type(s) == int) for s in sommets)
+    aretes = dicjsn["aretes"]
+    assert type(aretes) == list
+    assert all((type(a) is list) for a in aretes)
+    assert all((len(a) == 3) for a in aretes)
+    graphe = graphe_de_tokens()
+    dico_filtre = {k : a for (l,a) in zip(liste_rel, alias) for k in l}
+    for a in aretes:
+        i, j, rel = a[0], a[2], a[1]
+        assert type(i) == type(j) == int
+        assert type(rel) == str
+        i, j = sommets[i], sommets[j]
+        if rel in dico_filtre:
+            graphe[i,j] = rel
+
+
+
+def comparer_deux_graphes(ground, pred, confusion=None):
+    if confusion is None:
+        confusion = dict()
+    else:
+        assert type(confusion) == dict
+    aretes = set( k for k in ground.dico.keys())
+    aretes = aretes.union(set( k for k in pred.dico.keys()))
+    for a in aretes:
+        clef = "G= %s ; P= %s"%(ground[a][0], pred[a][0])
+        confusion[clef] = 1+ confusion.get(clef, 0)
+    return confusion
+
+
+def enum_paires_graphes(fichier_ground, fichier_pred):
+    def lecture_un_fichier(fich):
+        with open(fich, "r", encoding="utf-8") as F:
+            etat = 0
+            derniere_ligne = ""
+            for ligne in F:
+                ligne = ligne.rstrip()
+                if etat == 0:
+                    if ligne.startswith("# ::id "):
+                        ids = ligne.split(maxsplit=3)[2]
+                        etat = 1
+                elif etat == 1:
+                    if len(ligne.strip()) == 0:
+                        etat = 0
+                        if derniere_ligne.startswith('{"tokens":') and derniere_ligne.endswith("}"):
+                            yield ids, derniere_ligne
+                            ids = None
+                derniere_ligne = ligne
+        if ids and derniere_ligne.startswith('{"tokens":') and derniere_ligne.endswith("}"):
+            yield ids, derniere_ligne
+
+    idsGROUND = [ids for ids, lig in lecture_un_fichier(fichier_ground)]
+    idsINTER = (ids for ids,lig in lecture_un_fichier(fichier_pred) if ids in idsGROUND)
+
+    genGROUND = lecture_un_fichier(fichier_ground)
+    genPRED = lecture_un_fichier(fichier_pred)
+
+    for ids in idsINTER:
+        while True:
+            idsG, jsnG = next(genGROUND)
+            if idsG == ids:
+                break
+        while True:
+            idsP, jsnP = next(genPRED)
+            if idsP == ids:
+                break
+        yield ids, jsnG, jsnP
+
+def evaluer_SPRING(fichierGROUND, fichierPRED):
+    confusion = dict()
+
+    liste_rel=[[':>AGENT'], [':beneficiary', ':>BENEFICIARY'],
+                   [':>CAUSE'], [':condition', ':>CONDITION'], [':degree'],
+                   [':>EXPERIENCER'], [':location', ':>LOCATION'],
+                   [':manner', ':>MANNER'], [':mod', ':>MOD'],
+                   [':>PATIENT'], [':poss'], [':purpose', ':>PURPOSE'],
+                   [':>THEME'], [':time', ':>TIME'], [':topic', ':>TOPIC']],
+    
+    alias = [':>AGENT', ':>BENEFICIARY', ':>CAUSE', ':>CONDITION',
+                 ':degree', ':>EXPERIENCER', ':>LOCATION', ':>MANNER',
+                 ':>MOD', ':>PATIENT', ':poss', ':>PURPOSE',
+                 ':>THEME', ':>TIME', ':>TOPIC']
+
+    for ids, jsnG, jsnP in enum_paires_graphes(fichierGROUND, fichierPRED):
+        jsnG = json.loads(jsnG)
+        jsnP = json.loads(jsnP)
+        ground = json_to_token_graph(jsnG, liste_rel, alias)
+        pred   = json_to_token_graph(jsnP, liste_rel, alias)
+        confusion = comparer_deux_graphes(ground, pred, confusion)
+
+    alias.append(graphe_de_tokens.AUTRE)
+    conf = []
+    for G in alias:
+        ligneConf = []
+        conf.append(ligneConf)
+        for P in alias:
+            clef = clef = "G= %s ; P= %s"%(G, P)
+            conf.append(confusion.get(clef, 0))
+    
+    
+        
+
+
+
+        
 
 def essai():
     fichier_amr = "/home/frederic/projets/AMR_Martinez/sortie/amrs_SPRING_test.txt"
