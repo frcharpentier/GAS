@@ -315,7 +315,7 @@ def evaluer_SPRING(fichierGROUND, fichierPRED, nom_rapport, nb_classes = 15, equ
             confnp = np.array(conf)
             sum = confnp.sum(axis=1)
             sum = sum.reshape((confnp.shape[0], 1))
-            confnp = confnp / confnp.sum(axis=1)
+            confnp = confnp / sum
             confDisp = ConfusionMatrixDisplay(confnp, display_labels = alias)
             NN, _ = confnp.shape
             if NN < 7:
