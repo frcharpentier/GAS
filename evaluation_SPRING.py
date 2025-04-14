@@ -1,5 +1,8 @@
 import json
+import numpy as np
 from alig.examiner_framefiles import EXPLICITATION_AMR
+import matplotlib.pyplot as plt
+from outils.report_generator import HTML_REPORT, HTML_IMAGE
 from amr_utils.amr_readers import AMR_Reader, AMR
 from alig.outils_alignement import quick_read_amr_file, load_aligs_from_json, AMR_modif
 from alig.fabrication_listes import (
@@ -15,6 +18,7 @@ from alig.fabrication_listes import (
 )
 from calcul_scores import calcul_scores
 from tqdm import tqdm
+from sklearn.metrics import ConfusionMatrixDisplay
 import fire
 
 
@@ -243,8 +247,10 @@ def enum_paires_graphes(fichier_ground, fichier_pred):
                 break
         yield ids, jsnG, jsnP
 
-def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
+def evaluer_SPRING(fichierGROUND, fichierPRED, nom_rapport, nb_classes = 15, equilibrage = True):
     confusion = dict()
+
+    assert nb_classes in [15,21]
 
     liste_rel = [[':>AGENT'], [':beneficiary', ':>BENEFICIARY'],
                    [':>CAUSE'], [':condition', ':>CONDITION'], [':degree'],
@@ -261,6 +267,10 @@ def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
                  ':>THEME', ':>TIME', ':>TOPIC',
                  "{and_or}", "{and}", "{groupe}", "{idem}", "{inter}", "{or}"
                 ]
+    
+    if nb_classes == 15:
+        liste_rel = liste_rel[:15]
+        alias = alias[:15]
 
     for ids, jsnG, jsnP in enum_paires_graphes(fichierGROUND, fichierPRED):
         jsnG = json.loads(jsnG)
@@ -280,17 +290,43 @@ def evaluer_SPRING(fichierGROUND, fichierPRED, fichier_resu):
 
 
     # ÉQUILIBRAGE
-    conf = [lig[:-1] for lig in conf[:-1]]
+    if equilibrage:
+        conf = [lig[:-1] for lig in conf[:-1]]
+        alias = alias[:-1]
 
-    scores = calcul_scores(conf, 15)
-    acc, bal_acc = scores[15]
-    print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc))
-    with open(fichier_resu, "w", encoding="utf-8") as F:
-        print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc), file=F)
-        print("confusion = [", file = F)
-        for ligConf in conf:
-            print("%s,"%repr(ligConf), file=F)
-        print("]", file=F)
+    scores = calcul_scores(conf, nb_classes)
+    acc, bal_acc = scores[nb_classes]
+    
+    #print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc))
+    #with open(nom_rapport, "w", encoding="utf-8") as F:
+    #    print("ACC : %f, BAL_ACC : %f"%(acc, bal_acc), file=F)
+    #    print("confusion = [", file = F)
+    #    for ligConf in conf:
+    #        print("%s,"%repr(ligConf), file=F)
+    #    print("]", file=F)
+
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre("Performances modèle Spring", 1)
+        R.titre(("NB classes : %d" % nb_classes), 2)
+        R.titre(("Exactitude : %f, exactitude équilibrée : %f"%(acc, bal_acc)), 2)
+
+        with R.new_img_with_format("svg") as IMG:
+            confnp = np.array(conf)
+            confnp = confnp / confnp.sum(axis=1)
+            confDisp = ConfusionMatrixDisplay(confnp, display_labels = alias)
+            NN, _ = confnp.shape
+            if NN < 7:
+                NN = 7
+            fig, ax = plt.subplots(figsize=(NN,NN))
+            confDisp.plot(xticks_rotation="vertical", ax=ax)
+            #pour calculer disp.figure_, qui est une figure matplotlib
+            fig = confDisp.figure_
+            fig.savefig(IMG.fullname)
+        matrix = repr(conf)
+        R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
+        R.ligne()
+
 
 
     
