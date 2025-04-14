@@ -71,5 +71,5 @@ def calcul_scores(confusion, nb=None):
 
 if __name__ == "__main__":
     scores = calcul_scores(matrice,15)
-    for n, (acc, balacc) in scores :
+    for n, (acc, balacc) in scores.item() :
         print("%d : %f / %f"%(n, acc, balacc))
