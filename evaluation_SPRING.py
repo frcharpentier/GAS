@@ -313,6 +313,8 @@ def evaluer_SPRING(fichierGROUND, fichierPRED, nom_rapport, nb_classes = 15, equ
 
         with R.new_img_with_format("svg") as IMG:
             confnp = np.array(conf)
+            sum = confnp.sum(axis=1)
+            sum = sum.reshape((confnp.shape[0], 1))
             confnp = confnp / confnp.sum(axis=1)
             confDisp = ConfusionMatrixDisplay(confnp, display_labels = alias)
             NN, _ = confnp.shape
@@ -397,7 +399,7 @@ if __name__ == "__main__":
     #make_SPRING_alig_file()
     #----------------------
     #ground = "./alig_AMR_spring_test.txt"
-    #pred = "./alig_AMR_spring_pred_test.txt"
+    #pred = " "
     #resu = "./Experiment_Results/resu_SPRING.txt"
     #evaluer_SPRING(ground, pred, resu)
     #----------------------
