@@ -188,8 +188,8 @@ class torchmodule_Classif_Bil_Antisym_2(torch.nn.Module):
         self.nb_classes = "binary"
         self.weight = nn.Parameter(torch.empty(rang, dim))
         nn.init.xavier_normal_(self.weight)
-        self.antisym = nn.Parameter(torch.empty(rang//2))
-        nn.init.xavier_normal_(self.antisym)
+        self.antisym = nn.Parameter(torch.empty(rang//2,))
+        nn.init.normal_(self.antisym)
         self.bias_vecto = nn.Parameter(torch.empty(dim,))
         nn.init.normal_(self.bias_vecto)
 
@@ -228,9 +228,9 @@ class torchmodule_Classif_Bil_Antisym_2(torch.nn.Module):
         AWX1b = torch.matmul(AW, X1b) # shape: (b, r, 1) AWX1b = A·W·(X1-B)
         Y = (WX0b * AWX1b).reshape(-1, self.rang).sum(axis=1) # shape : (b,) Y = t(X0-B)·tW·A·W·(X1-B)
 
-        AWB = torch.matmul(AW, B) #shape : (b, r, 1) AWB = A·W·B
-        WB = torch.matmul(W.unsqueeze(0), B) #shape : (b, r, 1) WB = W·B
-        tBMB = (WB*AWB).reshape(-1, self.rang).sum(axis=1) # shape : (b,) tBMB = tB·tW·A·W·B
+        AWB = torch.matmul(AW, B) #shape : (1, r, 1) AWB = A·W·B
+        WB = torch.matmul(W.unsqueeze(0), B) #shape : (1, r, 1) WB = W·B
+        tBMB = (WB*AWB).reshape(-1, self.rang).sum(axis=1) # shape : (1,) tBMB = tB·tW·A·W·B
 
         Y = Y + tBMB # shape : (b,) Y = t(X0-B)·tW·A·W·(X1-B) + tB·tW·A·W·B
 
