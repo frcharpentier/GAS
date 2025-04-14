@@ -996,7 +996,8 @@ DDD   EEEE  BBB    UUU    GGG
         #batch_Antisym_GPT(nom_rapport="Rapport_Antisym_GPT.html", rang=2)
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
-        batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=50, DEBUG=True)
+        #batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=50, DEBUG=True)
+        batch_Antisym(nom_rapport="roberta_base/antisym.html", classe=2, rang=8, lr=3.e-4, DEBUG=True)
 
     else:
         fire.Fire()

@@ -199,6 +199,8 @@ class torchmodule_Classif_Bil_Antisym_2(torch.nn.Module):
         #[1,0,3,2,5,4,...] (indexation pour intervertir les lignes deux à deux)
 
         self.register_buffer("idx", idx)
+        T1_1= torch.tensor([[1, -1]], requires_grad=False)
+        self.register_buffer("T1_1", T1_1)
 
         
         #self.save_hyperparameters()
@@ -207,7 +209,7 @@ class torchmodule_Classif_Bil_Antisym_2(torch.nn.Module):
     def forward(self, X):
         # X : (b, dim, 2)
 
-        Av = self.antisym.unsqueeze(-1) * torch.tensor([[1, -1]], requires_grad=False)
+        Av = self.antisym.unsqueeze(-1) * self.T1_1
         # Av : (r/2, 2), la deuxième colonne est l’opposé de la première.
         Av = Av.reshape(self.rang).unsqueeze(-1) # shape: (r, 1)
 
