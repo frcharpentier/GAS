@@ -690,11 +690,14 @@ def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=
     # Éviter les valeurs du rang impaires : Une matrice antisymétrique d’ordre impair est toujours singulière
     if "classe" in kwargs:
         classe = kwargs["classe"]
-        assert classe in [1,2,"1","2"]
-        if classe in [2, "2"]:
-            ClasseModele = tm_Classif_Bil_Antisym_2
-        else:
-            ClasseModele = tm_Classif_Bil_Antisym
+    else:
+        classe = "1"
+    assert classe in [1,2,"1","2"]
+    if classe in [2, "2"]:
+        ClasseModele = tm_Classif_Bil_Antisym_2
+    else:
+        ClasseModele = tm_Classif_Bil_Antisym
+    
     modele = ClasseModele(dimension, rang)
     if ckpoint_model:
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
