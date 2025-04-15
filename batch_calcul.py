@@ -167,9 +167,10 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
         hparams = {k: str(v) for k, v in infer.hparams.items()}
         R.table(**hparams, colonnes=False)
         
-        R.titre("Dataset (classe et effectifs)", 2)
-        groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
-        R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
+        if not filtre is None:
+            R.titre("Dataset (classe et effectifs)", 2)
+            groupes = [" ".join(k for k in T) for T in filtre.noms_classes]
+            R.table(relations=filtre.alias, groupes=groupes, effectifs=filtre.effectifs)
         
         infer = INFERENCE.load_from_checkpoint(ckpoint_model, modele=modele)
 
@@ -184,17 +185,22 @@ def write_report(nom_rapport, infer, filtre, test_dataloader, ckpoint_model, svg
             truth = torch.concatenate([infer.f_target(b)[infer.f_msk(b)] for b in test_dataloader], axis=0)
         else:
             truth = torch.concatenate([infer.f_target(b) for b in test_dataloader], axis=0)
-
-        exactitudes = calculer_exactitudes(truth, roles_pred, filtre.effectifs)
+        
+        freqs = None if filtre is None else filtre.effectifs
+        exactitudes = calculer_exactitudes(truth, roles_pred, freqs)
+        
         
         R.titre("Meilleur modèle :", 2)
         R.titre("Exactitude : %f, exactitude équilibrée : %f"%(exactitudes["acc"], exactitudes["bal_acc"]), 2)
         R.titre("Exactitude équilibrée rééchelonnée entre hasard et perfection : %f"%exactitudes["bal_acc_adj"], 2)
         R.titre("Exactitude rééchelonnée entre hasard uniforme et perfection : %f"%exactitudes["acc_adj"], 2)
-        R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
+        acc_adj2 = exactitudes["acc_adj2"]
+        if not acc_adj2 is None:
+            R.titre("Exactitude rééchelonnée entre hasard selon a priori et perfection : %f"%exactitudes["acc_adj2"], 2)
 
         with R.new_img_with_format("svg") as IMG:
-            fig, matrix = plot_confusion_matrix(truth, roles_pred, filtre.alias)
+            labels = None if filtre is None else filtre.alias
+            fig, matrix = plot_confusion_matrix(truth, roles_pred, labels)
             fig.savefig(IMG.fullname)
         matrix = repr(matrix.tolist())
         R.texte_copiable(matrix, hidden=True, buttonText="Copier la matrice de confusion")
@@ -747,11 +753,6 @@ def batch_Antisym(nom_rapport, rang=18, ckpoint_model=None, train=True, shuffle=
                  svg_dernier = svg_dernier)
 
 
-    if ckpoint_model:
-        modele = ClasseModele.load_from_checkpoint(ckpoint_model)
-    else:
-        modele = ClasseModele(dimension, rang=rang, lr=lr)
-
     
 
 
@@ -997,7 +998,10 @@ DDD   EEEE  BBB    UUU    GGG
         #chpt = "/home/frederic/projets/detection_aretes/lightning_logs/version_27/checkpoints/epoch=1-step=18816.ckpt"
         #batch_GAT_sym("a_tej.html", 144, 1, 2, ckpoint_model=chpt, train=False)
         #batch_LM(nom_rapport = "./rerejeu_Bilin_Sym_roberta.html", lr=3.e-4, max_epochs=50, DEBUG=True)
-        batch_Antisym(nom_rapport="roberta_base/antisym.html", classe=2, rang=8, lr=3.e-4, DEBUG=True)
+        batch_Antisym(nom_rapport="roberta_base/antisym.html",
+                      rang=2,
+                      ckpoint_model="/home/frederic/projets/detection_aretes/logs_training/antisym_LOGS/version_3/checkpoints/best_epoch=24_step=116025.ckpt",
+                      train=False, lr=3.e-4, classe=2, DEBUG=True)
 
     else:
         fire.Fire()
