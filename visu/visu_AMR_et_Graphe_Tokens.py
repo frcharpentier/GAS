@@ -5,6 +5,7 @@ import re
 from visu.micro_serveur import EXEC_ADDRESS, ServeurReq, lancer_serveur
 
 
+
 from lxml import etree as ET
 
 from amr_utils.amr_readers import AMR_Reader
@@ -531,7 +532,7 @@ def grapheToSVG(amr, G):
     return arbo
  
 
-def main(nom_fichier = "./AMR_et_graphes_phrases_2.txt"):
+def main(nom_fichier = "./alig_AMR_roberta_train.txt"):
     global recherche_amr
     make_propbank_frames_dictionary()
     print("Ouverture du fichier %s pour dresser la table"%nom_fichier)

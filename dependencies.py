@@ -1,5 +1,8 @@
-from transformers import __version__ as transformers_version
-assert transformers_version in ["4.47.1", "4.48.2"]
+try:
+    from transformers import __version__ as transformers_version
+except ModuleNotFoundError:
+    transformers_version = None
+assert transformers_version in ["4.47.1", "4.48.2", None]
 
 #AMR_REP_TRAINING = "../../visuAMR/AMR_de_chez_LDC/LDC_2020_T02/data/alignments/split/training"
 AMR_REP_TRAINING  = "./LDC_2020_T02_data/alignments/split/training"
@@ -26,8 +29,8 @@ AMR_UMR_91_ROLESETS_XML = "AMR-UMR-91-rolesets.xml"
 #PROPBANK_DIRECTORY = "C:/Users/fcharpentier/Documents/Boulot/visuAMR/propbank-frames"
 PROPBANK_DIRECTORY = "../../visuAMR/propbank-frames"
 
-#PROPBANK_TO_VERBATLAS = "../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv"
-PROPBANK_TO_VERBATLAS = "./pb2va.tsv"
+PROPBANK_TO_VERBATLAS = "../VerbAtlas-1.1.0/VerbAtlas-1.1.0/pb2va.tsv"
+#PROPBANK_TO_VERBATLAS = "./pb2va.tsv"
 UMR_91_ROLESETS = "./UMR_91_rolesets.tsv"
 
 

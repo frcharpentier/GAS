@@ -1,5 +1,6 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer #, HTTPServer
 import logging
+import os
 from os.path import getsize
 
 class EXEC_ADDRESS:
@@ -15,6 +16,8 @@ class EXEC_ADDRESS:
         self.rfile = rfile
 
     def sendFile(self, ctype, fichier):
+        if not os.path.exists(fichier):
+            fichier = os.path.join(os.path.dirname(os.path.abspath(__file__)), fichier)
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         taille = getsize(fichier)
