@@ -696,6 +696,7 @@ class AligDataset(geoDataset):
                  debug_idSNT=False,
                  device="cuda",
                  tokenHF = None):
+        print("CLASSE AligDataset")
         if not split:
             self.split = False
         else:
