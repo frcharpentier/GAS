@@ -34,14 +34,14 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         # On termine par une couche de classification linéaire.
         super().__init__()
 
-        self.hparams = AttrDict(**{"dim_in": dim_in,
-                        "dim_h1" : dim_h1,
-                        "dim_h2" : dim_h2,
-                        "heads" : heads,
-                        "nb_couches": nb_couches,
-                        "rang_sim": rang_sim,
-                        "dropout_p": dropout_p,
-                        "nb_classes": nb_classes})
+        #self.hparams = AttrDict(**{"dim_in": dim_in,
+        #                "dim_h1" : dim_h1,
+        #                "dim_h2" : dim_h2,
+        #                "heads" : heads,
+        #                "nb_couches": nb_couches,
+        #                "rang_sim": rang_sim,
+        #                "dropout_p": dropout_p,
+        #                "nb_classes": nb_classes})
 
         self.weight = nn.Parameter(torch.empty(dim_h1, rang_sim, dim_in))
         nn.init.xavier_normal_(self.weight)
@@ -134,8 +134,13 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         # Utiliser la perte "Entropie croisée à partir des logits"
         # (nn.CrossEntropyLoss ou NNF.cross_entropy)
         logits = Y[batch.msk]
-        output = {"logits": logits, "ptr": batch.msk_ptr}
+        output = (logits, batch.msk_ptr)
         return output
+    
+
+    
+
+
     
 
 
@@ -171,13 +176,14 @@ class tacredTRAINER:
         cfg = {}
         for t in self.hparams:
             cfg[t] = self.hparams[t]
-        for k in self.model.hparams:
+        for k in self.model._hub_mixin_info:
             cfg["model_"+k] = self.model.hparams[k]
         return cfg
 
 
     def train(self, loadTRAIN, loadEVAL):
-        rep_expe = "EXPE_" + datetime.datetime.now().isoformat()
+        self.date_debut = datetime.datetime.now().isoformat()
+        rep_expe = "EXPE_" + self.date_debut
         accelerator = Accelerator(log_with="tensorboard", project_dir="./results_Tacred")  #(fp16=True)
         config = self.get_config()
 
@@ -200,8 +206,8 @@ class tacredTRAINER:
         for epoch in range(num_train_epochs):
             for step, batch in enumerate(tqdm(loadTRAIN)):
                 optimizer.zero_grad()
-                output = model(batch)
-                logits, logits_ptr = output["logits"], output["ptr"]
+                logits, logits_ptr = model(batch)
+                
                 Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
                 unique, counts = torch.unique(batch.msk_batch, return_counts=True)
                 #weights = torch.ones((self.hparams.nb_classes,))
@@ -218,3 +224,15 @@ class tacredTRAINER:
                 
         accelerator.end_training()
 
+
+    def predict_batch(self, batch):
+        with torch.no_grad():
+            logits, ptr = self.model.forward(batch)
+            sftmax = logits.softmax(axis=-1)
+            index = batch.msk_batch
+            index = index.unsqueeze(-1)
+            index = index.repeat(1,self.nb_classes)
+            R = torch.zeros((batch.y1.shape[0],self.nb_classes), dtype=sftmax.dtype)
+            R.scatter(0, index, sftmax, reduce="add")
+            R = R.argmax(axis=-1)
+            return R
