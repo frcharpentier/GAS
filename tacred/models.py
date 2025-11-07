@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,8 +6,61 @@ from torch_geometric.nn import GATv2Conv
 from huggingface_hub import PyTorchModelHubMixin
 import datetime
 from accelerate import Accelerator
+import evaluate, itertools
 from torch.optim import Adam, AdamW
 from tqdm.auto import tqdm
+import math
+
+
+class Fscore:
+    def __init__(self, nb_classes):
+        self.nb_classes = nb_classes
+        self.TinterP = [0] * nb_classes
+        self.T       = [0] * nb_classes
+        self.P       = [0] * nb_classes
+
+    def add_sample(self, true, pred):
+        if true==pred:
+            self.TinterP[true] += 1
+        self.T[true] += 1
+        self.P[pred] += 1
+
+    def add_batch(self, bTrue, bPred):
+        for t, p in zip(bTrue, bPred):
+            self.add_sample(t, p)
+
+    def compute(self, β=1):
+        S = sum(self.T)
+        # micro:
+        intersect = sum(self.TinterP)
+        prec = intersect / sum(self.P)
+        recl = intersect / sum(self.T)
+        iprec = float("inf") if prec == 0. else 1/prec
+        irecl = float("inf") if recl == 0. else 1/recl
+        iF    = (iprec + irecl*(β**2))/(1+β**2)
+        F     = 1/iF
+        micro = F
+
+        # macro:
+        F = [0.] * self.nb_classes
+        for i in range(self.nb_classes):
+            prec = self.TinterP[i] / self.P[i]
+            recl = self.TinterP[i] / self.T[i]
+            iprec = float("inf") if prec == 0. else 1/prec
+            irecl = float("inf") if recl == 0. else 1/recl
+            iF    = (iprec + irecl*(β**2))/(1+β**2)
+            F[i] = 1/iF
+            macro = sum(F) / self.nb_classes
+        # weighted:
+        weighted = sum(yl*f for yl, f in zip(self.T, F)) / S
+        
+        #No average
+        self.F_no_average = F
+
+        return {"micro": micro, "macro": macro, "weighted": weighted}
+        
+
+        
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
@@ -137,6 +191,42 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         output = (logits, batch.msk_ptr)
         return output
     
+    def count_params(self):
+        return sum(math.prod(t.shape) for t in self.parameters())
+    
+    @torch.no_grad()
+    def predict_batch(self, batch):
+        logits, ptr = self.forward(batch)
+        Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
+        loss = F.cross_entropy(logits, Ytrue)
+        sftmax = logits.softmax(axis=-1)
+        index = batch.msk_batch
+        index = index.unsqueeze(-1)
+        index = index.repeat(1,self.nb_classes)
+        R = torch.zeros((batch.y1.shape[0],self.nb_classes), dtype=sftmax.dtype, device=index.device)
+        R.scatter_reduce_(0, index, sftmax, reduce="sum")
+        R = R.argmax(axis=-1)
+        return R, loss
+    
+    @torch.no_grad()
+    def evaluer(self, nom_metrique, loader):
+        metriq = evaluate.load(nom_metrique)
+        iter0 = (b for b in tqdm(loader))
+        iterRef, iter1 = itertools.tee(iter0, 2)
+        iterRef = (b.y1 for b in iterRef)
+        iterPred, iterLoss = itertools.tee((self.predict_batch(b) for b in iter1) , 2)
+        iterPred = (p for p, _ in iterPred)
+        iterLoss = (L.item() for _, L in iterLoss)
+        eval_loss=MOYENNE()
+        for b_ref, b_pred, b_loss in zip(iterRef, iterPred, iterLoss):
+            eval_loss.cumuler(b_loss)
+            metriq.add_batch(predictions=b_pred, references=b_ref)
+        resu = metriq.compute()
+        for v in resu.values():
+            break
+        metriq = v
+        loss = eval_loss.m
+        return metriq, loss
 
     
 
@@ -162,8 +252,10 @@ class tacredTRAINER:
     def __init__(self,
         model,
         lr=5.e-4,
-        epochs=10,
-        weight_decay=0.
+        epochs=20,
+        weight_decay=0.,
+        metriq="hyperml/balanced_accuracy", 
+        patience = 3,
     ):
         self.model = model
         self.hparams = AttrDict()
@@ -171,68 +263,121 @@ class tacredTRAINER:
         self.hparams.lr = lr
         self.hparams.epochs = epochs
         self.hparams.weight_decay = weight_decay
+        self.hparams.metriq = metriq
+        self.hparams.patience = patience
+
+        self.best_ckpt=None
+        self.last_ckpt=None
 
     def get_config(self):
         cfg = {}
         for t in self.hparams:
             cfg[t] = self.hparams[t]
-        for k in self.model._hub_mixin_info:
-            cfg["model_"+k] = self.model.hparams[k]
+        for k, v in self.model._hub_mixin_config.items():
+            cfg["model_"+k] = v
         return cfg
+    
+    def preparer_accel(self, *args):
+        pass
+
+    def save_model(self, num_epoch, which="BEST"):
+        assert which in ["BEST", "LAST"]
+        wFile = "./tacred_checkpoints"
+        name = "EXPE_" + self.date_debut + "_epoch_%03d_%s"%(num_epoch, which)
+        wPath = os.path.join(wFile, name)
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
+        unwrapped_model.save_pretrained(
+            wPath,
+            is_main_process = self.accelerator.is_main_process,
+            save_function = self.accelerator.save,
+        )
+        deldir = False
+        if which == "BEST":
+            # Si on enregistre un modèle meilleur, on efface le précédent
+            # meilleur modèle.
+            if type(self.best_ckpt) == str and os.path.exists(self.best_ckpt):
+                deldir = self.best_ckpt
+            self.best_ckpt = wPath
+        # Dans tous les cas, on efface le dernier modèle.
+        if type(self.last_ckpt) == str and os.path.exists(self.last_ckpt):
+            deldir = self.last_ckpt
+        self.last_ckpt = wPath
+
+        if deldir:
+            for f in os.listdir(deldir):
+                fp = os.path.join(deldir, f)
+                os.remove(fp)
+            os.rmdir(deldir)
+
 
 
     def train(self, loadTRAIN, loadEVAL):
         self.date_debut = datetime.datetime.now().isoformat()
         rep_expe = "EXPE_" + self.date_debut
-        accelerator = Accelerator(log_with="tensorboard", project_dir="./results_Tacred")  #(fp16=True)
+        
+        self.accelerator = Accelerator(log_with="tensorboard", project_dir="./results_Tacred")  #(fp16=True)
         config = self.get_config()
 
-        accelerator.init_trackers(rep_expe, config=config)
+        self.accelerator.init_trackers(rep_expe, config=config)
 
         optimizer = AdamW(self.model.parameters(),
                           lr = self.hparams.lr,
                           weight_decay=self.hparams.weight_decay)
 
         #Transformation du modèle et des trucs
-        model, optimizer, loadTRAIN, loadEVAL = accelerator.prepare(
+        model, optimizer, loadTRAIN, loadEVAL = self.accelerator.prepare(
             self.model, optimizer, loadTRAIN, loadEVAL
         )
+        self.loadTRAIN = loadTRAIN
+        self.loadEVAL  = loadEVAL
 
         num_train_epochs = self.hparams.epochs
 
         model.train()
         global_step=0
         train_loss=MOYENNE()
+        best_metriq = 0.
+        early_stop_counter = 0
         for epoch in range(num_train_epochs):
             for step, batch in enumerate(tqdm(loadTRAIN)):
-                optimizer.zero_grad()
-                logits, logits_ptr = model(batch)
-                
-                Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
-                unique, counts = torch.unique(batch.msk_batch, return_counts=True)
-                #weights = torch.ones((self.hparams.nb_classes,))
-                #weights[unique] = 1/counts
-                #loss = F.cross_entropy(logits, Ytrue, weights)
-                loss = F.cross_entropy(logits, Ytrue)
-                accelerator.backward(loss)
-                optimizer.step()
-                train_loss.cumuler(loss.item())
-                if step % 100 == 0:
-                    accelerator.log({"numero step": step, "perte(train)": train_loss.m}, step=global_step)
-                    train_loss.RaZ()
+                with self.accelerator.accumulate(self.model):
+                    optimizer.zero_grad()
+                    logits, logits_ptr = model(batch)
+                    
+                    Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
+                    #unique, counts = torch.unique(batch.msk_batch, return_counts=True)
+                    #weights = torch.ones((self.hparams.nb_classes,))
+                    #weights[unique] = 1/counts
+                    #loss = F.cross_entropy(logits, Ytrue, weights)
+                    loss = F.cross_entropy(logits, Ytrue)
+                    self.accelerator.backward(loss)
+                    optimizer.step()
+                    train_loss.cumuler(loss.item())
+                    if step % 100 == 0:
+                        self.accelerator.log({"loss(train)": train_loss.m}, step=global_step)
+                        train_loss.RaZ()
                 global_step += 1
-                
-        accelerator.end_training()
+            
+            metriq, lossEval = self.model.evaluer(self.hparams.metriq, loadEVAL)
+            aLogger = {self.hparams.metriq: metriq, "loss(eval)": lossEval}
+            self.accelerator.log(aLogger, step=global_step)
+            if metriq > best_metriq:
+                best_metriq = metriq
+                early_stop_counter = 0
+                self.save_model(epoch, "BEST")
+            else:
+                self.save_model(epoch, "LAST")
+                early_stop_counter += 1
+                if early_stop_counter >= self.hparams.patience:
+                    break
+
+        self.accelerator.end_training()
 
 
-    def predict_batch(self, batch):
-        with torch.no_grad():
-            logits, ptr = self.model.forward(batch)
-            sftmax = logits.softmax(axis=-1)
-            index = batch.msk_batch
-            index = index.unsqueeze(-1)
-            index = index.repeat(1,self.nb_classes)
-            R = torch.zeros((batch.y1.shape[0],self.nb_classes), dtype=sftmax.dtype)
-            R.scatter(0, index, sftmax, reduce="add")
-            R = R.argmax(axis=-1)
-            return R
+    
+
+    
+
+
+
+

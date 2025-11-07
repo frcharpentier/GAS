@@ -462,6 +462,8 @@ class TacredDataset(geoDataset):
         XXX = self.FileHandle.read(self.sizeL)
         (n_msk,) = struct.unpack("l", XXX)
 
+        #print("idx=%d, n_msk=%d"%(idx, n_msk))
+
         #Lire le tableau des masques
         utiles = np.fromfile(self.FileHandle, dtype=self.dtyp_msk, count=n_msk).reshape(-1)
 

@@ -2,7 +2,8 @@ from collections.abc import Mapping
 from typing import Any, List, Optional, Sequence, Union
 import numpy as np
 import random
-
+ 
+import torch
 import torch.utils.data
 from torch.utils.data.dataloader import default_collate
 
@@ -255,6 +256,7 @@ class tacredDataLoader(torch.utils.data.DataLoader):
         shuffle: bool = False,
         follow_batch: Optional[List[str]] = ["msk"],
         exclude_keys: Optional[List[str]] = None,
+        forceGPU = False,
         **kwargs,
     ):
         # Remove for PyTorch Lightning:
@@ -273,3 +275,11 @@ class tacredDataLoader(torch.utils.data.DataLoader):
             collate_fn=tacredCollater(dataset, follow_batch, exclude_keys),
             **kwargs,
         )
+
+class tacredGPUDataLoader(tacredDataLoader):
+    def __iter__(self):
+        for b in super().__iter__():
+            b = b.to(torch.device("cuda"))
+            yield b
+
+    
