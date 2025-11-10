@@ -39,7 +39,7 @@ def autoinspect(fonction):
             
         assert all(type(a) in [str, int, float, bool] for a in args), "Les arguments de la fonction %s doivent être de type str, int, float ou bool"%nom_fonction
         assert all(type(v) in [str, int, float, bool] for v in kwargs.values()),"Les arguments de la fonction %s doivent être de type str, int, float ou bool"%nom_fonction
-        assert len(args) < len(noms_argus), "Trop d’arguments positionnels donnés en paramètre à la fonction %s"%nom_fonction
+        assert len(args) <= len(noms_argus), "Trop d’arguments positionnels donnés en paramètre à la fonction %s"%nom_fonction
         
 
         dico_argus = {k: v for k, v in dico_defaut.items()}
