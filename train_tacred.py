@@ -245,7 +245,7 @@ DDD   EEEE  BBB    UUU    GGG
 """)
         #rep = "/home/charpentier/projets/json_tacred/"
         #essai(rep)
-        batch_train_1()
+        batch_train_1(DEBUG=True)
         #essai_train_tacred()
         #essai2()
 
