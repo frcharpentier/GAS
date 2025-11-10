@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 
 import os
 import numpy as np
