@@ -269,6 +269,11 @@ class tacredTRAINER:
         self.best_ckpt=None
         self.last_ckpt=None
 
+        self.tensorboard_dir="./results_Tacred"
+        self.checkpoints_dir = "./tacred_checkpoints"
+        self.date_debut = datetime.datetime.now().isoformat()
+        self.rep_expe = "EXPE_" + self.date_debut
+
     def get_config(self):
         cfg = {}
         for t in self.hparams:
@@ -282,43 +287,43 @@ class tacredTRAINER:
 
     def save_model(self, num_epoch, which="BEST"):
         assert which in ["BEST", "LAST"]
-        wFile = "./tacred_checkpoints"
-        name = "EXPE_" + self.date_debut + "_epoch_%03d_%s"%(num_epoch, which)
-        wPath = os.path.join(wFile, name)
+        name = self.rep_expe + "_epoch_%03d_%s"%(num_epoch, which)
+        wPath = os.path.join(self.checkpoints_dir, name)
         unwrapped_model = self.accelerator.unwrap_model(self.model)
+        print("Création du répertoire %s"%wPath)
         unwrapped_model.save_pretrained(
             wPath,
             is_main_process = self.accelerator.is_main_process,
             save_function = self.accelerator.save,
         )
-        deldir = False
+        deldir = []
         if which == "BEST":
             # Si on enregistre un modèle meilleur, on efface le précédent
             # meilleur modèle.
             if type(self.best_ckpt) == str and os.path.exists(self.best_ckpt):
-                deldir = self.best_ckpt
+                deldir.append(self.best_ckpt)
             self.best_ckpt = wPath
         # Dans tous les cas, on efface le dernier modèle.
         if type(self.last_ckpt) == str and os.path.exists(self.last_ckpt):
-            deldir = self.last_ckpt
-        self.last_ckpt = wPath
+            deldir.append(self.last_ckpt)
+        if which == "LAST":
+            self.last_ckpt = wPath
 
-        if deldir:
-            for f in os.listdir(deldir):
-                fp = os.path.join(deldir, f)
-                os.remove(fp)
-            os.rmdir(deldir)
+        if len(deldir) > 0:
+            for D in deldir:
+                print ("Effacement du répertoire %s"%D)
+                for f in os.listdir(D):
+                    fp = os.path.join(D, f)
+                    os.remove(fp)
+                os.rmdir(D)
 
 
 
     def train(self, loadTRAIN, loadEVAL):
-        self.date_debut = datetime.datetime.now().isoformat()
-        rep_expe = "EXPE_" + self.date_debut
-        
-        self.accelerator = Accelerator(log_with="tensorboard", project_dir="./results_Tacred")  #(fp16=True)
+        self.accelerator = Accelerator(log_with="tensorboard", project_dir=self.tensorboard_dir)  #(fp16=True)
         config = self.get_config()
 
-        self.accelerator.init_trackers(rep_expe, config=config)
+        self.accelerator.init_trackers(self.rep_expe, config=config)
 
         optimizer = AdamW(self.model.parameters(),
                           lr = self.hparams.lr,

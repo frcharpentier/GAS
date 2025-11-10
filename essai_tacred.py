@@ -1,3 +1,5 @@
+DEBUG = False
+
 import os
 import numpy as np
 import torch
@@ -7,8 +9,15 @@ from tacred.make_dataset import make_aligs, transfo_to_filenames, TacredDataset
 from tacred.DataLoader import tacredGraphSampler, tacredStratifiedGraphSampler, tacredDataLoader, tacredGPUDataLoader
 from tacred.models import tacred_GAT_MODEL, tacredTRAINER
 
+from outils.report_generator import HTML_REPORT, HTML_IMAGE
+#from outils.interface_git import nettoyer_logs_lightning
+from outils.autoinspect import autoinspect
 
-def essai(rep):
+import datetime
+import fire
+
+
+def batch_essai(rep):
     alig_file, rep_ds_grph, id_model = transfo_to_filenames("robertaBase", True)
     print("rep_ds_grph:", rep_ds_grph)
 
@@ -128,8 +137,8 @@ def make_dataloaders(transfo_name, train, dev, test, forceGPU=False):
 
 
 
-
-def essai_train():
+@autoinspect
+def batch_train_1():
     alig_file, rep_ds_grph, id_model = transfo_to_filenames("robertaBase", True)
     print("rep_ds_grph:", rep_ds_grph)
 
@@ -182,15 +191,25 @@ def essai_train():
                  dropout_p = 0.3,
                  nb_classes = 42)
     
-    print("Nombre de paramètres: %d"%model.count_params())
-    
-        
     print("CRÉATION DE L'ENTRAÎNEUR")
-    
     trainer = tacredTRAINER(model=model, epochs=20)
-    print("DÉMARRAGE de L'ENTRAÎNEMENT")
-    trainer.train(ldTRAIN, ldDEV)
-    print("TERMINÉ")
+    expe = trainer.rep_expe
+    nom_rapport = os.path.join("rapports_tacred", expe)
+    with HTML_REPORT(nom_rapport) as R:
+        R.ligne()
+        R.titre(expe, 2)
+        R.reexecution()
+        num_params = model.count_params()
+        print("Nombre de paramètres: %d"%num_params)
+        R.texte("Nombre de paramètres: %d"%num_params)
+    
+        print("DÉMARRAGE de L'ENTRAÎNEMENT")
+        trainer.train(ldTRAIN, ldDEV)
+        print("TERMINÉ")
+        tfin = datetime.datetime.now()
+        duree = tfin - datetime.datetime.fromisoformat(trainer.date_debut)
+        print("Durée de l’entrainement : %s"%str(duree))
+        R.texte("Durée de l’entrainement : %s"%str(duree))
     
     
 
@@ -216,8 +235,19 @@ def essai_train_tacred():
     
 
 if __name__ == "__main__":
-    #rep = "/home/charpentier/projets/json_tacred/"
-    #essai(rep)
-    essai_train()
-    #essai_train_tacred()
-    #essai2()
+    if DEBUG:
+        print("""
+DDD   EEEE  BBB   U   U   GGG
+D  D  E     B  B  U   U  G
+D  D  EEE   BBB   U   U  G  GG
+D  D  E     B  B  U   U  G   G
+DDD   EEEE  BBB    UUU    GGG
+""")
+        #rep = "/home/charpentier/projets/json_tacred/"
+        #essai(rep)
+        batch_train_1()
+        #essai_train_tacred()
+        #essai2()
+
+    else:
+        fire.Fire()
