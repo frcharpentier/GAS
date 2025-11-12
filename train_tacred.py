@@ -138,14 +138,15 @@ def make_dataloaders(transfo_name, train, dev, test, forceGPU=False):
 
 
 def eval_checkpoint(chkpoint):
-    (dsDEV,) = make_datasets("robertaBase", False, True, False)
-    regSampler   = tacredGraphSampler(dsDEV, avg_num=5000, shuffle=False)
-    ldDEV   = tacredGPUDataLoader(
-        dsDEV,
-        batch_sampler=regSampler,
-        follow_batch=["msk"],
-        num_workers=0, 
-    )
+    #(dsDEV,) = make_datasets("robertaBase", False, True, False)
+    #regSampler   = tacredGraphSampler(dsDEV, avg_num=5000, shuffle=False)
+    #ldDEV   = tacredGPUDataLoader(
+    #    dsDEV,
+    #    batch_sampler=regSampler,
+    #    follow_batch=["msk"],
+    #    num_workers=0, 
+    #)
+    (ldDEV,) = make_dataloaders("robertaBase", False, True, False, forceGPU=True)
     model = tacred_GAT_MODEL.from_pretrained(chkpoint)
     model.to(device="cuda:0")
     model.eval()
@@ -157,49 +158,17 @@ def eval_checkpoint(chkpoint):
 
 
 @autoinspect
-def batch_train_1():
-    alig_file, rep_ds_grph, id_model = transfo_to_filenames("robertaBase", True)
-    print("rep_ds_grph:", rep_ds_grph)
-
-    dsTRAIN = TacredDataset(rep_ds_grph + "train",
-                            alig_file,
-                            transform=None,
-                            QscalK=True,
-                            split="train",
-                            device="cpu",
-                            tokenHF=None)
-    d48125 = dsTRAIN[48125]
-    dsDEV = TacredDataset(rep_ds_grph + "dev",
-                            alig_file,
-                            transform=None,
-                            QscalK=True,
-                            split="dev",
-                            device="cpu",
-                            tokenHF=None)
+def batch_train_1(
+        transfo_name = "robertaBase",
+        lr=5.e-4,
+        epochs=20,
+        weight_decay=0.,
+        metriq="custom_Fscore",
+        a_surveiller = "F_score(macro)",
+        patience = 5):
     
-    #dsTEST = TacredDataset(rep_ds_grph + "test",
-    #                        alig_file,
-    #                        transform=None,
-    #                        QscalK=True,
-    #                        split="test",
-    #                        device="cpu",
-    #                        tokenHF=None)
-    
+    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
 
-    stratSampler = tacredStratifiedGraphSampler(dsTRAIN, avg_num=5000)
-    regSampler   = tacredGraphSampler(dsDEV, avg_num=5000, shuffle=False)
-    ldTRAIN = tacredDataLoader(
-        dsTRAIN,
-        batch_sampler=stratSampler,
-        follow_batch=["msk"],
-        num_workers=1
-    )
-    ldDEV   = tacredDataLoader(
-        dsDEV,
-        batch_sampler=regSampler,
-        follow_batch=["msk"],
-        num_workers=0
-    )
     print("CRÉATION DU MODÈLE")
     model = tacred_GAT_MODEL(dim_in = 144,
                  dim_h1 = 144,
@@ -211,7 +180,14 @@ def batch_train_1():
                  nb_classes = 42)
     
     print("CRÉATION DE L'ENTRAÎNEUR")
-    trainer = tacredTRAINER(model=model, epochs=20)
+    trainer = tacredTRAINER(model=model,
+                            lr=lr,
+                            epochs=epochs,
+                            weight_decay=weight_decay,
+                            metriq=metriq,
+                            a_surveiller=a_surveiller,
+                            patience=patience
+                            )
     expe = trainer.rep_expe
     nom_rapport = os.path.join("rapports_tacred", expe)
     with HTML_REPORT(nom_rapport) as R:
@@ -221,6 +197,9 @@ def batch_train_1():
         num_params = model.count_params()
         print("Nombre de paramètres: %d"%num_params)
         R.texte("Nombre de paramètres: %d"%num_params)
+
+        config = trainer.get_config()
+        R.table(**config, colonnes=False)
     
         print("DÉMARRAGE de L'ENTRAÎNEMENT")
         trainer.train(ldTRAIN, ldDEV)

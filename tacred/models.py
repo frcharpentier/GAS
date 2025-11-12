@@ -57,7 +57,7 @@ class Fscore:
         #No average
         self.F_no_average = F
 
-        return {"micro": micro, "macro": macro, "weighted": weighted}
+        return {"F_score(micro)": micro, "F_score(macro)": macro, "F_score(weighted)": weighted}
         
 
         
@@ -220,7 +220,10 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         trmode = self.training
         # On force le mode eval
         self.eval()
-        metriq = evaluate.load(nom_metrique)
+        if nom_metrique == "custom_Fscore":
+            metriq = Fscore(nb_classes = self.nb_classes)
+        else:
+            metriq = evaluate.load(nom_metrique)
         iter0 = (b for b in tqdm(loader))
         iterRef, iter1 = itertools.tee(iter0, 2)
         iterRef = (b.y1 for b in iterRef)
@@ -232,13 +235,13 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
             eval_loss.cumuler(b_loss)
             metriq.add_batch(predictions=b_pred, references=b_ref)
         resu = metriq.compute()
-        for v in resu.values():
-            break
-        metriq = v
-        loss = eval_loss.m
+        # pour la métrique "hyperml/balanced_accuracy",
+        # le résultat de metriq.compute() est un dictionnaire qui contient l’unique clé
+        # "balanced_accuracy", dont la valeur est un simple scalaire de type float
+        resu["loss(eval)"] = eval_loss.m
         # On rétablit le mode (training ou eval) tel qu’il était auparavant.
         self.train(trmode)
-        return metriq, loss
+        return resu
 
     
 
@@ -266,7 +269,8 @@ class tacredTRAINER:
         lr=5.e-4,
         epochs=20,
         weight_decay=0.,
-        metriq="hyperml/balanced_accuracy", 
+        metriq="hyperml/balanced_accuracy",
+        a_surveiller = "balanced_accuracy",
         patience = 3,
     ):
         self.model = model
@@ -276,6 +280,7 @@ class tacredTRAINER:
         self.hparams.epochs = epochs
         self.hparams.weight_decay = weight_decay
         self.hparams.metriq = metriq
+        self.hparams.a_surveiller = a_surveiller
         self.hparams.patience = patience
 
         self.best_ckpt=None
@@ -376,8 +381,8 @@ class tacredTRAINER:
                         train_loss.RaZ()
                 global_step += 1
             
-            metriq, lossEval = self.model.evaluer(self.hparams.metriq, loadEVAL)
-            aLogger = {self.hparams.metriq: metriq, "loss(eval)": lossEval}
+            aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL)
+            metriq = aLogger[self.hparams.a_surveiller]
             self.accelerator.log(aLogger, step=global_step)
             if metriq > best_metriq:
                 best_metriq = metriq
@@ -388,6 +393,10 @@ class tacredTRAINER:
                 early_stop_counter += 1
                 if early_stop_counter >= self.hparams.patience:
                     break
+            if os.path.exists("./stop_train"):
+                # Pour gérer arrêt manuel
+                os.remove("./stop_train")
+                break
 
         self.accelerator.end_training()
 
