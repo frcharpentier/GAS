@@ -289,7 +289,7 @@ class tacredTRAINER:
         self.tensorboard_dir="./results_Tacred"
         self.checkpoints_dir = "./tacred_checkpoints"
         self.date_debut = datetime.datetime.now()
-        self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%m_%S%f")
+        self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
 
     def get_config(self):
         cfg = {}
