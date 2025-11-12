@@ -137,6 +137,25 @@ def make_dataloaders(transfo_name, train, dev, test, forceGPU=False):
 
 
 
+def eval_checkpoint(chkpoint):
+    (dsDEV,) = make_datasets("robertaBase", False, True, False)
+    regSampler   = tacredGraphSampler(dsDEV, avg_num=5000, shuffle=False)
+    ldDEV   = tacredGPUDataLoader(
+        dsDEV,
+        batch_sampler=regSampler,
+        follow_batch=["msk"],
+        num_workers=0, 
+    )
+    model = tacred_GAT_MODEL.from_pretrained(chkpoint)
+    model.to(device="cuda:0")
+    model.eval()
+    nomMetriq="hyperml/balanced_accuracy"
+    metriq, lossEval = model.evaluer(nomMetriq, ldDEV)
+    print("%s : %f"%(nomMetriq, metriq))
+    print("Perte eval : %f"%lossEval)
+
+
+
 @autoinspect
 def batch_train_1():
     alig_file, rep_ds_grph, id_model = transfo_to_filenames("robertaBase", True)
@@ -248,6 +267,7 @@ DDD   EEEE  BBB    UUU    GGG
         batch_train_1(DEBUG=True)
         #essai_train_tacred()
         #essai2()
+
 
     else:
         fire.Fire()
