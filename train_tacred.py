@@ -204,8 +204,7 @@ def batch_train_1(
         print("DÉMARRAGE de L'ENTRAÎNEMENT")
         trainer.train(ldTRAIN, ldDEV)
         print("TERMINÉ")
-        tfin = datetime.datetime.now()
-        duree = tfin - datetime.datetime.fromisoformat(trainer.date_debut)
+        duree = trainer.elapsed_time()
         print("Durée de l’entrainement : %s"%str(duree))
         R.texte("Durée de l’entrainement : %s"%str(duree))
     

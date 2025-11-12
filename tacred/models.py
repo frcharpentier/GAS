@@ -25,8 +25,8 @@ class Fscore:
         self.T[trueClass] += 1
         self.P[predClass] += 1
 
-    def add_batch(self, bTrue, bPred):
-        for t_class, p_class in zip(bTrue, bPred):
+    def add_batch(self, references, predictions):
+        for t_class, p_class in zip(references, predictions):
             self.add_sample(t_class, p_class)
 
     def compute(self, β=1):
@@ -288,8 +288,8 @@ class tacredTRAINER:
 
         self.tensorboard_dir="./results_Tacred"
         self.checkpoints_dir = "./tacred_checkpoints"
-        self.date_debut = datetime.datetime.now().isoformat()
-        self.rep_expe = "EXPE_" + self.date_debut
+        self.date_debut = datetime.datetime.now()
+        self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%m_%S%f")
 
     def get_config(self):
         cfg = {}
@@ -334,7 +334,8 @@ class tacredTRAINER:
                     os.remove(fp)
                 os.rmdir(D)
 
-
+    def elapsed_time(self):
+        return datetime.datetime.now() - self.date_debut
 
     def train(self, loadTRAIN, loadEVAL):
         self.accelerator = Accelerator(log_with="tensorboard", project_dir=self.tensorboard_dir)  #(fp16=True)
