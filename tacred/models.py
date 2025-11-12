@@ -19,15 +19,15 @@ class Fscore:
         self.T       = [0] * nb_classes
         self.P       = [0] * nb_classes
 
-    def add_sample(self, true, pred):
-        if true==pred:
-            self.TinterP[true] += 1
-        self.T[true] += 1
-        self.P[pred] += 1
+    def add_sample(self, trueClass, predClass):
+        if trueClass==predClass:
+            self.TinterP[trueClass] += 1
+        self.T[trueClass] += 1
+        self.P[predClass] += 1
 
     def add_batch(self, bTrue, bPred):
-        for t, p in zip(bTrue, bPred):
-            self.add_sample(t, p)
+        for t_class, p_class in zip(bTrue, bPred):
+            self.add_sample(t_class, p_class)
 
     def compute(self, β=1):
         S = sum(self.T)
@@ -196,6 +196,10 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
     
     @torch.no_grad()
     def predict_batch(self, batch):
+        # Sauvegarde du mode (training ou eval)
+        trmode = self.training
+        # On force le mode eval
+        self.eval()
         logits, ptr = self.forward(batch)
         Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
         loss = F.cross_entropy(logits, Ytrue)
@@ -206,10 +210,16 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         R = torch.zeros((batch.y1.shape[0],self.nb_classes), dtype=sftmax.dtype, device=index.device)
         R.scatter_reduce_(0, index, sftmax, reduce="sum")
         R = R.argmax(axis=-1)
+        # On rétablit le mode (training ou eval) tel qu’il était auparavant.
+        self.train(trmode)
         return R, loss
     
     @torch.no_grad()
     def evaluer(self, nom_metrique, loader):
+        # Sauvegarde du mode (training ou eval)
+        trmode = self.training
+        # On force le mode eval
+        self.eval()
         metriq = evaluate.load(nom_metrique)
         iter0 = (b for b in tqdm(loader))
         iterRef, iter1 = itertools.tee(iter0, 2)
@@ -226,6 +236,8 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
             break
         metriq = v
         loss = eval_loss.m
+        # On rétablit le mode (training ou eval) tel qu’il était auparavant.
+        self.train(trmode)
         return metriq, loss
 
     
@@ -344,6 +356,7 @@ class tacredTRAINER:
         best_metriq = 0.
         early_stop_counter = 0
         for epoch in range(num_train_epochs):
+            model.train()
             for step, batch in enumerate(tqdm(loadTRAIN)):
                 with self.accelerator.accumulate(self.model):
                     optimizer.zero_grad()
