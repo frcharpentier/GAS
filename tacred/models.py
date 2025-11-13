@@ -44,12 +44,12 @@ class Fscore:
         # macro:
         F = [0.] * self.nb_classes
         for i in range(self.nb_classes):
-            prec = self.TinterP[i] / self.P[i]
-            recl = self.TinterP[i] / self.T[i]
+            prec = 0. if self.P[i] == 0 else self.TinterP[i] / self.P[i]
+            recl = 0. if self.T[i] == 0 else self.TinterP[i] / self.T[i]
             iprec = float("inf") if prec == 0. else 1/prec
             irecl = float("inf") if recl == 0. else 1/recl
             iF    = (iprec + irecl*(β**2))/(1+β**2)
-            F[i] = 1/iF
+            F[i] = 2. if iF == 0. else 1/iF
             macro = sum(F) / self.nb_classes
         # weighted:
         weighted = sum(yl*f for yl, f in zip(self.T, F)) / S
