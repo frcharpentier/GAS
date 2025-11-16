@@ -141,10 +141,10 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
                 self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = dim_h2, heads=heads))
             if self.dropout_p:
                 for _ in range(nb_couches):
-                    self.dropout_layers.add(nn.Dropout(self.dropout_p))
+                    self.dropout_layers.append(nn.Dropout(self.dropout_p))
             if self.add_LN:
                 for _ in range(nb_couches):
-                    self.LN_layers.add(nn.LayerNorm(dim_h2))
+                    self.LN_layers.append(nn.LayerNorm(dim_h2))
         else:
             pass
 
