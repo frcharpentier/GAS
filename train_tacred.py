@@ -15,6 +15,7 @@ from outils.autoinspect import autoinspect
 
 import datetime
 import fire
+import wandb
 
 
 def batch_essai(rep):
@@ -229,8 +230,6 @@ def essai_train_tacred():
     entrainement()
 
 def wandb_train(transfo_name="robertaBase"):
-    import wandb
-
     clef = "f378ae2573b559c914faf9f289b23135a9f720c7"
     wandb.login(key=clef)
     ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
