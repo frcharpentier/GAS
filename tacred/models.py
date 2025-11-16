@@ -69,13 +69,16 @@ class AttrDict(dict):
 
 class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
     def __init__(self, dim_in: int,
-                 dim_h1:int,
+                 dim_h1: int,
                  dim_h2: int,
-                 heads: int,
-                 nb_couches: int,
-                 rang_sim: int,
-                 dropout_p: float,
-                 nb_classes: int):
+                 heads: int = 1,
+                 nb_couches: int = 4,
+                 rang_sim: int = 8,
+                 dropout_p: float = 0.3,
+                 add_LN: bool = False,
+                 option_couche_0: bool = False,
+                 nb_classes: int = 42,
+                 ):
                  
         # dim_in : Les nœuds du graphe adjoint sont décrits par une
         #          paire de vecteurs descripteurs. dim_in est leur dimension.
@@ -84,6 +87,10 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         #
         # nb_couches : nombre de couches GATv2
         # heads : nombre de tête (param commun à toutes les couches GATv2)
+        # add_LN : booléen pour dire si on ajoute ou non une couche layernorm entre
+        #          les couches GAT
+        # option_couche_0: booléen pour tenter un genre de connexion résiduelle
+        #          dans la première couche de symétrisation
         # La dimension de sortie de chaque couche est nb_têtes * dim_h2
         # On termine par une couche de classification linéaire.
         super().__init__()
@@ -114,23 +121,53 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         self.gat_layers = nn.ModuleList()
         if dropout_p is None:
             self.dropout_p = 0
-            #dropout_p = 0
+            self.dropout_layers = None
         else:
             self.dropout_p = dropout_p
+            self.dropout_layers = nn.ModuleList()
 
-        if nb_couches > 0:
+        if add_LN:
+            self.LN_layers = nn.ModuleList()
+            self.LN0 = nn.LayerNorm(dim_in)
+        else:
+            self.LN_layers = None
+
+        self.add_LN = add_LN
+        self.option_couche_0 = (option_couche_0 and (dim_in == dim_h1))
         
+        if nb_couches > 0:
             self.gat_layers.append(GATv2Conv(in_channels = dim_h1, out_channels = dim_h2, heads=heads))
             for _ in range(1, nb_couches):
                 self.gat_layers.append(GATv2Conv(in_channels = heads*dim_h2, out_channels = dim_h2, heads=heads))
+            if self.dropout_p:
+                for _ in range(nb_couches):
+                    self.dropout_layers.add(nn.Dropout(self.dropout_p))
+            if self.add_LN:
+                for _ in range(nb_couches):
+                    self.LN_layers.add(nn.LayerNorm(dim_h2))
         else:
             pass
 
         # Ajout d’une classification linéaire finale
         self.lin = nn.Linear(heads*dim_h2, self.nb_classes, bias=True)
 
+    @staticmethod
+    def apartir_config(cfg_dict):
+        dico = {k[6:]: v for k, v in cfg_dict.items() if k.startswith("model_")}
+        return tacred_GAT_MODEL(**dico)
+
     def forward(self, batch):
         X, edge_idx = batch.x, batch.edge_index
+
+        if self.add_LN:
+            # X est un tenseur de format (b, dim_in, 2)
+            X = torch.transpose(X, -1,-2)
+            # On transforme X en un tenseur (b, 2, dim_in)
+            X = self.LN0(X)
+            # On applique LN0 sur la dernière dimension
+            X = torch.transpose(X, -1,-2)
+            # On retranspose X au format d’origine
+
         # X est un tenseur de format (b, dim_in, 2)
         # On commence par le transformer en un tenseur (b, 1, dim_in, 2)
         # Qui s’ajustera (par distributivité) à un tenseur (b, dim_h1, dim_in, 2)
@@ -166,20 +203,41 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         # H est un tenseur (b, dim_h1)
         # ajout du biais :
         H = H + (self.bias0.unsqueeze(0))
+
+        if self.option_couche_0:
+            # un genre de connexion résiduelle:
+            X0 = batch.x[:,:,0] + batch.x[:,:,1]
+            H = H + X0
         
         if self.nb_couches == 0:
             H = nn.functional.relu(H)
+        elif self.dropout_p and self.add_LN:
+            for lynrm, drp, gat in zip(self.LN_layers, self.dropout_layers, self.gat_layers):
+                HH = H
+                HH = lynrm(HH)
+                HH = drp(HH)
+                HH = gat(HH, edge_idx)
+                H = H + HH # connexion résiduelle
         elif self.dropout_p:
-            for gat in self.gat_layers:
-                Hgat = H
-                Hgat = nn.functional.dropout(Hgat, self.dropout_p, training=self.training)
-                Hgat = gat(Hgat, edge_idx)
-                H = H + Hgat # connexion résiduelle
+            for drp, gat in zip(self.dropout_layers, self.gat_layers):
+                HH = H
+                HH = drp(HH)
+                HH = gat(HH, edge_idx)
+                H = H + HH # connexion résiduelle
+        elif self.add_LN:
+            for lynrm, gat in zip(self.LN_layers, self.gat_layers):
+                HH = H
+                HH = lynrm(HH)
+                HH = gat(HH, edge_idx)
+                H = H + HH # connexion résiduelle
         else:
             for gat in self.gat_layers:
-                Hgat = H
-                Hgat = gat(Hgat, edge_idx)
-                H = H + Hgat # connexion résiduelle
+                HH = H
+                HH = gat(HH, edge_idx)
+                H = H + HH # connexion résiduelle
+
+        
+        
 
         # Classification finale
         Y = self.lin(H) # shape: (b, nb_classes)
@@ -215,7 +273,7 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         return R, loss
     
     @torch.no_grad()
-    def evaluer(self, nom_metrique, loader):
+    def evaluer(self, nom_metrique, loader, num_batches=False):
         # Sauvegarde du mode (training ou eval)
         trmode = self.training
         # On force le mode eval
@@ -224,7 +282,12 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
             metriq = Fscore(nb_classes = self.nb_classes)
         else:
             metriq = evaluate.load(nom_metrique)
-        iter0 = (b for b in tqdm(loader))
+        if num_batches and type(num_batches) == int and num_batches > len(loader):
+            num_batches = False
+        if num_batches and type(num_batches) == int:
+            iter0 = (b for _, b in zip(tqdm(range(num_batches), loader)))
+        else:
+            iter0 = (b for b in tqdm(loader))
         iterRef, iter1 = itertools.tee(iter0, 2)
         iterRef = (b.y1 for b in iterRef)
         iterPred, iterLoss = itertools.tee((self.predict_batch(b) for b in iter1) , 2)
@@ -291,10 +354,15 @@ class tacredTRAINER:
         self.date_debut = datetime.datetime.now()
         self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
 
+    #@staticmethod
+    #def apartir_config(cfg_dict):
+    #    dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
+    #    return tacredTRAINER(**dico)
+
     def get_config(self):
         cfg = {}
         for t in self.hparams:
-            cfg[t] = self.hparams[t]
+            cfg["trainer_" + t] = self.hparams[t]
         for k, v in self.model._hub_mixin_config.items():
             cfg["model_"+k] = v
         return cfg
@@ -402,9 +470,107 @@ class tacredTRAINER:
         self.accelerator.end_training()
 
 
-    
+class tacredTRAINER_hparam_search(tacredTRAINER):
+    def __init__(self,
+        model,
+        lr=5.e-4,
+        epochs=1,
+        weight_decay=0.,
+        metriq="hyperml/balanced_accuracy",
+        #a_surveiller = "balanced_accuracy",
+        #patience = 3,
+    ):
+        self.model = model
+        self.hparams = AttrDict()
+        self.hparams.nb_classes = model.nb_classes
+        self.hparams.lr = lr
+        self.hparams.epochs = epochs
+        self.hparams.weight_decay = weight_decay
+        self.hparams.metriq = metriq
+        #self.hparams.a_surveiller = a_surveiller
+        #self.hparams.patience = patience
 
+        self.best_ckpt=None
+        self.last_ckpt=None
+
+        self.tensorboard_dir="./results_Tacred"
+        self.checkpoints_dir = "./tacred_checkpoints"
+        self.date_debut = datetime.datetime.now()
+        self.rep_expe = "SWEEP_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
+        self.la_config = None
+
+    @staticmethod
+    def apartir_config(cfg_dict):
+        dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
+        model = tacred_GAT_MODEL.apartir_config(cfg_dict)
+        trainer = tacredTRAINER_hparam_search(model, **dico)
+        trainer.la_config = cfg_dict
+        return trainer
+
+    def get_config(self):
+        if not self.la_config:
+            cfg = {}
+            for t in self.hparams:
+                cfg["trainer_" + t] = self.hparams[t]
+            for k, v in self.model._hub_mixin_config.items():
+                cfg["model_"+k] = v
+            self.la_config = cfg
+        return self.la_config
     
+    def train(self, loadTRAIN, loadEVAL):
+        self.accelerator = Accelerator(log_with="wandb")  #(fp16=True)
+        config = self.get_config()
+
+        self.accelerator.init_trackers(self.rep_expe, config=config)
+
+        optimizer = AdamW(self.model.parameters(),
+                          lr = self.hparams.lr,
+                          weight_decay=self.hparams.weight_decay)
+
+        #Transformation du modèle et des trucs
+        model, optimizer, loadTRAIN, loadEVAL = self.accelerator.prepare(
+            self.model, optimizer, loadTRAIN, loadEVAL
+        )
+        self.loadTRAIN = loadTRAIN
+        self.loadEVAL  = loadEVAL
+
+        num_train_epochs = self.hparams.epochs
+
+        model.train()
+        global_step=0
+        train_loss=MOYENNE()
+        best_metriq = 0.
+        early_stop_counter = 0
+        #for epoch in range(num_train_epochs):
+        nbBatches = len(loadTRAIN)
+        NN = nbBatches // 20
+        for epoch in range(1):
+            model.train()
+            for step, batch in enumerate(tqdm(loadTRAIN)):
+                with self.accelerator.accumulate(self.model):
+                    optimizer.zero_grad()
+                    logits, logits_ptr = model(batch)
+                    
+                    Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
+                    #unique, counts = torch.unique(batch.msk_batch, return_counts=True)
+                    #weights = torch.ones((self.hparams.nb_classes,))
+                    #weights[unique] = 1/counts
+                    #loss = F.cross_entropy(logits, Ytrue, weights)
+                    loss = F.cross_entropy(logits, Ytrue)
+                    self.accelerator.backward(loss)
+                    optimizer.step()
+                    train_loss.cumuler(loss.item())
+                    if step % NN == 0:
+                        aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL)
+                        aLogger["loss(train)"] = train_loss.m
+                        self.accelerator.log(aLogger, step=global_step)
+                        train_loss.RaZ()
+                global_step += 1
+            
+            
+            
+
+        self.accelerator.end_training()
 
 
 

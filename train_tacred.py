@@ -7,7 +7,7 @@ from tqdm import tqdm
 from tacred.make_dataset import make_aligs, transfo_to_filenames, TacredDataset
 #from DtSets.make_dataset import FusionElimination as FILT, AligDataset
 from tacred.DataLoader import tacredGraphSampler, tacredStratifiedGraphSampler, tacredDataLoader, tacredGPUDataLoader
-from tacred.models import tacred_GAT_MODEL, tacredTRAINER
+from tacred.models import tacred_GAT_MODEL, tacredTRAINER, tacredTRAINER_hparam_search
 
 from outils.report_generator import HTML_REPORT, HTML_IMAGE
 #from outils.interface_git import nettoyer_logs_lightning
@@ -102,7 +102,7 @@ def make_datasets(transfo_name, train, dev, test):
     return datasets
 
 
-def make_dataloaders(transfo_name, train, dev, test, forceGPU=False):
+def make_dataloaders(transfo_name, train, dev, test, forceGPU=False, shuffleDev=False):
     datasets = make_datasets(transfo_name, train, dev, test)
     dataloaders = ()
     if forceGPU:
@@ -123,7 +123,7 @@ def make_dataloaders(transfo_name, train, dev, test, forceGPU=False):
         dataloaders += (ldTRAIN,)
     if dev or test:
         for ds in datasets:
-            regSampler = tacredGraphSampler(ds, avg_num=5000, shuffle=False)
+            regSampler = tacredGraphSampler(ds, avg_num=5000, shuffle=shuffleDev)
             loader = CLASSE(
                 ds,
                 batch_sampler=regSampler,
@@ -227,6 +227,39 @@ def essai_train_tacred():
     #from tacred.HFTrainer_train import entrainement
     from tacred.HFAccelerate_train import entrainement
     entrainement()
+
+def wandb_train(transfo_name="robertaBase"):
+    import wandb
+
+    clef = "f378ae2573b559c914faf9f289b23135a9f720c7"
+    wandb.login(key=clef)
+    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
+    config = {
+        "model_dim_in": 144,
+        "model_dim_h1": 144,
+        "model_dim_h2": 144,
+        "model_heads": 1,
+        "model_nb_couches": 4,
+        "model_rang_sim": 8,
+        "model_dropout_p": 0.3,
+        "model_add_LN": False,
+        "model_option_couche_0": False,
+        "model_nb_classes":42,
+        "trainer_lr": 5.e-4,
+        "trainer_epochs": 1,
+        "trainer_weight_decay": 1.e-4,
+        "trainer_metriq": "custom_Fscore"
+    }
+    print("CRÉATION DE L'ENTRAÎNEUR")
+    trainer = tacredTRAINER_hparam_search.apartir_config(config)
+    #model = trainer.model
+
+    print("DÉMARRAGE de L'ENTRAÎNEMENT")
+    trainer.train(ldTRAIN, ldDEV)
+    print("TERMINÉ")
+    duree = trainer.elapsed_time()
+    print("Durée de l’entrainement : %s"%str(duree))
+
 
 
     
