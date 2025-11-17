@@ -517,11 +517,12 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
             self.la_config = cfg
         return self.la_config
     
-    def train(self, loadTRAIN, loadEVAL):
+    def train(self, loadTRAIN, loadEVAL, wandb_initialized = False):
         self.accelerator = Accelerator(log_with="wandb")  #(fp16=True)
         config = self.get_config()
 
-        self.accelerator.init_trackers(self.rep_expe, config=config)
+        if not wandb_initialized:
+            self.accelerator.init_trackers(self.rep_expe, config=config)
 
         optimizer = AdamW(self.model.parameters(),
                           lr = self.hparams.lr,
@@ -561,7 +562,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
                     optimizer.step()
                     train_loss.cumuler(loss.item())
                     if step % NN == 0:
-                        aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL)
+                        aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL, num_batches=450)
                         aLogger["loss(train)"] = train_loss.m
                         self.accelerator.log(aLogger, step=global_step)
                         train_loss.RaZ()

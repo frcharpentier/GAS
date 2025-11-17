@@ -16,6 +16,9 @@ from outils.autoinspect import autoinspect
 import datetime
 import fire
 import wandb
+import pprint
+
+
 
 
 def batch_essai(rep):
@@ -229,10 +232,20 @@ def essai_train_tacred():
     from tacred.HFAccelerate_train import entrainement
     entrainement()
 
-def wandb_train(transfo_name="robertaBase"):
-    clef = "f378ae2573b559c914faf9f289b23135a9f720c7"
-    wandb.login(key=clef)
+def wandb_train_from_config(config):
+    transfo_name="robertaBase"
+    print("CRÉATION DE L'ENTRAÎNEUR")
+    trainer = tacredTRAINER_hparam_search.apartir_config(config)
+    #model = trainer.model
     ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
+    print("DÉMARRAGE de L'ENTRAÎNEMENT")
+    trainer.train(ldTRAIN, ldDEV)
+    print("TERMINÉ")
+    duree = trainer.elapsed_time()
+    print("Durée de l’entrainement : %s"%str(duree))
+
+def wandb_essai_train():
+    wandb.login()
     config = {
         "model_dim_in": 144,
         "model_dim_h1": 144,
@@ -249,15 +262,36 @@ def wandb_train(transfo_name="robertaBase"):
         "trainer_weight_decay": 1.e-4,
         "trainer_metriq": "custom_Fscore"
     }
+    wandb_train_from_config(config)
+
+
+# Fonction pour faire les sweep. Elle ne doit pas prendre de paramètres
+def sweep_function():
+    wandb.init()
+    config = wandb.config()
+    transfo_name="robertaBase"
+    print("CONFIGURATION:")
+    pprint.pprint(config)
     print("CRÉATION DE L'ENTRAÎNEUR")
     trainer = tacredTRAINER_hparam_search.apartir_config(config)
     #model = trainer.model
-
+    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
     print("DÉMARRAGE de L'ENTRAÎNEMENT")
-    trainer.train(ldTRAIN, ldDEV)
+    trainer.train(ldTRAIN, ldDEV, wandb_initialized = True)
     print("TERMINÉ")
     duree = trainer.elapsed_time()
     print("Durée de l’entrainement : %s"%str(duree))
+
+
+
+
+
+
+# Fonction à exécuter depuis la ligne de commande pour tester
+# plein d’hyperparamètres par "sweep" grâce à WandB
+def run_sweep(sweep_id, count):
+    wandb.login()
+    wandb.agent(sweep_id, function=sweep_function, count=count)
 
 
 
