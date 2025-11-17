@@ -285,7 +285,8 @@ class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
         if num_batches and type(num_batches) == int and num_batches > len(loader):
             num_batches = False
         if num_batches and type(num_batches) == int:
-            iter0 = (b for _, b in zip(tqdm(range(num_batches), loader)))
+            iter00 = itertools.islice(loader, 0, num_batches)
+            iter0 = (b for b in tqdm(iter00, total=num_batches))
         else:
             iter0 = (b for b in tqdm(loader))
         iterRef, iter1 = itertools.tee(iter0, 2)
