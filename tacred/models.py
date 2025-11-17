@@ -68,9 +68,9 @@ class AttrDict(dict):
         self.__dict__ = self
 
 class tacred_GAT_MODEL(nn.Module,PyTorchModelHubMixin):
-    def __init__(self, dim_in: int,
-                 dim_h1: int,
-                 dim_h2: int,
+    def __init__(self, dim_in: int = 144,
+                 dim_h1: int = 144,
+                 dim_h2: int = 144,
                  heads: int = 1,
                  nb_couches: int = 4,
                  rang_sim: int = 8,
