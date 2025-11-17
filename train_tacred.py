@@ -254,7 +254,7 @@ def wandb_essai_train():
         "model_nb_couches": 4,
         "model_rang_sim": 8,
         "model_dropout_p": 0.3,
-        "model_add_LN": False,
+        "model_add_LN": True,
         "model_option_couche_0": False,
         "model_nb_classes":42,
         "trainer_lr": 5.e-4,
