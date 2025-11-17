@@ -268,7 +268,7 @@ def wandb_essai_train():
 # Fonction pour faire les sweep. Elle ne doit pas prendre de paramètres
 def sweep_function():
     wandb.init()
-    config = wandb.config()
+    config = wandb.config
     transfo_name="robertaBase"
     print("CONFIGURATION:")
     pprint.pprint(config)
