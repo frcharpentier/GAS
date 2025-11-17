@@ -537,7 +537,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         self.loadEVAL  = loadEVAL
 
         tparams = {k: v.dtype for (k,v) in model.named_parameters()}
-        print("type des paramètres :", tparams)
+        #print("type des paramètres :", tparams)
 
         num_train_epochs = self.hparams.epochs
 
@@ -552,7 +552,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         for epoch in range(1):
             model.train()
             for step, batch in enumerate(tqdm(loadTRAIN)):
-                print("Type_X: ", batch.x.dtype)
+                #print("Type_X: ", batch.x.dtype)
                 with self.accelerator.accumulate(self.model):
                     optimizer.zero_grad()
                     logits, logits_ptr = model(batch)
