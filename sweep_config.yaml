@@ -1,0 +1,28 @@
+method: random  # ou grid, ou bayes
+name: "mon_sweep_tacred"
+metric: 
+  # la section metric n’est utile que pour la méthode "bayes"
+  # Pour les autres méthodes, c’est à l’humain de choisir après coup
+  name: "loss(eval)"
+  goal: "minimize"
+parameters:
+  model_rang_sim:
+    values: [8,16]
+  model_dropout_p:
+    values: [.1, .2, .3, .4, .5]
+  model_add_LN:
+    values: [True, False]
+  model_option_couche_0:
+    values: [True, False]
+  trainer_lr:
+    distribution: "q_log_uniform_values"
+    min: 1.e-6
+    max: 1.e-3
+    q: 1.e-6
+  trainer_weight_decay:
+    distribution: "q_log_uniform_values"
+    min: 1.e-5
+    max: 1.e-2
+    q: 1.e-5
+  trainer_metriq:
+    value: "custom_Fscore"
