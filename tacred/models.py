@@ -519,7 +519,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         return self.la_config
     
     def train(self, loadTRAIN, loadEVAL, wandb_initialized = False):
-        self.accelerator = Accelerator(log_with="wandb")  #(fp16=True)
+        self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
         config = self.get_config()
 
         if not wandb_initialized:
