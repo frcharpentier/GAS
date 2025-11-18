@@ -267,17 +267,17 @@ def wandb_essai_train():
 
 # Fonction pour faire les sweep. Elle ne doit pas prendre de paramètres
 def sweep_function():
-    wandb.init()
     config = wandb.config
     transfo_name="robertaBase"
     print("CONFIGURATION:")
     pprint.pprint(config)
     print("CRÉATION DE L'ENTRAÎNEUR")
     trainer = tacredTRAINER_hparam_search.apartir_config(config)
+    trainer.init_accelerator_for_wandb_sweep()
     #model = trainer.model
     ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
     print("DÉMARRAGE de L'ENTRAÎNEMENT")
-    trainer.train(ldTRAIN, ldDEV, wandb_initialized = True)
+    trainer.train(ldTRAIN, ldDEV)
     print("TERMINÉ")
     duree = trainer.elapsed_time()
     print("Durée de l’entrainement : %s"%str(duree))

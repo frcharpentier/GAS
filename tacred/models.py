@@ -499,6 +499,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         self.date_debut = datetime.datetime.now()
         self.rep_expe = "SWEEP_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
         self.la_config = None
+        self.accelerator = None
 
     @staticmethod
     def apartir_config(cfg_dict):
@@ -518,13 +519,19 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
             self.la_config = cfg
         return self.la_config
     
-    def train(self, loadTRAIN, loadEVAL, wandb_initialized = False):
+    def init_accelerator(self):
         self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
         config = self.get_config()
+        self.accelerator.init_trackers(self.rep_expe, config=config)
 
-        if not wandb_initialized:
-            self.accelerator.init_trackers(self.rep_expe, config=config)
-
+    def init_accelerator_for_wandb_sweep(self):
+        self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
+        self.accelerator.init_trackers(None)
+        
+    
+    def train(self, loadTRAIN, loadEVAL):
+        if self.accelerator is None:
+            self.init_accelerator()
         optimizer = AdamW(self.model.parameters(),
                           lr = self.hparams.lr,
                           weight_decay=self.hparams.weight_decay)
