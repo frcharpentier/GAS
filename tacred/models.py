@@ -10,6 +10,8 @@ import evaluate, itertools
 from torch.optim import Adam, AdamW
 from tqdm.auto import tqdm
 import math
+import wandb
+import pprint
 
 
 class Fscore:
@@ -508,6 +510,22 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         trainer = tacredTRAINER_hparam_search(model, **dico)
         trainer.la_config = cfg_dict
         return trainer
+    
+    @staticmethod
+    def apartir_sweep_wandb():
+        accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
+        accelerator.init_trackers(None)
+        cfg_dict = wandb.config
+        print("CONFIGURATION:")
+        pprint.pprint(cfg_dict)
+        dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
+        model = tacred_GAT_MODEL.apartir_config(cfg_dict)
+        trainer = tacredTRAINER_hparam_search(model, **dico)
+        trainer.la_config = cfg_dict
+        trainer.accelerator = accelerator
+        return trainer
+
+
 
     def get_config(self):
         if not self.la_config:
@@ -524,9 +542,9 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         config = self.get_config()
         self.accelerator.init_trackers(self.rep_expe, config=config)
 
-    def init_accelerator_for_wandb_sweep(self):
-        self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
-        self.accelerator.init_trackers(None)
+    #def init_accelerator_for_wandb_sweep(self):
+    #    self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
+    #    self.accelerator.init_trackers(None)
         
     
     def train(self, loadTRAIN, loadEVAL):

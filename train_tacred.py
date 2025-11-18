@@ -269,11 +269,8 @@ def wandb_essai_train():
 def sweep_function():
     config = wandb.config
     transfo_name="robertaBase"
-    print("CONFIGURATION:")
-    pprint.pprint(config)
     print("CRÉATION DE L'ENTRAÎNEUR")
-    trainer = tacredTRAINER_hparam_search.apartir_config(config)
-    trainer.init_accelerator_for_wandb_sweep()
+    trainer = tacredTRAINER_hparam_search.apartir_sweep_wandb()
     #model = trainer.model
     ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
     print("DÉMARRAGE de L'ENTRAÎNEMENT")
