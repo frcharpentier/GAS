@@ -261,7 +261,8 @@ def wandb_essai_train():
         "trainer_max_lr": 2.48e-4,
         "trainer_epochs": 1000,
         "trainer_weight_decay": 1.e-4,
-        "trainer_metriq": "custom_Fscore"
+        "trainer_metriq": "custom_Fscore",
+        "trainer_a_surveiller": "F_score(macro)"
     }
     wandb_train_from_config(config)
 
