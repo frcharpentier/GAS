@@ -8,6 +8,7 @@ import datetime
 from accelerate import Accelerator
 import evaluate, itertools
 from torch.optim import Adam, AdamW
+from torch.optim.lr_scheduler import CyclicLR
 from tqdm.auto import tqdm
 import math
 import wandb
@@ -332,46 +333,74 @@ class MOYENNE:
 class tacredTRAINER:
     def __init__(self,
         model,
-        lr=5.e-4,
+        base_lr=3.e-6,
+        max_lr = 2.5.e-4,
+        lr_period=None,
         epochs=20,
         weight_decay=0.,
         metriq="hyperml/balanced_accuracy",
         a_surveiller = "balanced_accuracy",
-        patience = 3,
+        #patience = 3,
     ):
         self.model = model
         self.hparams = AttrDict()
         self.hparams.nb_classes = model.nb_classes
-        self.hparams.lr = lr
+        self.hparams.base_lr = base_lr
+        self.hparams.max_lr = max_lr
+        self.hparams.lr_period = lr_period
         self.hparams.epochs = epochs
         self.hparams.weight_decay = weight_decay
         self.hparams.metriq = metriq
         self.hparams.a_surveiller = a_surveiller
-        self.hparams.patience = patience
+        #self.hparams.patience = patience
 
         self.best_ckpt=None
         self.last_ckpt=None
 
-        self.tensorboard_dir="./results_Tacred"
-        self.checkpoints_dir = "./tacred_checkpoints"
+        #self.tensorboard_dir="./results_Tacred"
+        #self.checkpoints_dir = "./tacred_checkpoints"
         self.date_debut = datetime.datetime.now()
         self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
+        self.la_config = None
+        self.accelerator = None
 
-    #@staticmethod
-    #def apartir_config(cfg_dict):
-    #    dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
-    #    return tacredTRAINER(**dico)
+    @staticmethod
+    def apartir_config(cfg_dict):
+        dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
+        model = tacred_GAT_MODEL.apartir_config(cfg_dict)
+        trainer = tacredTRAINER(model, **dico)
+        trainer.la_config = cfg_dict
+        return trainer
+    
+    @staticmethod
+    def apartir_sweep_wandb():
+        accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
+        accelerator.init_trackers(None)
+        cfg_dict = wandb.config
+        print("CONFIGURATION:")
+        pprint.pprint(cfg_dict)
+        dico = {k[8:]: v for k, v in cfg_dict.items() if k.startswith("trainer_")}
+        model = tacred_GAT_MODEL.apartir_config(cfg_dict)
+        trainer = tacredTRAINER(model, **dico)
+        trainer.la_config = cfg_dict
+        trainer.accelerator = accelerator
+        return trainer
 
     def get_config(self):
-        cfg = {}
-        for t in self.hparams:
-            cfg["trainer_" + t] = self.hparams[t]
-        for k, v in self.model._hub_mixin_config.items():
-            cfg["model_"+k] = v
-        return cfg
+        if not self.la_config:
+            cfg = {}
+            for t in self.hparams:
+                cfg["trainer_" + t] = self.hparams[t]
+            for k, v in self.model._hub_mixin_config.items():
+                cfg["model_"+k] = v
+            self.la_config = cfg
+        return self.la_config
     
-    def preparer_accel(self, *args):
-        pass
+
+    def init_accelerator(self):
+        self.accelerator = Accelerator(log_with="wandb", mixed_precision="bf16")  #(fp16=True)
+        config = self.get_config()
+        self.accelerator.init_trackers(self.rep_expe, config=config)
 
     def save_model(self, num_epoch, which="BEST"):
         assert which in ["BEST", "LAST"]
@@ -409,18 +438,20 @@ class tacredTRAINER:
         return datetime.datetime.now() - self.date_debut
 
     def train(self, loadTRAIN, loadEVAL):
-        self.accelerator = Accelerator(log_with="tensorboard", project_dir=self.tensorboard_dir)  #(fp16=True)
-        config = self.get_config()
-
-        self.accelerator.init_trackers(self.rep_expe, config=config)
-
+        if self.accelerator is None:
+            self.init_accelerator()
         optimizer = AdamW(self.model.parameters(),
                           lr = self.hparams.lr,
                           weight_decay=self.hparams.weight_decay)
+        
+        scheduler = CyclicLR(optimizer,
+                             base_lr=self.hparams.base_lr,
+                             max_lr=self.hparams.max_lr,
+                             step_size_up = self.hparams.lr_period//2)
 
         #Transformation du modèle et des trucs
-        model, optimizer, loadTRAIN, loadEVAL = self.accelerator.prepare(
-            self.model, optimizer, loadTRAIN, loadEVAL
+        model, optimizer, loadTRAIN, loadEVAL, scheduler = self.accelerator.prepare(
+            self.model, optimizer, loadTRAIN, loadEVAL, scheduler
         )
         self.loadTRAIN = loadTRAIN
         self.loadEVAL  = loadEVAL
@@ -431,7 +462,9 @@ class tacredTRAINER:
         global_step=0
         train_loss=MOYENNE()
         best_metriq = 0.
-        early_stop_counter = 0
+        #early_stop_counter = 0
+        nbBatches = len(loadTRAIN)
+        NN = nbBatches // 20
         for epoch in range(num_train_epochs):
             model.train()
             for step, batch in enumerate(tqdm(loadTRAIN)):
@@ -440,31 +473,35 @@ class tacredTRAINER:
                     logits, logits_ptr = model(batch)
                     
                     Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
-                    #unique, counts = torch.unique(batch.msk_batch, return_counts=True)
-                    #weights = torch.ones((self.hparams.nb_classes,))
-                    #weights[unique] = 1/counts
-                    #loss = F.cross_entropy(logits, Ytrue, weights)
                     loss = F.cross_entropy(logits, Ytrue)
                     self.accelerator.backward(loss)
                     optimizer.step()
                     train_loss.cumuler(loss.item())
-                    if step % 100 == 0:
-                        self.accelerator.log({"loss(train)": train_loss.m}, step=global_step)
+                    if global_step % NN == 0:
+                        aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL, num_batches=450)
+                        aLogger["loss(train)"] = train_loss.m
+                        aLogger["epoch"] = epoch
+                        aLogger["lr(courant)"]=scheduler.get_last_lr()
+                        self.accelerator.log(aLogger, step=global_step)
                         train_loss.RaZ()
                 global_step += 1
             
+            print("Évalutaion sur dsEVAL entier")
             aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL)
+            #aLogger["loss(train)"] = train_loss.m
+            aLogger["epoch"] = epoch
+            aLogger["lr(courant)"]=scheduler.get_last_lr()
             metriq = aLogger[self.hparams.a_surveiller]
             self.accelerator.log(aLogger, step=global_step)
             if metriq > best_metriq:
                 best_metriq = metriq
-                early_stop_counter = 0
+                #early_stop_counter = 0
                 self.save_model(epoch, "BEST")
             else:
                 self.save_model(epoch, "LAST")
-                early_stop_counter += 1
-                if early_stop_counter >= self.hparams.patience:
-                    break
+                #early_stop_counter += 1
+                #if early_stop_counter >= self.hparams.patience:
+                #    break
             if os.path.exists("./stop_train"):
                 # Pour gérer arrêt manuel
                 os.remove("./stop_train")
@@ -561,7 +598,7 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
         self.loadTRAIN = loadTRAIN
         self.loadEVAL  = loadEVAL
 
-        tparams = {k: v.dtype for (k,v) in model.named_parameters()}
+        #tparams = {k: v.dtype for (k,v) in model.named_parameters()}
         #print("type des paramètres :", tparams)
 
         num_train_epochs = self.hparams.epochs
@@ -583,10 +620,6 @@ class tacredTRAINER_hparam_search(tacredTRAINER):
                     logits, logits_ptr = model(batch)
                     
                     Ytrue = batch.y1[batch.msk_batch].to(dtype=torch.int64)
-                    #unique, counts = torch.unique(batch.msk_batch, return_counts=True)
-                    #weights = torch.ones((self.hparams.nb_classes,))
-                    #weights[unique] = 1/counts
-                    #loss = F.cross_entropy(logits, Ytrue, weights)
                     loss = F.cross_entropy(logits, Ytrue)
                     self.accelerator.backward(loss)
                     optimizer.step()

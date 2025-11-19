@@ -10,7 +10,7 @@ from tacred.DataLoader import tacredGraphSampler, tacredStratifiedGraphSampler, 
 from tacred.models import tacred_GAT_MODEL, tacredTRAINER, tacredTRAINER_hparam_search
 
 from outils.report_generator import HTML_REPORT, HTML_IMAGE
-#from outils.interface_git import nettoyer_logs_lightning
+from outils.interface_git import git_get_commit
 from outils.autoinspect import autoinspect
 
 import datetime
@@ -234,10 +234,13 @@ def essai_train_tacred():
 
 def wandb_train_from_config(config):
     transfo_name="robertaBase"
+    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False, shuffleDev=True)
+    lr_period = 4*len(ldTRAIN)
+    config["trainer_lr_period"] = lr_period
+    config["git"] = git_get_commit(DEBUG)
     print("CRÉATION DE L'ENTRAÎNEUR")
-    trainer = tacredTRAINER_hparam_search.apartir_config(config)
+    trainer = tacredTRAINER.apartir_config(config)
     #model = trainer.model
-    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
     print("DÉMARRAGE de L'ENTRAÎNEMENT")
     trainer.train(ldTRAIN, ldDEV)
     print("TERMINÉ")
@@ -247,18 +250,16 @@ def wandb_train_from_config(config):
 def wandb_essai_train():
     wandb.login()
     config = {
-        "model_dim_in": 144,
-        "model_dim_h1": 144,
-        "model_dim_h2": 144,
         "model_heads": 1,
         "model_nb_couches": 4,
-        "model_rang_sim": 8,
-        "model_dropout_p": 0.3,
+        "model_rang_sim": 16,
+        "model_dropout_p": 0.4,
         "model_add_LN": True,
-        "model_option_couche_0": False,
+        "model_option_couche_0": True,
         "model_nb_classes":42,
-        "trainer_lr": 5.e-4,
-        "trainer_epochs": 1,
+        "trainer_base_lr": 3.e-6,
+        "trainer_max_lr": 2.48e-4,
+        "trainer_epochs": 1000,
         "trainer_weight_decay": 1.e-4,
         "trainer_metriq": "custom_Fscore"
     }
@@ -272,7 +273,7 @@ def sweep_function():
     print("CRÉATION DE L'ENTRAÎNEUR")
     trainer = tacredTRAINER_hparam_search.apartir_sweep_wandb()
     #model = trainer.model
-    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False)
+    ldTRAIN, ldDEV = make_dataloaders(transfo_name, True, True, False, forceGPU=False, shuffleDev=True)
     print("DÉMARRAGE de L'ENTRAÎNEMENT")
     trainer.train(ldTRAIN, ldDEV)
     print("TERMINÉ")
