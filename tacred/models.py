@@ -482,7 +482,7 @@ class tacredTRAINER:
                         aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL, num_batches=450)
                         aLogger["loss(train)"] = train_loss.m
                         aLogger["epoch"] = epoch
-                        aLogger["lr(courant)"]=scheduler.get_last_lr()
+                        aLogger["lr(courant)"]=scheduler.get_last_lr()[-1]
                         self.accelerator.log(aLogger, step=global_step)
                         train_loss.RaZ()
                 global_step += 1
