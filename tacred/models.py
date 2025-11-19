@@ -441,7 +441,7 @@ class tacredTRAINER:
         if self.accelerator is None:
             self.init_accelerator()
         optimizer = AdamW(self.model.parameters(),
-                          lr = self.hparams.lr,
+                          lr = self.hparams.base_lr,
                           weight_decay=self.hparams.weight_decay)
         
         scheduler = CyclicLR(optimizer,
@@ -476,6 +476,7 @@ class tacredTRAINER:
                     loss = F.cross_entropy(logits, Ytrue)
                     self.accelerator.backward(loss)
                     optimizer.step()
+                    scheduler.step()
                     train_loss.cumuler(loss.item())
                     if global_step % NN == 0:
                         aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL, num_batches=450)
