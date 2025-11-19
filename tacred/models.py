@@ -334,7 +334,7 @@ class tacredTRAINER:
     def __init__(self,
         model,
         base_lr=3.e-6,
-        max_lr = 2.5.e-4,
+        max_lr = 2.5e-4,
         lr_period=None,
         epochs=20,
         weight_decay=0.,
