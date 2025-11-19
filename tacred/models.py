@@ -491,7 +491,7 @@ class tacredTRAINER:
             aLogger = self.model.evaluer(self.hparams.metriq, loadEVAL)
             #aLogger["loss(train)"] = train_loss.m
             aLogger["epoch"] = epoch
-            aLogger["lr(courant)"]=scheduler.get_last_lr()
+            aLogger["lr(courant)"]=scheduler.get_last_lr()[-1]
             metriq = aLogger[self.hparams.a_surveiller]
             self.accelerator.log(aLogger, step=global_step)
             if metriq > best_metriq:
