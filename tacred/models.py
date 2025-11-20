@@ -358,7 +358,7 @@ class tacredTRAINER:
         self.last_ckpt=None
 
         #self.tensorboard_dir="./results_Tacred"
-        #self.checkpoints_dir = "./tacred_checkpoints"
+        self.checkpoints_dir = "./tacred_checkpoints"
         self.date_debut = datetime.datetime.now()
         self.rep_expe = "EXPE_" + self.date_debut.strftime("%d_%b_%Y_%HH%M_%S%f")
         self.la_config = None
