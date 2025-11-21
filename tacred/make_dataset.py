@@ -14,7 +14,7 @@ from alig.outils_alignement import ALIGNEUR
 from collections import defaultdict, OrderedDict
 from DtSets.make_dataset import AligDataset
 from DtSets.graphe_adjoint import TRANSFORMER_ATTENTION
-from tacred.graphe_adjoint import faire_graphe_adjoint, faire_graphe_adjoint
+from tacred.graphe_adjoint import faire_graphe_adjoint
 import hashlib
 
 
@@ -207,9 +207,7 @@ class TacredDataset(geoDataset):
         idx = 0
         offsets = []
         print("Entrée fonction process")
-        lbl_id = "# ::id "
-        lbl_modname = "# ::model_name "
-        
+                
         print("Examining list of relations")
         self.ecrire_liste_roles()
         print("Done.")

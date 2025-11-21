@@ -20,6 +20,8 @@ class GraphData:
         self.x = torch.as_tensor(x)
         self.edge_index = torch.as_tensor(edge_index)
 
+
+
 def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=True): #, outputARGn=False):
     Nadj = ntokens*(ntokens-1)//2
     # Nombre de sommets du graphe adjoint du graphe complet
@@ -74,6 +76,21 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
                 grfSig[idxattr, :] = descr[s,c,:]
             
             idxattr += 1
+
+    # Note: Pour obtenir le tenseur grfSig avec torch, faire les opérations suivantes :
+    # idx = torch.triu_indices(ntokens, ntokens, offset=1) # indices de la partie triangulaire supérieure d’une matrice (ntokens, ntokens)
+    # aa = descr[idx[0], idx[1], :]
+    # bb = (descr.transpose(0,1))[idx[0], idx[1], :]
+    # grfSig = torch.hstack((aa, bb))
+    #
+    # Ca, c’est pour une seule phrase. Pour plusieurs, faire :
+    #
+    # On part d’une liste qui contient les ntoks pour chaque phrase du batch ntoks = [n1, n2, n3]
+    # calculer idx =  [torch.vstack((i* torch.ones((n*(n-1)//2,), dtype=torch.int32),torch.triu_indices(n,n,1))) for i, n in enumerate(ntoks)]
+    # calculer idx = torch.hstack(idx)
+    # aa = descr[idx[0], idx[1], idx[2], :]
+    # bb = (descr.transpose(1,2))[idx[0], idx[1], idx[2], :]
+    # grfSig = torch.hstack((aa, bb))
 
     # Construction de la matrice d’adjacence au format "edge_index" :
     numerote = lambda s,c : (2*ntokens-1-s)*s//2+c-s-1
