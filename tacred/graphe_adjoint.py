@@ -86,7 +86,7 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
     # Ca, c’est pour une seule phrase. Pour plusieurs, faire :
     #
     # On part d’une liste qui contient les ntoks pour chaque phrase du batch ntoks = [n1, n2, n3]
-    # calculer idx =  [torch.vstack((i* torch.ones((n*(n-1)//2,), dtype=torch.int32),torch.triu_indices(n,n,1))) for i, n in enumerate(ntoks)]
+    # calculer idx =  [torch.vstack((torch.full((n*(n-1)//2,), i), torch.triu_indices(n,n,1))) for i, n in enumerate(ntoks)]
     # calculer idx = torch.hstack(idx)
     # aa = descr[idx[0], idx[1], idx[2], :]
     # bb = (descr.transpose(1,2))[idx[0], idx[1], idx[2], :]
