@@ -34,15 +34,12 @@ class Fscore:
 
     def compute(self, β=1):
         S = sum(self.T)
-        # micro:
+        # accuracy (micro):
         intersect = sum(self.TinterP)
-        prec = intersect / sum(self.P)
-        recl = intersect / sum(self.T)
-        iprec = float("inf") if prec == 0. else 1/prec
-        irecl = float("inf") if recl == 0. else 1/recl
-        iF    = (iprec + irecl*(β**2))/(1+β**2)
-        F     = 1/iF
-        micro = F
+        total = sum(self.P)
+        assert total == sum(self.T)
+        acc = intersect / sum(self.P)
+        micro = acc
 
         # macro:
         F = [0.] * self.nb_classes
@@ -60,7 +57,7 @@ class Fscore:
         #No average
         self.F_no_average = F
 
-        return {"F_score(micro)": micro, "F_score(macro)": macro, "F_score(weighted)": weighted}
+        return {"accuracy": micro, "F_score(macro)": macro, "F_score(weighted)": weighted}
         
 
         
