@@ -646,9 +646,10 @@ def make_aligs(rep, model_name="roberta-base", file_out="a_tej.json"):
         iter_cible = ((X["obj_start"], X["obj_end"]) for X in iter_C)
 
         iter_aligs = (aligneur.aligner_seq(T, S) for T, S in zip(iter_toks, iter_phrases))
+        # Itérateur qui donne des triplets (rel_tg, rel_mg, toks_transfo)
 
         iter_argus = ((id,) + (docid,) + X + (S,) + (C,) + (R,) for id, docid, X, S, C, R in zip(iter_id, iter_docid, iter_aligs, iter_source, iter_cible, iter_rel))
-        # Iterateur qui donne des 6-uplets avec (id, doc_id, rel_tg, rel_mg, toks_transfo, groupe_source, groupe_cible, relation)
+        # Itérateur qui donne des 8-uplets avec (id, doc_id, rel_tg, rel_mg, toks_transfo, groupe_source, groupe_cible, relation)
 
         iterF = filtrer_iter(iter_argus)
 
