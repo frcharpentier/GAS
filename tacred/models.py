@@ -57,7 +57,7 @@ class Fscore:
         #No average
         self.F_no_average = F
 
-        return {"accuracy": micro, "F_score(macro)": macro, "F_score(weighted)": weighted}
+        return {"accuracy": acc, "F_score(macro)": macro, "F_score(weighted)": weighted}
         
 
         
