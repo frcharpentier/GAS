@@ -45,7 +45,7 @@ def transfo_to_filenames(transfo, QscalK=True):
 
 
 def sourcer_tacred_alig(nom_fichier, NN=None):
-    lbl_modname = "# ::model_name "
+    
     etat = 0
     model_name=None
     if NN is None:
@@ -57,8 +57,8 @@ def sourcer_tacred_alig(nom_fichier, NN=None):
                     NN += 1
     with open(nom_fichier, "r", encoding="utf-8") as F:
         ligne = F.readline().strip()
-        assert ligne.startswith(lbl_modname)
-        model_name = ligne[len(lbl_modname):]
+        assert ligne.startswith(TacredDataset.lbl_modname)
+        model_name = ligne[len(TacredDataset.lbl_modname):]
         data = json_stream.load(F)
         try:
             for N in tqdm(range(NN)):
@@ -90,6 +90,8 @@ def liste_relations(dico):
 
 
 class TacredDataset(geoDataset):
+    lbl_modname = "# ::model_name "
+
     def __init__(self, root, alignment_file,
                  transform=None,
                  pre_transform=None,
@@ -111,7 +113,7 @@ class TacredDataset(geoDataset):
         self.alignment_file = alignment_file
         self.digests = dict()
         self.offsets = None
-        self.FileHandle = None
+        self.FileHandle = None # FileHandle est le handle sur le fichier "gros_fichier.bin"
 
         self.liste_relations = None
         
@@ -187,21 +189,43 @@ class TacredDataset(geoDataset):
             HH = hashlib.file_digest(F, "md5")
         self.digests["liste_relations"] = HH.hexdigest()
 
+    #def compter_graphes(self):
+    #    if self.debug_idSNT:
+    #        self.liste_idSNT = []
+    #
+    #    with open(self.alignment_file, "r", encoding="utf-8") as F:
+    #        total_graphes = 0
+    #        for ligne in F:
+    #            ligne = ligne.strip()
+    #            if ligne.startswith(TacredDataset.lbl_modname):
+    #                model_name = ligne[len(TacredDataset.lbl_modname):]
+    #            elif ligne.startswith("{") or ligne.startswith("[{"):
+    #                total_graphes += 1
+    #
+    #    return total_graphes
+
     def compter_graphes(self):
-        lbl_modname = "# ::model_name "
-        if self.debug_idSNT:
-            self.liste_idSNT = []
-    
         with open(self.alignment_file, "r", encoding="utf-8") as F:
-            total_graphes = 0
+            NN = 0
             for ligne in F:
                 ligne = ligne.strip()
-                if ligne.startswith(lbl_modname):
-                    model_name = ligne[len(lbl_modname):]
-                elif ligne.startswith("{") or ligne.startswith("[{"):
-                    total_graphes += 1
-
-        return total_graphes
+                if ligne.startswith("{") or ligne.startswith("[{"):
+                    NN += 1
+        if self.debug_idSNT:
+            self.liste_idSNT = []
+            with open(self.alignment_file, "r", encoding="utf-8") as F:
+                ligne = F.readline().strip()
+                assert ligne.startswith(TacredDataset.lbl_modname)
+                model_name = ligne[len(TacredDataset.lbl_modname):]
+                data = json_stream.load(F)
+                try:
+                    for N in tqdm(range(NN)):
+                        jsn = json_stream.to_standard_types(data[N])
+                        self.liste_idSNT.append(jsn["id"])
+                except IndexError:
+                    pass
+        else:
+            return NN
     
     def process(self):
         idx = 0
@@ -487,8 +511,12 @@ class TacredDataset(geoDataset):
         relation = torch.as_tensor(relation)
         direction = torch.as_tensor(direction)
         
-
-        data = geoGraphData(x=grfSig, edge_index=edge_idx,
+        if self.debug_idSNT:
+            data = geoGraphData(x=grfSig, edge_index=edge_idx,
+                    msk=torch.tensor(utiles), y1=relation,
+                    y2=direction, idSNT=self.liste_idSNT[idx])
+        else:
+            data = geoGraphData(x=grfSig, edge_index=edge_idx,
                     msk=torch.tensor(utiles), y1=relation, y2=direction, )
         return data
     
@@ -654,7 +682,7 @@ def make_aligs(rep, model_name="roberta-base", file_out="a_tej.json"):
         iterF = filtrer_iter(iter_argus)
 
         with open(fileOUT, "w", encoding="utf-8") as FOUT:
-            print("# ::model_name %s"%model_name, file=FOUT)
+            print("%s%s"%(TacredDataset.lbl_modname, model_name), file=FOUT)
             start = "["
             for dico in iterF:
                 print("%s%s"%(start, json.dumps(dico)), file=FOUT, end="")
