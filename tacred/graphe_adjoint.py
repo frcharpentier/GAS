@@ -43,17 +43,17 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
     useful_nodes = []
 
-    dim = descr.shape[-1]
-    adja = [[False for j in range(i+1,ntokens)] for i in range(ntokens-1)]
-    # matrice d’adjacence du graphe normal (pas adjoint)
-    if bilin:
-        grfSig = np.zeros((Nadj, dim, 2), dtype=descr.dtype)
-        # Signal sur le graphe adjoint
-    else:
-        grfSig = np.zeros((Nadj, dim), dtype=descr.dtype)
-        # Signal sur le graphe adjoint
+    if not descr is None:
+        dim = descr.shape[-1]
+        adja = [[False for j in range(i+1,ntokens)] for i in range(ntokens-1)]
+        # matrice d’adjacence du graphe normal (pas adjoint)
+        if bilin:
+            grfSig = np.zeros((Nadj, dim, 2), dtype=descr.dtype)
+            # Signal sur le graphe adjoint
+        else:
+            grfSig = np.zeros((Nadj, dim), dtype=descr.dtype)
+            # Signal sur le graphe adjoint
 
-    #edge_idx = np.zeros((2, Nadj*degAdj), dtype=np.int32)
     edge_idx = np.zeros((2, Nadj*degAdj//2), dtype=np.int32)
     # matrice d’adjacence du graphe adjoint au format "edge_index"
 
@@ -61,21 +61,24 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
     idAdj = []
     
-    idxattr = 0
-    for s in range(ntokens-1):
-        for c in range(s+1, ntokens):
-            CC = c-s-1
-            lblNd = (s,c)
-            if lblNd in aretes_utiles:
-                useful_nodes.append(idxattr)
-            idAdj.append(lblNd)
-            if bilin:
-                grfSig[idxattr, :, 0] = descr[s,c,:]
-                grfSig[idxattr, :, 1] = descr[c,s,:]
-            else:
-                grfSig[idxattr, :] = descr[s,c,:]
-            
-            idxattr += 1
+    if not descr is None:
+        idxattr = 0
+        for s in range(ntokens-1):
+            for c in range(s+1, ntokens):
+                CC = c-s-1
+                lblNd = (s,c)
+                if lblNd in aretes_utiles:
+                    useful_nodes.append(idxattr)
+                idAdj.append(lblNd)
+                if bilin:
+                    grfSig[idxattr, :, 0] = descr[s,c,:]
+                    grfSig[idxattr, :, 1] = descr[c,s,:]
+                else:
+                    grfSig[idxattr, :] = descr[s,c,:]
+                
+                idxattr += 1
+    else:
+        pass
 
     # Note: Pour obtenir le tenseur grfSig avec torch, faire les opérations suivantes :
     # idx = torch.triu_indices(ntokens, ntokens, offset=1) # indices de la partie triangulaire supérieure d’une matrice (ntokens, ntokens)
@@ -118,15 +121,22 @@ def faire_graphe_adjoint(ntokens, tk_utiles, aretes, descr, liste_roles, bilin=T
 
     edge_idx = np.concatenate((edge_idx, edge_idx[(1,0),:]), axis=1)
     
-    G = GraphData(grfSig, edge_idx)
     useful_nodes = np.array(useful_nodes)
 
-    resu = {
-        "idAdj"        : idAdj,
-        "G"            : G,
-        "utiles"       : useful_nodes,
-        "relation"     : relation,
-        "direction"    : direction
-    }
+    if descr is None:
+        resu = {
+            "edge_idx"     : edge_idx,
+            "utiles"       : useful_nodes,
+            "relation"     : relation,
+            "direction"    : direction
+        }
+    else:
+        resu = {
+            "idAdj"        : idAdj,
+            "G"            : GraphData(grfSig, edge_idx),
+            "utiles"       : useful_nodes,
+            "relation"     : relation,
+            "direction"    : direction
+        }
     
     return resu

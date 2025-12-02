@@ -18,7 +18,7 @@ def essai():
     print(frame_info[1])
     for _ in reload_loop(forever=True, label="loop1"):
         # faire du rien
-        scheduler  = {"optim": "optimiseur", "type": "dents_de_scie"}
+        #scheduler  = {"optim": "optimiseur", "type": "dents_de_scie"}
         #break
         while True:
             epoch = next(epoques)
@@ -29,8 +29,9 @@ def essai():
                 time.sleep(0.01)
             print("-----")
             if reload_cond(label = "cond1"):
-                if epoch == 3:
-                    break_loop("loop1")
+                #if epoch == 2:
+                #    continue_loop("loop1")
+                print("Fin de l’époque")
     print("TERMINÉ.")
 
 

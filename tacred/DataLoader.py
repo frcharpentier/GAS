@@ -4,6 +4,7 @@ import numpy as np
 import random
  
 import torch
+import torch.nn.functional as F
 import torch.utils.data
 from torch.utils.data.dataloader import default_collate
 
@@ -11,7 +12,7 @@ from torch_geometric.data import Batch, Dataset
 from torch_geometric.data.data import BaseData
 from torch_geometric.data.datapipes import DatasetAdapter
 from torch_geometric.typing import TensorFrame, torch_frame
-
+from tacred.GNN_through_LLM import tacredTokens2GNNDataset
 
 class tacredStratifiedGraphSampler(torch.utils.data.sampler.Sampler):
 
@@ -228,6 +229,44 @@ class tacredCollater:
         
 
         raise TypeError(f"DataLoader found invalid type: '{type(elem)}'")
+    
+class tacredCollater_for_LLM_GNN:
+    def __init__(
+        self,
+        dataset: Union[Dataset, Sequence[BaseData], DatasetAdapter],
+        follow_batch: Optional[List[str]] = None,
+        exclude_keys: Optional[List[str]] = None,
+    ):
+        self.dataset = dataset
+        self.follow_batch = follow_batch
+        self.exclude_keys = exclude_keys
+        if not "input_ids" in self.exclude_keys:
+            if self.exclude_keys is None:
+                self.exclude_keys = ["input_ids"]
+            else:
+                self.exclude_keys.append("input_ids")
+        if not "msk" in self.follow_batch:
+            if self.follow_batch is None:
+                self.follow_batch = ["msk"]
+            else:
+                self.follow_batch.append("msk")
+
+    def __call__(self, batch: List[Any]) -> Any:
+        elem = batch[0]
+        assert isinstance(elem, BaseData)
+        B = Batch.from_data_list(
+            batch,
+            follow_batch=self.follow_batch,
+            exclude_keys=self.exclude_keys,
+        )
+        cumul = B.ptr[B.msk_batch]
+        B.msk = B.msk + cumul
+        pad_tkid = self.dataset.pad_tkid
+        maxi_n = max(X.ntoks for X in batch)
+        with torch.no_grad():
+            B.input_ids = torch.vstack([F.pad(X.input_ids, (0, maxi_n - X.ntoks), value=pad_tkid) for X in batch])
+            B.attention_mask = torch.vstack([F.pad(torch.ones(X.ntoks, dtype=torch.long), (0, maxi_n-X.ntoks), value=0) for X in batch])
+        return B
 
 
 class tacredDataLoader(torch.utils.data.DataLoader):

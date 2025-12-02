@@ -12,7 +12,6 @@ import itertools
 from tacred.fichier_zero import rebuild_sentence
 from alig.outils_alignement import ALIGNEUR
 from collections import defaultdict, OrderedDict
-from DtSets.make_dataset import AligDataset
 from DtSets.graphe_adjoint import TRANSFORMER_ATTENTION
 from tacred.graphe_adjoint import faire_graphe_adjoint
 import hashlib
@@ -423,7 +422,7 @@ class TacredDataset(geoDataset):
 
     def lire_liste_roles(self):
         if self.liste_relations is None:
-            with open(self.processed_paths[2], "r", encoding="UTF-8") as F: #fichier "liste_roles.json"
+            with open(self.processed_paths[2], "r", encoding="UTF-8") as F: #fichier "liste_relations.json"
                 jason = json.load(F)
             self.dico_relations = OrderedDict([tuple(t) for t in jason["dico_relations"]])
             self.liste_relations = [k for k in self.dico_relations]
